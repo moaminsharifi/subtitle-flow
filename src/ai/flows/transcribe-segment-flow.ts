@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Utility for transcribing a segment of audio using OpenAI API.
@@ -9,7 +10,7 @@
 
 import OpenAI from 'openai';
 import { z } from 'zod';
-import type { TranscribeModelType } from '@/lib/types';
+import type { OpenAIModelType } from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 
 const TranscribeAudioSegmentInputSchema = z.object({
@@ -18,8 +19,8 @@ const TranscribeAudioSegmentInputSchema = z.object({
     .describe(
       "A segment of audio, as a data URI that must include a MIME type (e.g., 'audio/wav') and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
-  modelType: z.custom<TranscribeModelType>().describe("The transcription model to use. Currently only 'openai' is functional here."),
-  language: z.string().optional().describe("Optional language code for transcription (e.g., 'en', 'es')."),
+  openAIModel: z.custom<OpenAIModelType>().describe("The OpenAI transcription model to use (e.g., 'whisper-1')."),
+  language: z.string().optional().describe("Optional language code for transcription (e.g., 'en', 'es'). OpenAI expects BCP-47 format."),
   openAIApiKey: z.string().describe("OpenAI API Key.")
 });
 export type TranscribeAudioSegmentInput = z.infer<typeof TranscribeAudioSegmentInputSchema>;
@@ -32,10 +33,6 @@ export type TranscribeAudioSegmentOutput = z.infer<typeof TranscribeAudioSegment
 export async function transcribeAudioSegment(
   input: TranscribeAudioSegmentInput
 ): Promise<TranscribeAudioSegmentOutput> {
-  if (input.modelType !== 'openai') {
-    console.warn(`Transcription called with modelType '${input.modelType}', but only 'openai' is implemented directly. Proceeding with OpenAI.`);
-    // Or throw new Error(`Unsupported model type: ${input.modelType}. Only 'openai' is supported.`);
-  }
 
   if (!input.openAIApiKey) {
     throw new Error('OpenAI API key is required for transcription.');
@@ -48,14 +45,19 @@ export async function transcribeAudioSegment(
   try {
     const audioFile = await dataUriToRequestFile(input.audioDataUri, 'audio_segment.wav', 'audio/wav');
 
-    console.log(`Attempting OpenAI transcription for language: ${input.language || 'auto-detect'}`);
+    console.log(`Attempting OpenAI transcription with model: ${input.openAIModel}, language: ${input.language || 'auto-detect'}`);
+    
+    const transcriptionParams: OpenAI.Audio.TranscriptionCreateParams = {
+        file: audioFile,
+        model: input.openAIModel, // Use the selected OpenAI model
+        response_format: 'json',
+    };
 
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: 'whisper-1', // OpenAI's primary transcription model
-      language: input.language, // Optional: BCP-47 language code
-      response_format: 'json', // Get plain text
-    });
+    if (input.language) {
+        transcriptionParams.language = input.language;
+    }
+
+    const transcription = await openai.audio.transcriptions.create(transcriptionParams);
 
     const transcribedText = transcription.text;
 
@@ -67,7 +69,8 @@ export async function transcribeAudioSegment(
 
   } catch (error: any) {
     console.error('Error during OpenAI transcription:', error);
-    const errorMessage = error.response?.data?.error?.message || error.message || 'Unknown transcription error';
-    throw new Error(`OpenAI Transcription failed: ${errorMessage}`);
+    // Attempt to parse more detailed error message from OpenAI response
+    const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
+    throw new Error(`OpenAI Transcription failed: ${errorResponseMessage}`);
   }
 }

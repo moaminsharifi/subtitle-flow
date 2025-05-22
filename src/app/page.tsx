@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, TranscribeModelType } from '@/lib/types';
+import type { MediaFile, OpenAIModelType, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode } from '@/lib/types';
+import { LANGUAGE_OPTIONS } from '@/lib/types';
 import { MediaUploader } from '@/components/media-uploader';
 import { SubtitleUploader } from '@/components/subtitle-uploader';
 import { MediaPlayer } from '@/components/media-player';
@@ -13,13 +14,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2 } from 'lucide-react';
-import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow'; // Updated import
+import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
-const GROQ_TOKEN_KEY = 'app-settings-groq-token'; // Kept for UI consistency, but not used by transcription logic
-const TRANSCRIBE_MODEL_KEY = 'app-settings-transcribe-model';
+// const GROQ_TOKEN_KEY = 'app-settings-groq-token'; // Kept for UI consistency, but not used by transcription logic
+const OPENAI_MODEL_KEY = 'app-settings-openai-model';
 
 type AppStep = 'upload' | 'edit' | 'export';
 
@@ -31,6 +33,8 @@ export default function SubtitleSyncPage() {
   const [currentStep, setCurrentStep] = useState<AppStep>('upload');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
+  const [transcriptionLanguage, setTranscriptionLanguage] = useState<LanguageCode>("");
+
 
   const playerRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -183,17 +187,17 @@ export default function SubtitleSyncPage() {
             if (mediaFile && mediaFile.duration > 0) {
               newStartTime = Math.min(newStartTime, mediaFile.duration);
               newEndTime = Math.min(newEndTime, mediaFile.duration);
-              if (newEndTime <= newStartTime && newStartTime > 0) { // If end becomes before start due to media cap
-                 newStartTime = Math.max(0, newEndTime - 0.001); // Ensure start is just before end
+              if (newEndTime <= newStartTime && newStartTime > 0) { 
+                 newStartTime = Math.max(0, newEndTime - 0.001); 
               }
             }
-             if (newEndTime <= newStartTime && newStartTime === 0 && newEndTime === 0 && offset < 0) { // Shifted to before 0
-                return null; // Mark for removal
+             if (newEndTime <= newStartTime && newStartTime === 0 && newEndTime === 0 && offset < 0) { 
+                return null; 
             }
             return { ...sub, startTime: newStartTime, endTime: newEndTime };
           })
-          .filter(subOrNull => subOrNull !== null) // Remove marked entries
-          .filter(sub => !(mediaFile && mediaFile.duration > 0 && sub!.startTime >= mediaFile.duration && sub!.endTime >= mediaFile.duration)) // Remove subs fully starting after media ends
+          .filter(subOrNull => subOrNull !== null) 
+          .filter(sub => !(mediaFile && mediaFile.duration > 0 && sub!.startTime >= mediaFile.duration && sub!.endTime >= mediaFile.duration)) 
           .sort((a, b) => a!.startTime - b!.startTime) as SubtitleEntry[];
           return { ...track, entries: newEntries };
         }
@@ -215,19 +219,13 @@ export default function SubtitleSyncPage() {
       return;
     }
 
-    const selectedModel = localStorage.getItem(TRANSCRIBE_MODEL_KEY) as TranscribeModelType | null || 'openai';
+    const selectedOpenAIModel = localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType | null || 'whisper-1';
     const openAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
-    // const groqToken = localStorage.getItem(GROQ_TOKEN_KEY); // Not used by OpenAI direct API
 
-    if (selectedModel === 'openai' && !openAIToken) {
+    if (!openAIToken) {
       toast({ title: "OpenAI Token Missing", description: "Please set your OpenAI API token in Settings.", variant: "destructive" });
       return;
     }
-    // Add similar check for Groq if/when Groq direct API support is added
-    // if (selectedModel === 'groq' && !groqToken) {
-    //   toast({ title: "Groq Token Missing", description: "Please set your Groq API token in Settings.", variant: "destructive" });
-    //   return;
-    // }
 
     setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: true }));
 
@@ -236,14 +234,14 @@ export default function SubtitleSyncPage() {
       
       const result = await transcribeAudioSegment({
         audioDataUri,
-        modelType: 'openai', // Hardcode to 'openai' as we are using the openai library
-        openAIApiKey: openAIToken!, // Pass the API key
-        // language: "en" // Optionally specify language
+        openAIModel: selectedOpenAIModel,
+        language: transcriptionLanguage === "" ? undefined : transcriptionLanguage, // Pass undefined for auto-detect
+        openAIApiKey: openAIToken!,
       });
 
       if (result.transcribedText !== undefined) {
         handleSubtitleChange(entryId, { text: result.transcribedText });
-        toast({ title: "Transcription Updated", description: `Subtitle text regenerated using OpenAI.` });
+        toast({ title: "Transcription Updated", description: `Subtitle text regenerated using ${selectedOpenAIModel}.` });
       } else {
         toast({ title: "Transcription Failed", description: "Received no text from the AI model.", variant: "destructive" });
       }
@@ -267,7 +265,6 @@ export default function SubtitleSyncPage() {
       return;
     }
     if (subtitleTracks.length === 0) {
-      // Allow proceeding to edit even without subtitles, to add them manually or via AI later
        toast({ title: "No Subtitles Yet", description: "Proceeding to editor. You can add subtitles manually or upload a file.", variant: "default" });
     }
     if (!activeTrackId && subtitleTracks.length > 0) {
@@ -365,18 +362,20 @@ export default function SubtitleSyncPage() {
 
           {currentStep === 'edit' && (
             <>
-              {subtitleTracks.length > 0 && (
-                <Card className="shadow-md">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Active Subtitle Track</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              <Card className="shadow-md">
+                <CardHeader>
+                  <CardTitle className="text-lg">Track & Language</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="active-track-select">Active Subtitle Track</Label>
                     <Select
                       value={activeTrackId || ""}
                       onValueChange={(trackId) => setActiveTrackId(trackId)}
                       disabled={!mediaFile || subtitleTracks.length === 0}
+                      
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger id="active-track-select" className="w-full">
                         <SelectValue placeholder="Select a subtitle track to edit" />
                       </SelectTrigger>
                       <SelectContent>
@@ -387,9 +386,29 @@ export default function SubtitleSyncPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                  <div>
+                    <Label htmlFor="transcription-language-select">Transcription Language</Label>
+                    <Select
+                      value={transcriptionLanguage}
+                      onValueChange={(value: LanguageCode) => setTranscriptionLanguage(value)}
+                      disabled={!mediaFile}
+                    >
+                      <SelectTrigger id="transcription-language-select" className="w-full">
+                        <SelectValue placeholder="Select transcription language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGE_OPTIONS.map((lang) => (
+                          <SelectItem key={lang.value || 'auto'} value={lang.value || ""}>
+                            {lang.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+              
               <div className="flex-grow min-h-[300px] lg:min-h-0">
                 <SubtitleEditor
                   activeTrack={activeTrack}
