@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -45,15 +46,19 @@ export function MediaUploader({ onMediaUpload, disabled }: MediaUploaderProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid w-full max-w-sm items-center gap-1.5">
-          <Label htmlFor="media-file" className="font-semibold">Media File (Audio/Video)</Label>
+          <Label htmlFor="media-file-input" className="font-semibold">Media File (Audio/Video)</Label>
           <Input 
-            id="media-file" 
+            id="media-file-input" 
             type="file" 
             accept="audio/*,video/*" 
             onChange={handleFileChange} 
             className="file:text-primary file:font-semibold hover:file:bg-primary/10"
-            disabled={disabled} 
+            disabled={disabled}
+            aria-describedby="media-file-description" 
           />
+           <p id="media-file-description" className="text-sm text-muted-foreground sr-only">
+            Select an audio or video file to upload. Press Enter or Space to open file dialog when focused.
+          </p>
         </div>
         {fileName && <p className="text-sm text-muted-foreground">Selected: {fileName}</p>}
       </CardContent>

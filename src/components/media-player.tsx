@@ -129,17 +129,17 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
     <div className="w-full space-y-3">
       <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-xl">
         {mediaFile.type === 'video' ? (
-          <video ref={activePlayerRef} className="w-full h-full" src={mediaFile.url} />
+          <video ref={activePlayerRef} className="w-full h-full" src={mediaFile.url} aria-label={`${mediaFile.name} video player`} />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-background p-4">
-            <audio ref={activePlayerRef} src={mediaFile.url} className="w-full"/>
+            <audio ref={activePlayerRef} src={mediaFile.url} className="w-full" aria-label={`${mediaFile.name} audio player`}/>
             <UploadCloud className="w-24 h-24 mb-4 opacity-50" />
             <p className="text-lg font-medium">{mediaFile.name}</p>
             <p className="text-sm opacity-80">Audio playback</p>
           </div>
         )}
         {currentlyDisplayedSubtitles.length > 0 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-10/12 p-2 bg-black/70 text-white text-center rounded-md text-sm md:text-base lg:text-lg">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-10/12 p-2 bg-black/70 text-white text-center rounded-md text-sm md:text-base lg:text-lg" aria-live="polite">
             {currentlyDisplayedSubtitles.map(sub => sub.text).join('\n')}
           </div>
         )}
@@ -155,7 +155,7 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
           max={duration}
           step={0.1}
           onValueChange={handleSeek}
-          aria-label="Media progress"
+          aria-label="Media progress slider"
         />
       </div>
 
@@ -164,7 +164,7 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
           <Button variant="ghost" size="icon" onClick={() => handleSkip(-5)} aria-label="Rewind 5 seconds">
             <Rewind />
           </Button>
-          <Button variant="ghost" size="icon" onClick={togglePlayPause} aria-label={isPlaying ? "Pause" : "Play"}>
+          <Button variant="ghost" size="icon" onClick={togglePlayPause} aria-label={isPlaying ? "Pause media" : "Play media"}>
             {isPlaying ? <Pause /> : <Play />}
           </Button>
           <Button variant="ghost" size="icon" onClick={() => handleSkip(5)} aria-label="Fast forward 5 seconds">
@@ -173,7 +173,7 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleMute} aria-label={isMuted ? "Unmute" : "Mute"}>
+          <Button variant="ghost" size="icon" onClick={toggleMute} aria-label={isMuted ? "Unmute volume" : "Mute volume"}>
             {isMuted || volume === 0 ? <VolumeX /> : <Volume2 />}
           </Button>
           <Slider 
@@ -182,25 +182,25 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
             step={0.05} 
             onValueChange={handleVolumeChange} 
             className="w-24"
-            aria-label="Volume"
+            aria-label="Volume slider"
           />
         </div>
         
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Subtitle settings">
+            <Button variant="ghost" size="icon" aria-label="Active track timing shift settings">
               <Settings2 />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-2 space-y-2">
             <Label className="text-sm font-medium">Active Track Timing Shift</Label>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => onShiftTime(-0.1)} className="flex-1">-0.1s</Button>
-              <Button variant="outline" size="sm" onClick={() => onShiftTime(0.1)} className="flex-1">+0.1s</Button>
+              <Button variant="outline" size="sm" onClick={() => onShiftTime(-0.1)} className="flex-1" aria-label="Shift subtitles back by 0.1 seconds">-0.1s</Button>
+              <Button variant="outline" size="sm" onClick={() => onShiftTime(0.1)} className="flex-1" aria-label="Shift subtitles forward by 0.1 seconds">+0.1s</Button>
             </div>
              <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => onShiftTime(-0.5)} className="flex-1">-0.5s</Button>
-              <Button variant="outline" size="sm" onClick={() => onShiftTime(0.5)} className="flex-1">+0.5s</Button>
+              <Button variant="outline" size="sm" onClick={() => onShiftTime(-0.5)} className="flex-1" aria-label="Shift subtitles back by 0.5 seconds">-0.5s</Button>
+              <Button variant="outline" size="sm" onClick={() => onShiftTime(0.5)} className="flex-1" aria-label="Shift subtitles forward by 0.5 seconds">+0.5s</Button>
             </div>
           </PopoverContent>
         </Popover>

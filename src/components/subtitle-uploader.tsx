@@ -67,15 +67,19 @@ export function SubtitleUploader({ onSubtitleUpload, disabled }: SubtitleUploade
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid w-full max-w-sm items-center gap-1.5">
-          <Label htmlFor="subtitle-file" className="font-semibold">Subtitle File (.srt, .vtt)</Label>
+          <Label htmlFor="subtitle-file-input" className="font-semibold">Subtitle File (.srt, .vtt)</Label>
           <Input 
-            id="subtitle-file" 
+            id="subtitle-file-input" 
             type="file" 
             accept=".srt,.vtt" 
             onChange={handleFileChange}
             className="file:text-primary file:font-semibold hover:file:bg-primary/10"
             disabled={disabled}
+            aria-describedby="subtitle-file-description"
           />
+           <p id="subtitle-file-description" className="text-sm text-muted-foreground sr-only">
+            Select an SRT or VTT subtitle file to upload. Press Enter or Space to open file dialog when focused.
+          </p>
         </div>
         {fileName && <p className="text-sm text-muted-foreground">Selected for upload: {fileName}</p>}
          {!fileName && <p className="text-sm text-muted-foreground">Or use the AI generation option below if media is loaded.</p>}

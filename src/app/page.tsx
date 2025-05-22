@@ -11,13 +11,14 @@ import { SubtitleEditor } from '@/components/subtitle-editor';
 import { SubtitleExporter } from '@/components/subtitle-exporter';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { DebugLogDialog } from '@/components/debug-log-dialog';
+import { CheatsheetDialog } from '@/components/cheatsheet-dialog'; // Import CheatsheetDialog
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList, WandSparkles } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList, WandSparkles, HelpCircle } from 'lucide-react'; // Added HelpCircle
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 
@@ -44,6 +45,7 @@ export default function SubtitleSyncPage() {
   const [currentStep, setCurrentStep] = useState<AppStep>('upload');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [isDebugLogDialogOpen, setIsDebugLogDialogOpen] = useState(false);
+  const [isCheatsheetDialogOpen, setIsCheatsheetDialogOpen] = useState(false); // State for CheatsheetDialog
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
   const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
   const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
@@ -611,6 +613,7 @@ export default function SubtitleSyncPage() {
                           onClick={handleGenerateFullTranscription} 
                           disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading} 
                           className="w-full bg-accent hover:bg-accent/90"
+                          aria-label="Generate Full Subtitles with AI"
                         >
                           {isGeneratingFullTranscription ? (
                             <>
@@ -632,6 +635,7 @@ export default function SubtitleSyncPage() {
                     onClick={handleProceedToEdit} 
                     disabled={!mediaFile || isGeneratingFullTranscription} 
                     className="w-full"
+                    aria-label="Proceed to Edit Step"
                   >
                     Proceed to Edit <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -658,7 +662,7 @@ export default function SubtitleSyncPage() {
                       }}
                       disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                     >
-                      <SelectTrigger id="active-track-select" className="w-full">
+                      <SelectTrigger id="active-track-select" className="w-full" aria-label="Select active subtitle track">
                         <SelectValue placeholder="Select a subtitle track to edit" />
                       </SelectTrigger>
                       <SelectContent>
@@ -681,7 +685,7 @@ export default function SubtitleSyncPage() {
                       }}
                       disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                     >
-                      <SelectTrigger id="transcription-language-select" className="w-full">
+                      <SelectTrigger id="transcription-language-select" className="w-full" aria-label="Select transcription language for segment regeneration">
                         <SelectValue placeholder="Select transcription language" />
                       </SelectTrigger>
                       <SelectContent>
@@ -716,6 +720,7 @@ export default function SubtitleSyncPage() {
                     variant="outline" 
                     className="w-full sm:w-auto"
                     disabled={isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                    aria-label="Back to Uploads Step"
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back to Uploads
                   </Button>
@@ -723,6 +728,7 @@ export default function SubtitleSyncPage() {
                     onClick={handleProceedToExport} 
                     disabled={!activeTrack || !activeTrack.entries.length || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                     className="w-full sm:flex-1"
+                    aria-label="Proceed to Export Step"
                   >
                     Proceed to Export <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -740,10 +746,10 @@ export default function SubtitleSyncPage() {
               />
               <Card>
                 <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
-                  <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto">
+                  <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label="Go back to Edit Step">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Edit More
                   </Button>
-                  <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1">
+                  <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label="Start Over and Clear All Data">
                      <RotateCcw className="mr-2 h-4 w-4" /> Start Over (Clear Data)
                   </Button>
                 </CardFooter>
@@ -758,6 +764,19 @@ export default function SubtitleSyncPage() {
       
       <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
         <Button 
+          variant="outline" 
+          size="icon" 
+          className="rounded-full shadow-lg"
+          onClick={() => {
+            setIsCheatsheetDialogOpen(true);
+            addLog("Cheatsheet dialog opened.", "debug");
+          }}
+          aria-label="Open Keyboard Cheatsheet"
+          title="Open Keyboard Cheatsheet"
+        >
+          <HelpCircle className="h-5 w-5" />
+        </Button>
+         <Button 
           variant="outline" 
           size="icon" 
           className="rounded-full shadow-lg"
@@ -812,6 +831,13 @@ export default function SubtitleSyncPage() {
         }}
         logs={logEntries}
         onClearLogs={clearLogs}
+      />
+      <CheatsheetDialog
+        isOpen={isCheatsheetDialogOpen}
+        onClose={() => {
+          setIsCheatsheetDialogOpen(false);
+          addLog("Cheatsheet dialog closed.", "debug");
+        }}
       />
     </div>
   );

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Progress } from '@/components/ui/progress'; // Import Progress
+import { Progress } from '@/components/ui/progress'; 
 import { Trash2, PlusCircle, CaptionsIcon, Wand2, Loader2 } from 'lucide-react'; 
 import type { SubtitleEntry, SubtitleTrack } from '@/lib/types';
 
@@ -67,7 +67,7 @@ export function SubtitleEditor({
             <CaptionsIcon className="h-6 w-6 text-primary"/>
             Subtitle Editor {activeTrack ? `(${activeTrack.fileName})` : ''}
           </div>
-          <Button onClick={onSubtitleAdd} size="sm" disabled={disabled || isAnyTranscriptionLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button onClick={onSubtitleAdd} size="sm" disabled={disabled || isAnyTranscriptionLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground" aria-label="Add new subtitle cue">
             <PlusCircle className="mr-2 h-4 w-4" /> Add New
           </Button>
         </CardTitle>
@@ -91,15 +91,18 @@ export function SubtitleEditor({
           )}
           {!disabled && activeTrack && entriesToDisplay.length > 0 && (
             <div className="space-y-4">
-              {entriesToDisplay.map((entry) => {
+              {entriesToDisplay.map((entry, index) => {
                 const isActiveInPlayer = currentTime >= entry.startTime && currentTime <= entry.endTime;
                 const isTranscribingThisEntry = isEntryTranscribing(entry.id);
                 const disableRegenerate = disabled || isTranscribingThisEntry || isAnyTranscriptionLoading;
+                const entryLabel = `Subtitle entry ${index + 1} from ${entry.startTime.toFixed(3)}s to ${entry.endTime.toFixed(3)}s`;
                 return (
                   <div 
                     key={entry.id} 
                     className={`p-3 border rounded-lg shadow-sm ${isActiveInPlayer ? 'ring-2 ring-primary bg-primary/5' : 'bg-card'}`}
+                    aria-labelledby={`entry-label-${entry.id}`}
                   >
+                    <span id={`entry-label-${entry.id}`} className="sr-only">{entryLabel}</span>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1">
                         <label htmlFor={`start-${entry.id}`} className="text-xs font-medium text-muted-foreground">Start (s)</label>
@@ -111,6 +114,7 @@ export function SubtitleEditor({
                           step="0.001"
                           className="h-8 text-sm"
                           disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
+                          aria-label={`Start time for ${entryLabel}`}
                         />
                       </div>
                       <div className="flex-1">
@@ -123,6 +127,7 @@ export function SubtitleEditor({
                           step="0.001"
                           className="h-8 text-sm"
                           disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
+                          aria-label={`End time for ${entryLabel}`}
                         />
                       </div>
                       <div className="flex self-end space-x-1">
@@ -130,7 +135,7 @@ export function SubtitleEditor({
                           variant="ghost" 
                           size="icon" 
                           onClick={() => onRegenerateTranscription(entry.id)} 
-                          aria-label="Regenerate transcription" 
+                          aria-label={`Regenerate transcription for ${entryLabel}`}
                           className="text-blue-500 hover:bg-blue-500/10" 
                           disabled={disableRegenerate}
                           title="Regenerate transcription for this segment"
@@ -141,7 +146,7 @@ export function SubtitleEditor({
                           variant="ghost" 
                           size="icon" 
                           onClick={() => onSubtitleDelete(entry.id)} 
-                          aria-label="Delete subtitle" 
+                          aria-label={`Delete ${entryLabel}`}
                           className="text-destructive hover:bg-destructive/10" 
                           disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
                         >
@@ -158,10 +163,11 @@ export function SubtitleEditor({
                         rows={2}
                         className="text-sm"
                         disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
+                        aria-label={`Text for ${entryLabel}`}
                       />
                     </div>
                     {isTranscribingThisEntry && (
-                      <Progress value={100} className="mt-2 h-2 animate-pulse" />
+                      <Progress value={100} className="mt-2 h-2 animate-pulse" aria-label="Transcription in progress" />
                     )}
                   </div>
                 );
