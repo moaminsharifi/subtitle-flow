@@ -5,12 +5,12 @@
  *
  * - transcribeAudioSegment - Function to transcribe an audio segment.
  * - TranscribeAudioSegmentInput - Input type for the function.
- * - TranscribeAudioSegmentOutput - Output type for the function.
+ * - TranscribeAudioSegmentOutput - Output type for the function (now returns segments).
  */
 
 import OpenAI from 'openai';
 import { z } from 'zod';
-import type { OpenAIModelType } from '@/lib/types';
+import type { OpenAIModelType, Segment } from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 
 const TranscribeAudioSegmentInputSchema = z.object({
@@ -25,8 +25,17 @@ const TranscribeAudioSegmentInputSchema = z.object({
 });
 export type TranscribeAudioSegmentInput = z.infer<typeof TranscribeAudioSegmentInputSchema>;
 
+const SegmentSchema = z.object({
+  id: z.number().optional(),
+  start: z.number().describe("Start time of the segment in seconds."),
+  end: z.number().describe("End time of the segment in seconds."),
+  text: z.string().describe("Transcribed text of the segment."),
+  // OpenAI verbose response has more fields, but these are primary
+});
+
 const TranscribeAudioSegmentOutputSchema = z.object({
-  transcribedText: z.string().describe('The transcribed text from the audio segment.'),
+  segments: z.array(SegmentSchema).describe('Array of transcribed segments with timestamps.'),
+  fullText: z.string().describe('The full concatenated transcribed text from all segments.'),
 });
 export type TranscribeAudioSegmentOutput = z.infer<typeof TranscribeAudioSegmentOutputSchema>;
 
@@ -49,8 +58,9 @@ export async function transcribeAudioSegment(
     
     const transcriptionParams: OpenAI.Audio.TranscriptionCreateParams = {
         file: audioFile,
-        model: input.openAIModel, // Use the selected OpenAI model
-        response_format: 'json',
+        model: input.openAIModel,
+        response_format: 'verbose_json', // Request detailed segments
+        timestamp_granularities: ["segment"] // Request segment-level timestamps
     };
 
     if (input.language) {
@@ -59,17 +69,28 @@ export async function transcribeAudioSegment(
 
     const transcription = await openai.audio.transcriptions.create(transcriptionParams);
 
-    const transcribedText = transcription.text;
+    // The actual response structure for verbose_json might be directly the object
+    // or nested under a property. Assuming `transcription` is the direct response object.
+    const apiResponse = transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson;
 
-    if (transcribedText === undefined || transcribedText === null) {
-      console.warn('OpenAI Transcription result was empty or null.');
-      return { transcribedText: '' };
+    const segments: Segment[] = apiResponse.segments?.map(s => ({
+      id: s.id,
+      start: s.start,
+      end: s.end,
+      text: s.text.trim(),
+    })) || [];
+    
+    const fullText = apiResponse.text || segments.map(s => s.text).join(' ') || "";
+
+
+    if (segments.length === 0 && !fullText) {
+      console.warn('OpenAI Transcription result was empty (no segments or text).');
+      return { segments: [], fullText: "" };
     }
-    return { transcribedText };
+    return { segments, fullText };
 
   } catch (error: any) {
     console.error('Error during OpenAI transcription:', error);
-    // Attempt to parse more detailed error message from OpenAI response
     const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
     throw new Error(`OpenAI Transcription failed: ${errorResponseMessage}`);
   }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -49,7 +50,11 @@ export function SubtitleUploader({ onSubtitleUpload, disabled }: SubtitleUploade
         }
       };
       reader.readAsText(file);
+    } else {
+      setFileName(null);
     }
+    // Reset the input field value to allow uploading the same file again if needed
+    event.target.value = '';
   };
 
   return (
@@ -57,7 +62,7 @@ export function SubtitleUploader({ onSubtitleUpload, disabled }: SubtitleUploade
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
           <FileUp className="h-6 w-6 text-primary" />
-          Upload Subtitles
+          Upload Existing Subtitle File
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -72,7 +77,8 @@ export function SubtitleUploader({ onSubtitleUpload, disabled }: SubtitleUploade
             disabled={disabled}
           />
         </div>
-        {fileName && <p className="text-sm text-muted-foreground">Selected: {fileName}</p>}
+        {fileName && <p className="text-sm text-muted-foreground">Selected for upload: {fileName}</p>}
+         {!fileName && <p className="text-sm text-muted-foreground">Or use the AI generation option below if media is loaded.</p>}
       </CardContent>
     </Card>
   );

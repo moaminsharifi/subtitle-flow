@@ -23,6 +23,17 @@ export interface SubtitleTrack {
   entries: SubtitleEntry[];
 }
 
+// For OpenAI's verbose_json response
+export interface Segment {
+  id?: number; // Optional, as we mainly care about start, end, text
+  start: number; // Start time of the segment in seconds
+  end: number;   // End time of the segment in seconds
+  text: string;  // Transcribed text of the segment
+  // OpenAI's verbose response includes other fields like tokens, avg_logprob, etc.,
+  // but we'll only use these for now.
+}
+
+
 export type OpenAIModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe';
 
 export interface AppSettings {

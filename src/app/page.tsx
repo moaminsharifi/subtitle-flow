@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import type { MediaFile, OpenAIModelType, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry } from '@/lib/types';
+import type { MediaFile, OpenAIModelType, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, Segment } from '@/lib/types';
 import { LANGUAGE_OPTIONS } from '@/lib/types';
 import { MediaUploader } from '@/components/media-uploader';
 import { SubtitleUploader } from '@/components/subtitle-uploader';
@@ -16,13 +16,15 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList, WandSparkles } from 'lucide-react';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 const OPENAI_MODEL_KEY = 'app-settings-openai-model';
 const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
+
+const CHUNK_DURATION_SECONDS = 5 * 60; // 5 minutes for full transcription chunks
 
 
 type AppStep = 'upload' | 'edit' | 'export';
@@ -37,6 +39,7 @@ export default function SubtitleSyncPage() {
   const [isDebugLogDialogOpen, setIsDebugLogDialogOpen] = useState(false);
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
   const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
+  const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
   const [transcriptionLanguage, setTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
 
@@ -60,7 +63,6 @@ export default function SubtitleSyncPage() {
 
   useEffect(() => {
     addLog("Application initialized.", "debug");
-    // Load default transcription language from settings
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     if (savedDefaultLang) {
       setTranscriptionLanguage(savedDefaultLang);
@@ -117,7 +119,6 @@ export default function SubtitleSyncPage() {
         return track;
       })
     );
-    // addLog(`Subtitle entry ${entryId} modified.`, 'debug'); // Potentially too verbose
   };
 
   const handleSubtitleAdd = () => {
@@ -259,8 +260,8 @@ export default function SubtitleSyncPage() {
   };
 
   const handleRegenerateTranscription = async (entryId: string) => {
-    if (isAnyTranscriptionLoading) {
-      const msg = "A transcription is already in progress. Please wait.";
+    if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
+      const msg = "A transcription process is already running. Please wait.";
       toast({ title: "Transcription Busy", description: msg, variant: "destructive" });
       addLog(msg, 'warn');
       return;
@@ -308,15 +309,20 @@ export default function SubtitleSyncPage() {
         openAIApiKey: openAIToken!,
       });
 
-      if (result.transcribedText !== undefined) {
-        handleSubtitleChange(entryId, { text: result.transcribedText });
-        const successMsg = `Transcription Updated for entry ${entryId} using ${selectedOpenAIModel}. New text: "${result.transcribedText.substring(0, 30)}..."`;
+      // For single segment regeneration, we expect a single dominant text block.
+      // The new API returns segments, so we'll join them.
+      const regeneratedText = result.segments.map(s => s.text).join(' ').trim() || result.fullText;
+
+      if (regeneratedText) {
+        handleSubtitleChange(entryId, { text: regeneratedText });
+        const successMsg = `Transcription Updated for entry ${entryId} using ${selectedOpenAIModel}. New text: "${regeneratedText.substring(0, 30)}..."`;
         toast({ title: "Transcription Updated", description: successMsg });
         addLog(successMsg, 'success');
       } else {
         const warnMsg = `Transcription for entry ${entryId} resulted in empty text from the AI model.`;
         toast({ title: "Transcription Potentially Failed", description: warnMsg, variant: "destructive" });
         addLog(warnMsg, 'warn');
+         handleSubtitleChange(entryId, { text: "" }); // Clear text if transcription is empty
       }
     } catch (error: any) {
       console.error("Transcription regeneration error:", error);
@@ -329,12 +335,108 @@ export default function SubtitleSyncPage() {
       addLog(`Transcription regeneration finished for entry ID: ${entryId}.`, 'debug');
     }
   };
+
+  const handleGenerateFullTranscription = async () => {
+    if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
+      const msg = "A transcription process is already running. Please wait.";
+      toast({ title: "Transcription Busy", description: msg, variant: "destructive" });
+      addLog(msg, 'warn');
+      return;
+    }
+    if (!mediaFile) {
+      const msg = "Full Transcription Error: No media file loaded.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+      addLog(msg, 'error');
+      return;
+    }
+
+    const selectedOpenAIModel = localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType || 'whisper-1';
+    const openAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
+
+    if (!openAIToken) {
+      const msg = "OpenAI Token Missing. Please set your OpenAI API token in Settings.";
+      toast({ title: "OpenAI Token Missing", description: msg, variant: "destructive" });
+      addLog(msg, 'error');
+      return;
+    }
+
+    addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language: ${transcriptionLanguage}. Media: ${mediaFile.name}`, 'info');
+    setIsGeneratingFullTranscription(true);
+    
+    const allSubtitleEntries: SubtitleEntry[] = [];
+    const numChunks = Math.ceil(mediaFile.duration / CHUNK_DURATION_SECONDS);
+
+    try {
+      for (let i = 0; i < numChunks; i++) {
+        const chunkStartTime = i * CHUNK_DURATION_SECONDS;
+        const chunkEndTime = Math.min((i + 1) * CHUNK_DURATION_SECONDS, mediaFile.duration);
+        
+        if (chunkStartTime >= chunkEndTime) continue;
+
+        const progressMsg = `Transcribing chunk ${i + 1} of ${numChunks} (${chunkStartTime.toFixed(1)}s - ${chunkEndTime.toFixed(1)}s)...`;
+        toast({ title: "Transcription Progress", description: progressMsg });
+        addLog(progressMsg, 'debug');
+
+        const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, chunkStartTime, chunkEndTime);
+        addLog(`Audio chunk ${i+1} sliced. Data URI length: ${audioDataUri.length}`, 'debug');
+
+        const result = await transcribeAudioSegment({
+          audioDataUri,
+          openAIModel: selectedOpenAIModel,
+          language: transcriptionLanguage === "auto-detect" ? undefined : transcriptionLanguage,
+          openAIApiKey: openAIToken!,
+        });
+        
+        addLog(`Chunk ${i+1} transcribed. Segments received: ${result.segments.length}`, 'debug');
+
+        result.segments.forEach(segment => {
+          allSubtitleEntries.push({
+            id: `gen-${chunkStartTime + segment.start}-${Date.now()}-${Math.random()}`,
+            startTime: parseFloat((chunkStartTime + segment.start).toFixed(3)),
+            endTime: parseFloat((chunkStartTime + segment.end).toFixed(3)),
+            text: segment.text,
+          });
+        });
+      }
+
+      allSubtitleEntries.sort((a, b) => a.startTime - b.startTime);
+
+      const newTrackId = `track-generated-${Date.now()}`;
+      const newTrackFileName = `${mediaFile.name} - ${selectedOpenAIModel} - AI.srt`; // Default to SRT format for generated
+      const newTrack: SubtitleTrack = {
+        id: newTrackId,
+        fileName: newTrackFileName,
+        format: 'srt', // Generated tracks will be SRT format by default
+        entries: allSubtitleEntries,
+      };
+
+      setSubtitleTracks(prevTracks => [...prevTracks, newTrack]);
+      setActiveTrackId(newTrackId);
+      
+      const successMsg = `Full transcription complete! New track "${newTrackFileName}" added with ${allSubtitleEntries.length} cues.`;
+      toast({ title: "Transcription Complete", description: successMsg, duration: 5000 });
+      addLog(successMsg, 'success');
+      
+      // Automatically proceed to edit step
+      setCurrentStep('edit');
+      addLog("Automatically navigated to Edit step after full transcription.", 'debug');
+
+    } catch (error: any) {
+      console.error("Full transcription error:", error);
+      const errorMsg = `Full Transcription Error: ${error.message || "Failed to generate full transcription."}`;
+      toast({ title: "Full Transcription Error", description: errorMsg, variant: "destructive" });
+      addLog(errorMsg, 'error');
+    } finally {
+      setIsGeneratingFullTranscription(false);
+      addLog("Full media transcription process finished.", 'debug');
+    }
+  };
   
   const isEntryTranscribing = (entryId: string): boolean => {
     return !!entryTranscriptionLoading[entryId];
   };
   
-  const editorDisabled = !mediaFile || !activeTrack;
+  const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription;
 
   const handleProceedToEdit = () => {
     if (!mediaFile) {
@@ -344,7 +446,7 @@ export default function SubtitleSyncPage() {
       return;
     }
     if (subtitleTracks.length === 0) {
-       const msg = "No Subtitles Yet: Proceeding to editor. You can add subtitles manually or upload a file.";
+       const msg = "No Subtitles Yet: Proceeding to editor. You can add subtitles manually, upload a file, or generate with AI.";
        toast({ title: "No Subtitles Yet", description: msg, variant: "default" });
        addLog(msg, 'info');
     }
@@ -395,7 +497,7 @@ export default function SubtitleSyncPage() {
 
   const getStepTitle = () => {
     switch (currentStep) {
-      case 'upload': return "Step 1 of 3: Upload Files";
+      case 'upload': return "Step 1 of 3: Upload Files or Generate Subtitles";
       case 'edit': return "Step 2 of 3: Edit Subtitles";
       case 'export': return "Step 3 of 3: Export Subtitles";
       default: return "";
@@ -412,7 +514,7 @@ export default function SubtitleSyncPage() {
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6 flex flex-col">
           {currentStep === 'upload' && !mediaFile && (
-            <MediaUploader onMediaUpload={handleMediaUpload} />
+            <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
           )}
           {mediaFile && (
             <Card className="flex-grow shadow-lg">
@@ -428,19 +530,48 @@ export default function SubtitleSyncPage() {
             </Card>
           )}
            {currentStep === 'upload' && mediaFile && (
-            <MediaUploader onMediaUpload={handleMediaUpload} />
+            <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
           )}
         </div>
 
         <div className="space-y-6 flex flex-col h-full">
           {currentStep === 'upload' && (
             <>
-              <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile} />
+              <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription} />
+              {mediaFile && (
+                <Card className="shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <WandSparkles className="h-6 w-6 text-accent" />
+                      Generate with AI
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Alternatively, let AI generate subtitles for the entire media file. 
+                      This may take several minutes depending on the media length.
+                    </p>
+                    <Button 
+                      onClick={handleGenerateFullTranscription} 
+                      disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading} 
+                      className="w-full bg-accent hover:bg-accent/90"
+                    >
+                      {isGeneratingFullTranscription ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
+                        </>
+                      ) : (
+                        "Generate Full Subtitles with AI"
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
               <Card>
                 <CardFooter className="p-4">
                   <Button 
                     onClick={handleProceedToEdit} 
-                    disabled={!mediaFile} 
+                    disabled={!mediaFile || isGeneratingFullTranscription} 
                     className="w-full"
                   >
                     Proceed to Edit <ArrowRight className="ml-2 h-4 w-4" />
@@ -466,7 +597,7 @@ export default function SubtitleSyncPage() {
                         const selectedTrack = subtitleTracks.find(t => t.id === trackId);
                         addLog(`Active track changed to: ${selectedTrack?.fileName || 'None'}`, 'debug');
                       }}
-                      disabled={!mediaFile || subtitleTracks.length === 0}
+                      disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                     >
                       <SelectTrigger id="active-track-select" className="w-full">
                         <SelectValue placeholder="Select a subtitle track to edit" />
@@ -481,14 +612,15 @@ export default function SubtitleSyncPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="transcription-language-select">Transcription Language</Label>
+                    <Label htmlFor="transcription-language-select">Transcription Language (for AI)</Label>
                     <Select
                       value={transcriptionLanguage}
                       onValueChange={(value) => {
                         setTranscriptionLanguage(value as LanguageCode | "auto-detect");
+                        localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, value); // Also save selection as new default for convenience
                         addLog(`Transcription language changed to: ${value}`, 'debug');
                       }}
-                      disabled={!mediaFile}
+                      disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                     >
                       <SelectTrigger id="transcription-language-select" className="w-full">
                         <SelectValue placeholder="Select transcription language" />
@@ -515,17 +647,22 @@ export default function SubtitleSyncPage() {
                   isEntryTranscribing={isEntryTranscribing}
                   currentTime={currentPlayerTime}
                   disabled={editorDisabled}
-                  isAnyTranscriptionLoading={isAnyTranscriptionLoading}
+                  isAnyTranscriptionLoading={isAnyTranscriptionLoading || isGeneratingFullTranscription}
                 />
               </div>
               <Card>
                 <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
-                  <Button onClick={() => handleGoToUpload(false)} variant="outline" className="w-full sm:w-auto">
+                  <Button 
+                    onClick={() => handleGoToUpload(false)} 
+                    variant="outline" 
+                    className="w-full sm:w-auto"
+                    disabled={isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                  >
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back to Uploads
                   </Button>
                   <Button 
                     onClick={handleProceedToExport} 
-                    disabled={!activeTrack || !activeTrack.entries.length}
+                    disabled={!activeTrack || !activeTrack.entries.length || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                     className="w-full sm:flex-1"
                   >
                     Proceed to Export <ArrowRight className="ml-2 h-4 w-4" />
