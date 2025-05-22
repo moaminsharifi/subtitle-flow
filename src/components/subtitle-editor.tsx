@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, PlusCircle, Sparkles, Loader2 } from 'lucide-react';
+import { Trash2, PlusCircle } from 'lucide-react';
 import type { SubtitleEntry } from '@/lib/types';
 
 interface SubtitleEditorProps {
@@ -14,9 +14,7 @@ interface SubtitleEditorProps {
   onSubtitleChange: (index: number, newEntry: SubtitleEntry) => void;
   onSubtitleAdd: () => void;
   onSubtitleDelete: (index: number) => void;
-  onAIAssist: (subtitleId: string) => Promise<void>;
   currentTime: number;
-  isLoadingAIForId: string | null;
   disabled?: boolean;
 }
 
@@ -25,9 +23,7 @@ export function SubtitleEditor({
   onSubtitleChange,
   onSubtitleAdd,
   onSubtitleDelete,
-  onAIAssist,
   currentTime,
-  isLoadingAIForId,
   disabled
 }: SubtitleEditorProps) {
 
@@ -110,20 +106,6 @@ export function SubtitleEditor({
                       disabled={disabled}
                     />
                   </div>
-                  <Button
-                    onClick={() => onAIAssist(entry.id)}
-                    size="sm"
-                    variant="outline"
-                    className="mt-2 w-full text-accent-foreground border-accent hover:bg-accent/10"
-                    disabled={disabled || isLoadingAIForId === entry.id}
-                  >
-                    {isLoadingAIForId === entry.id ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="mr-2 h-4 w-4 text-accent" />
-                    )}
-                    AI Timing Assist
-                  </Button>
                 </div>
               );
             })}

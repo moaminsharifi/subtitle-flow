@@ -4,7 +4,7 @@ import type React from 'react';
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Play, Pause, Volume2, VolumeX, Rewind, FastForward, Settings2 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Rewind, FastForward, Settings2, UploadCloud } from 'lucide-react';
 import type { SubtitleEntry, MediaFile } from '@/lib/types';
 import { formatSecondsToTime } from '@/lib/subtitle-utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
