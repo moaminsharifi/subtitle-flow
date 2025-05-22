@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -12,13 +13,13 @@ import { Label } from '@/components/ui/label';
 
 interface MediaPlayerProps {
   mediaFile: MediaFile | null;
-  subtitles: SubtitleEntry[];
+  activeSubtitlesToDisplay: SubtitleEntry[];
   onTimeUpdate: (time: number) => void;
   onShiftTime: (offset: number) => void; // For global subtitle shift
   playerRef: React.RefObject<HTMLVideoElement | HTMLAudioElement>;
 }
 
-export function MediaPlayer({ mediaFile, subtitles, onTimeUpdate, onShiftTime, playerRef }: MediaPlayerProps) {
+export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate, onShiftTime, playerRef }: MediaPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -50,10 +51,9 @@ export function MediaPlayer({ mediaFile, subtitles, onTimeUpdate, onShiftTime, p
       player.addEventListener('loadedmetadata', handleLoadedMetadata);
       player.addEventListener('volumechange', handleVolumeChange);
 
-      // Initial sync
       if (mediaFile) {
-         player.src = mediaFile.url; // Ensure src is set if mediaFile changes
-         setDuration(mediaFile.duration); // Set initial duration
+         player.src = mediaFile.url; 
+         setDuration(mediaFile.duration);
       }
       setCurrentTime(player.currentTime);
       setVolume(player.volume);
@@ -113,7 +113,7 @@ export function MediaPlayer({ mediaFile, subtitles, onTimeUpdate, onShiftTime, p
     }
   };
 
-  const activeSubtitles = subtitles.filter(
+  const currentlyDisplayedSubtitles = activeSubtitlesToDisplay.filter(
     (sub) => currentTime >= sub.startTime && currentTime <= sub.endTime
   );
 
@@ -138,16 +138,16 @@ export function MediaPlayer({ mediaFile, subtitles, onTimeUpdate, onShiftTime, p
             <p className="text-sm opacity-80">Audio playback</p>
           </div>
         )}
-        {activeSubtitles.length > 0 && (
+        {currentlyDisplayedSubtitles.length > 0 && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-10/12 p-2 bg-black/70 text-white text-center rounded-md text-sm md:text-base lg:text-lg">
-            {activeSubtitles.map(sub => sub.text).join('\n')}
+            {currentlyDisplayedSubtitles.map(sub => sub.text).join('\n')}
           </div>
         )}
       </div>
 
       <div className="space-y-2 px-1">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatSecondsToTime(currentTime, 'vtt')}</span>
+          <span>{formatSecondsToTime(currentTime, 'vtt')}</span> {/* VTT format is fine for player display */}
           <span>{formatSecondsToTime(duration, 'vtt')}</span>
         </div>
         <Slider
@@ -193,7 +193,7 @@ export function MediaPlayer({ mediaFile, subtitles, onTimeUpdate, onShiftTime, p
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-2 space-y-2">
-            <Label className="text-sm font-medium">Subtitle Timing Shift</Label>
+            <Label className="text-sm font-medium">Active Track Timing Shift</Label>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => onShiftTime(-0.1)} className="flex-1">-0.1s</Button>
               <Button variant="outline" size="sm" onClick={() => onShiftTime(0.1)} className="flex-1">+0.1s</Button>

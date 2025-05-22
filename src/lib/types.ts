@@ -14,3 +14,10 @@ export interface MediaFile {
 }
 
 export type SubtitleFormat = 'srt' | 'vtt';
+
+export interface SubtitleTrack {
+  id: string; // Unique ID for this track instance
+  fileName: string;
+  format: SubtitleFormat;
+  entries: SubtitleEntry[];
+}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from '@/components/ui/button';
@@ -5,32 +6,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DownloadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSrt, generateVtt } from '@/lib/subtitle-utils';
-import type { SubtitleEntry, SubtitleFormat } from '@/lib/types';
+import type { SubtitleTrack, SubtitleFormat } from '@/lib/types';
 
 interface SubtitleExporterProps {
-  subtitles: SubtitleEntry[];
-  fileName: string | null;
-  originalFormat: SubtitleFormat | null;
+  activeTrack: SubtitleTrack | null;
   disabled?: boolean;
 }
 
-export function SubtitleExporter({ subtitles, fileName, originalFormat, disabled }: SubtitleExporterProps) {
+export function SubtitleExporter({ activeTrack, disabled }: SubtitleExporterProps) {
   const { toast } = useToast();
 
   const handleExport = (format: SubtitleFormat) => {
-    if (subtitles.length === 0) {
-      toast({ title: "Nothing to export", description: "Please add or upload subtitles first.", variant: "destructive" });
+    if (!activeTrack || activeTrack.entries.length === 0) {
+      toast({ title: "Nothing to export", description: "Please select an active track with subtitles.", variant: "destructive" });
       return;
     }
 
-    const baseName = fileName ? fileName.substring(0, fileName.lastIndexOf('.')) || fileName : 'subtitles';
+    const baseName = activeTrack.fileName ? activeTrack.fileName.substring(0, activeTrack.fileName.lastIndexOf('.')) || activeTrack.fileName : 'subtitles';
     const outputFileName = `${baseName}.${format}`;
     
     let content: string;
     if (format === 'srt') {
-      content = generateSrt(subtitles);
+      content = generateSrt(activeTrack.entries);
     } else {
-      content = generateVtt(subtitles);
+      content = generateVtt(activeTrack.entries);
     }
 
     const blob = new Blob([content], { type: 'text/plain' });
@@ -51,18 +50,19 @@ export function SubtitleExporter({ subtitles, fileName, originalFormat, disabled
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
           <DownloadCloud className="h-6 w-6 text-primary" />
-          Export Subtitles
+          Export Active Subtitle Track
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Export your edited subtitles. The original format was {originalFormat ? `.${originalFormat.toUpperCase()}` : 'N/A'}.
+          Export your edited subtitles for the active track ({activeTrack?.fileName || 'N/A'}).
+          Original format was {activeTrack ? `.${activeTrack.format.toUpperCase()}` : 'N/A'}.
         </p>
         <div className="flex gap-2">
-          <Button onClick={() => handleExport('srt')} className="flex-1" disabled={disabled || subtitles.length === 0}>
+          <Button onClick={() => handleExport('srt')} className="flex-1" disabled={disabled}>
             Export as .SRT
           </Button>
-          <Button onClick={() => handleExport('vtt')} className="flex-1" disabled={disabled || subtitles.length === 0}>
+          <Button onClick={() => handleExport('vtt')} className="flex-1" disabled={disabled}>
             Export as .VTT
           </Button>
         </div>
