@@ -156,6 +156,30 @@ export const fileToDataUri = (file: File): Promise<string> => {
   });
 };
 
+// Helper function to convert a base64 string (from data URI) to a Blob
+function base64ToBlob(base64: string, type = 'application/octet-stream'): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type });
+}
+
+// Helper to convert Data URI to a File object for OpenAI API
+export async function dataUriToRequestFile(dataUri: string, fileName: string, fileType?: string): Promise<File> {
+  const [metadata, base64Data] = dataUri.split(',');
+  if (!base64Data) {
+    throw new Error('Invalid Data URI: Missing base64 data part.');
+  }
+  const type = fileType || metadata.substring(metadata.indexOf(':') + 1, metadata.indexOf(';')) || 'application/octet-stream';
+  
+  const blob = base64ToBlob(base64Data, type);
+  return new File([blob], fileName, { type });
+}
+
+
 // Helper function to encode AudioBuffer to WAV Data URI
 function audioBufferToWavDataURI(buffer: AudioBuffer): Promise<string> {
   return new Promise((resolve) => {
@@ -180,23 +204,26 @@ function audioBufferToWavDataURI(buffer: AudioBuffer): Promise<string> {
     const dataSize = buffer.length * blockAlign;
 
     let header = 'RIFF';
-    header += writeString(String.fromCharCode.apply(null, [
-      (dataSize + 36) & 0xFF,
-      ((dataSize + 36) >> 8) & 0xFF,
-      ((dataSize + 36) >> 16) & 0xFF,
-      ((dataSize + 36) >> 24) & 0xFF,
-    ]));
+    // Correctly write 32-bit little-endian for (dataSize + 36)
+    header += String.fromCharCode((dataSize + 36) & 0xFF, 
+                                 ((dataSize + 36) >> 8) & 0xFF, 
+                                 ((dataSize + 36) >> 16) & 0xFF, 
+                                 ((dataSize + 36) >> 24) & 0xFF);
     header += 'WAVE';
     header += 'fmt ';
-    header += writeString(String.fromCharCode.apply(null, [16, 0, 0, 0])); // Fmt Chunk size (16 bytes)
+    // Correctly write 32-bit little-endian for Fmt Chunk size (16)
+    header += String.fromCharCode(16, 0, 0, 0);
     header += String.fromCharCode(format & 0xFF, (format >> 8) & 0xFF); // Format (PCM)
     header += String.fromCharCode(numOfChan & 0xFF, (numOfChan >> 8) & 0xFF); // Number of channels
-    header += String.fromCharCode(sampleRate & 0xFF, (sampleRate >> 8) & 0xFF, (sampleRate >> 16) & 0xFF, (sampleRate >> 24) & 0xFF); // Sample rate
-    header += String.fromCharCode(byteRate & 0xFF, (byteRate >> 8) & 0xFF, (byteRate >> 16) & 0xFF, (byteRate >> 24) & 0xFF); // Byte rate
+    // Sample rate
+    header += String.fromCharCode(sampleRate & 0xFF, (sampleRate >> 8) & 0xFF, (sampleRate >> 16) & 0xFF, (sampleRate >> 24) & 0xFF);
+    // Byte rate
+    header += String.fromCharCode(byteRate & 0xFF, (byteRate >> 8) & 0xFF, (byteRate >> 16) & 0xFF, (byteRate >> 24) & 0xFF);
     header += String.fromCharCode(blockAlign & 0xFF, (blockAlign >> 8) & 0xFF); // Block align
     header += String.fromCharCode(bitDepth & 0xFF, (bitDepth >> 8) & 0xFF); // Bits per sample
     header += 'data';
-    header += String.fromCharCode(dataSize & 0xFF, (dataSize >> 8) & 0xFF, (dataSize >> 16) & 0xFF, (dataSize >> 24) & 0xFF); // Data Chunk size
+    // Data Chunk size
+    header += String.fromCharCode(dataSize & 0xFF, (dataSize >> 8) & 0xFF, (dataSize >> 16) & 0xFF, (dataSize >> 24) & 0xFF);
 
     result = header;
 
@@ -214,7 +241,12 @@ function audioBufferToWavDataURI(buffer: AudioBuffer): Promise<string> {
       }
     }
     
-    const base64Wav = btoa(result);
+    // Convert binary string to base64
+    let binaryString = '';
+    for (let i = 0; i < result.length; i++) {
+        binaryString += String.fromCharCode(result.charCodeAt(i) & 0xFF);
+    }
+    const base64Wav = btoa(binaryString);
     resolve('data:audio/wav;base64,' + base64Wav);
   });
 }

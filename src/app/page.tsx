@@ -14,11 +14,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2 } from 'lucide-react';
-import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
+import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow'; // Updated import
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
-const GROQ_TOKEN_KEY = 'app-settings-groq-token';
+const GROQ_TOKEN_KEY = 'app-settings-groq-token'; // Kept for UI consistency, but not used by transcription logic
 const TRANSCRIBE_MODEL_KEY = 'app-settings-transcribe-model';
 
 type AppStep = 'upload' | 'edit' | 'export';
@@ -217,16 +217,17 @@ export default function SubtitleSyncPage() {
 
     const selectedModel = localStorage.getItem(TRANSCRIBE_MODEL_KEY) as TranscribeModelType | null || 'openai';
     const openAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
-    const groqToken = localStorage.getItem(GROQ_TOKEN_KEY);
+    // const groqToken = localStorage.getItem(GROQ_TOKEN_KEY); // Not used by OpenAI direct API
 
     if (selectedModel === 'openai' && !openAIToken) {
       toast({ title: "OpenAI Token Missing", description: "Please set your OpenAI API token in Settings.", variant: "destructive" });
       return;
     }
-    if (selectedModel === 'groq' && !groqToken) {
-      toast({ title: "Groq Token Missing", description: "Please set your Groq API token in Settings.", variant: "destructive" });
-      return;
-    }
+    // Add similar check for Groq if/when Groq direct API support is added
+    // if (selectedModel === 'groq' && !groqToken) {
+    //   toast({ title: "Groq Token Missing", description: "Please set your Groq API token in Settings.", variant: "destructive" });
+    //   return;
+    // }
 
     setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: true }));
 
@@ -235,13 +236,14 @@ export default function SubtitleSyncPage() {
       
       const result = await transcribeAudioSegment({
         audioDataUri,
-        modelType: selectedModel,
+        modelType: 'openai', // Hardcode to 'openai' as we are using the openai library
+        openAIApiKey: openAIToken!, // Pass the API key
         // language: "en" // Optionally specify language
       });
 
       if (result.transcribedText !== undefined) {
         handleSubtitleChange(entryId, { text: result.transcribedText });
-        toast({ title: "Transcription Updated", description: `Subtitle text regenerated using ${selectedModel}.` });
+        toast({ title: "Transcription Updated", description: `Subtitle text regenerated using OpenAI.` });
       } else {
         toast({ title: "Transcription Failed", description: "Received no text from the AI model.", variant: "destructive" });
       }
@@ -438,7 +440,7 @@ export default function SubtitleSyncPage() {
         </div>
       </main>
       <footer className="mt-8 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Subtitle Sync. Powered by Next.js & Genkit.</p>
+        <p>&copy; {new Date().getFullYear()} Subtitle Sync. Powered by Next.js & OpenAI.</p>
       </footer>
       
       <Button 
