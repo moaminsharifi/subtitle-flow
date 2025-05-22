@@ -17,25 +17,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { AppSettings, OpenAIModelType } from '@/lib/types';
+import type { AppSettings, OpenAIModelType, LogEntry } from '@/lib/types';
 
 interface SettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  addLog: (message: string, type?: LogEntry['type']) => void;
 }
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
-const GROQ_TOKEN_KEY = 'app-settings-groq-token'; // Kept for UI consistency if other Groq features exist
-const OPENAI_MODEL_KEY = 'app-settings-openai-model'; // Renamed key
+const GROQ_TOKEN_KEY = 'app-settings-groq-token';
+const OPENAI_MODEL_KEY = 'app-settings-openai-model';
 
-export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps) {
   const [openAIToken, setOpenAIToken] = useState('');
   const [groqToken, setGroqToken] = useState('');
-  const [openAIModel, setOpenAIModel] = useState<OpenAIModelType>('whisper-1'); // Renamed state and type
+  const [openAIModel, setOpenAIModel] = useState<OpenAIModelType>('whisper-1');
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
+      addLog("Settings dialog opened. Loading saved settings.", "debug");
       const storedOpenAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
       const storedGroqToken = localStorage.getItem(GROQ_TOKEN_KEY);
       const storedOpenAIModel = localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType | null;
@@ -45,19 +47,22 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       if (storedOpenAIModel) {
         setOpenAIModel(storedOpenAIModel);
       } else {
-        setOpenAIModel('whisper-1'); // Default if not found
+        setOpenAIModel('whisper-1'); 
       }
+      addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Token statuses: OpenAI - ${storedOpenAIToken ? 'Set' : 'Not Set'}, Groq - ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
     }
-  }, [isOpen]);
+  }, [isOpen, addLog]);
 
   const handleSave = () => {
     localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken);
     localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
-    localStorage.setItem(OPENAI_MODEL_KEY, openAIModel); // Save selected OpenAI model
+    localStorage.setItem(OPENAI_MODEL_KEY, openAIModel);
+    const message = `Settings Saved. OpenAI Model: ${openAIModel}. OpenAI Token: ${openAIToken ? 'Set' : 'Not Set'}. Groq Token: ${groqToken ? 'Set' : 'Not Set'}.`;
     toast({
       title: 'Settings Saved',
       description: 'Your API tokens and preferences have been saved to browser storage.',
     });
+    addLog(message, 'success');
     onClose();
   };
 
@@ -98,27 +103,27 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="openai-model" className="text-right col-span-1">
+            <Label htmlFor="openai-model-select" className="text-right col-span-1">
               OpenAI Model
             </Label>
             <Select 
               value={openAIModel} 
               onValueChange={(value: OpenAIModelType) => setOpenAIModel(value)}
             >
-              <SelectTrigger className="col-span-3" id="openai-model">
+              <SelectTrigger className="col-span-3" id="openai-model-select">
                 <SelectValue placeholder="Select OpenAI model" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="whisper-1">whisper-1</SelectItem>
-                <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</SelectItem>
-                <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe</SelectItem>
+                <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (Experimental)</SelectItem>
+                <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe (Experimental)</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" onClick={() => addLog("Settings changes cancelled.", "debug")}>
               Cancel
             </Button>
           </DialogClose>

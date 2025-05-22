@@ -32,7 +32,7 @@ export interface AppSettings {
 }
 
 export const LANGUAGE_OPTIONS = [
-  { value: "auto-detect", label: "Auto-detect" }, // Changed from ""
+  { value: "auto-detect", label: "Auto-detect" },
   { value: "af", label: "Afrikaans" },
   { value: "ar", label: "Arabic" },
   { value: "hy", label: "Armenian" },
@@ -93,3 +93,10 @@ export const LANGUAGE_OPTIONS = [
 ] as const;
 
 export type LanguageCode = typeof LANGUAGE_OPTIONS[number]['value'];
+
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  message: string;
+  type: 'info' | 'error' | 'warn' | 'success' | 'debug';
+}

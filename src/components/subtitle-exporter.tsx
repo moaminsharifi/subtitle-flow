@@ -6,22 +6,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DownloadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSrt, generateVtt } from '@/lib/subtitle-utils';
-import type { SubtitleTrack, SubtitleFormat } from '@/lib/types';
+import type { SubtitleTrack, SubtitleFormat, LogEntry } from '@/lib/types';
 
 interface SubtitleExporterProps {
   activeTrack: SubtitleTrack | null;
   disabled?: boolean;
+  addLog: (message: string, type?: LogEntry['type']) => void;
 }
 
-export function SubtitleExporter({ activeTrack, disabled }: SubtitleExporterProps) {
+export function SubtitleExporter({ activeTrack, disabled, addLog }: SubtitleExporterProps) {
   const { toast } = useToast();
 
   const handleExport = (format: SubtitleFormat) => {
     if (!activeTrack || activeTrack.entries.length === 0) {
-      toast({ title: "Nothing to export", description: "Please select an active track with subtitles.", variant: "destructive" });
+      const msg = "Nothing to export: Please select an active track with subtitles.";
+      toast({ title: "Nothing to export", description: msg, variant: "destructive" });
+      addLog(msg, 'warn');
       return;
     }
 
+    addLog(`Export started for track: ${activeTrack.fileName}, Format: ${format.toUpperCase()}`, 'debug');
     const baseName = activeTrack.fileName ? activeTrack.fileName.substring(0, activeTrack.fileName.lastIndexOf('.')) || activeTrack.fileName : 'subtitles';
     const outputFileName = `${baseName}.${format}`;
     
@@ -42,7 +46,9 @@ export function SubtitleExporter({ activeTrack, disabled }: SubtitleExporterProp
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    toast({ title: "Export Successful", description: `${outputFileName} downloaded.` });
+    const successMsg = `Export Successful: ${outputFileName} downloaded. Cues: ${activeTrack.entries.length}`;
+    toast({ title: "Export Successful", description: successMsg });
+    addLog(successMsg, 'success');
   };
 
   return (
@@ -57,6 +63,7 @@ export function SubtitleExporter({ activeTrack, disabled }: SubtitleExporterProp
         <p className="text-sm text-muted-foreground">
           Export your edited subtitles for the active track ({activeTrack?.fileName || 'N/A'}).
           Original format was {activeTrack ? `.${activeTrack.format.toUpperCase()}` : 'N/A'}.
+          Contains {activeTrack?.entries.length || 0} cues.
         </p>
         <div className="flex gap-2">
           <Button onClick={() => handleExport('srt')} className="flex-1" disabled={disabled}>
