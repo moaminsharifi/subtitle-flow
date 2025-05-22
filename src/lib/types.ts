@@ -23,7 +23,11 @@ export interface SubtitleTrack {
   entries: SubtitleEntry[];
 }
 
+export type TranscribeModelType = 'openai' | 'groq';
+
 export interface AppSettings {
   openAIToken?: string;
   groqToken?: string;
+  transcribeModel?: TranscribeModelType;
 }
+
