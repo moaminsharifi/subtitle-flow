@@ -397,7 +397,7 @@ export default function SubtitleSyncPage() {
         if (chunkStartTime >= chunkEndTime) continue;
 
         const progressMsg = `Transcribing chunk ${i + 1} of ${numChunks} (${chunkStartTime.toFixed(1)}s - ${chunkEndTime.toFixed(1)}s)...`;
-        toast({ title: "Transcription Progress", description: progressMsg }); // Toast remains for quick updates
+        toast({ title: "Transcription Progress", description: progressMsg }); 
         addLog(progressMsg, 'debug');
 
         const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, chunkStartTime, chunkEndTime);
@@ -412,14 +412,25 @@ export default function SubtitleSyncPage() {
         
         addLog(`Chunk ${i+1} transcribed. Segments received: ${result.segments.length}. Full text from chunk: "${result.fullText.substring(0,50)}..."`, 'debug');
 
-        result.segments.forEach(segment => {
-          allSubtitleEntries.push({
-            id: `gen-${chunkStartTime + segment.start}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
-            startTime: parseFloat((chunkStartTime + segment.start).toFixed(3)),
-            endTime: parseFloat((chunkStartTime + segment.end).toFixed(3)),
-            text: segment.text,
+        if (result.segments.length > 0) {
+          result.segments.forEach(segment => {
+            allSubtitleEntries.push({
+              id: `gen-${chunkStartTime + segment.start}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
+              startTime: parseFloat((chunkStartTime + segment.start).toFixed(3)),
+              endTime: parseFloat((chunkStartTime + segment.end).toFixed(3)),
+              text: segment.text,
+            });
           });
-        });
+        } else if (result.fullText) {
+          // Handle case where only full text for the chunk is available (e.g., from GPT-4o models)
+          allSubtitleEntries.push({
+            id: `gen-chunk-${chunkStartTime}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
+            startTime: parseFloat(chunkStartTime.toFixed(3)),
+            endTime: parseFloat(chunkEndTime.toFixed(3)),
+            text: result.fullText,
+          });
+           addLog(`Chunk ${i+1} (GPT-4o like model): Added as a single entry for the chunk.`, 'debug');
+        }
       }
 
       allSubtitleEntries.sort((a, b) => a.startTime - b.startTime);
@@ -451,7 +462,7 @@ export default function SubtitleSyncPage() {
       addLog(errorMsg, 'error');
     } finally {
       setIsGeneratingFullTranscription(false);
-      setFullTranscriptionProgress(null); // Clear progress
+      setFullTranscriptionProgress(null); 
       addLog("Full media transcription process finished.", 'debug');
     }
   };
@@ -653,10 +664,9 @@ export default function SubtitleSyncPage() {
                   <div>
                     <Label htmlFor="transcription-language-select">Transcription Language (for AI)</Label>
                     <Select
-                      value={transcriptionLanguage}
+                      value={transcriptionLanguage === "auto-detect" ? "auto-detect" : transcriptionLanguage}
                       onValueChange={(value) => {
                         setTranscriptionLanguage(value as LanguageCode | "auto-detect");
-                        // Do not save to localStorage here automatically, let settings dialog handle "default"
                         addLog(`Transcription language for current session changed to: ${value}`, 'debug');
                       }}
                       disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
