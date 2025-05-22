@@ -1,19 +1,25 @@
 
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from 'react';
-import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack } from '@/lib/types';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, TranscribeModelType } from '@/lib/types';
 import { MediaUploader } from '@/components/media-uploader';
 import { SubtitleUploader } from '@/components/subtitle-uploader';
 import { MediaPlayer } from '@/components/media-player';
 import { SubtitleEditor } from '@/components/subtitle-editor';
 import { SubtitleExporter } from '@/components/subtitle-exporter';
-import { SettingsDialog } from '@/components/settings-dialog'; // Import SettingsDialog
+import { SettingsDialog } from '@/components/settings-dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon } from 'lucide-react'; // Import SettingsIcon
+import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2 } from 'lucide-react';
+import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
+import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
+
+const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
+const GROQ_TOKEN_KEY = 'app-settings-groq-token';
+const TRANSCRIBE_MODEL_KEY = 'app-settings-transcribe-model';
 
 type AppStep = 'upload' | 'edit' | 'export';
 
@@ -23,7 +29,8 @@ export default function SubtitleSyncPage() {
   const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
   const [currentPlayerTime, setCurrentPlayerTime] = useState(0);
   const [currentStep, setCurrentStep] = useState<AppStep>('upload');
-  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false); // State for settings dialog
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
 
   const playerRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -93,10 +100,23 @@ export default function SubtitleSyncPage() {
         const mediaDur = mediaFile.duration;
         sTime = Math.max(0, Math.min(sTime, mediaDur));
         eTime = Math.max(sTime + 0.001, Math.min(eTime, mediaDur));
-        if (eTime <= sTime) { // Ensure end time is after start time, adjusting start time if needed
+        if (eTime <= sTime) { 
             sTime = Math.max(0, eTime - 0.001);
         }
-    } else { // No media file or zero duration media
+        // If adding at the very end, slightly adjust to prevent issues
+        if (sTime >= mediaDur) sTime = Math.max(0, mediaDur - defaultCueDuration);
+        if (eTime > mediaDur) eTime = mediaDur;
+        if (eTime <= sTime && mediaDur > 0) { // one last check
+             sTime = Math.max(0, mediaDur - 0.1);
+             eTime = mediaDur;
+             if (sTime < 0) sTime = 0;
+             if (eTime <= sTime) {
+                 toast({ title: "Error Adding Subtitle", description: `Cannot add subtitle at media end. Try adjusting manually.`, variant: "destructive"});
+                 return;
+             }
+        }
+
+    } else { 
         sTime = Math.max(0, sTime);
         eTime = Math.max(sTime + 0.001, eTime);
     }
@@ -104,7 +124,7 @@ export default function SubtitleSyncPage() {
     const finalStartTime = parseFloat(sTime.toFixed(3));
     const finalEndTime = parseFloat(eTime.toFixed(3));
 
-    if (finalEndTime <= finalStartTime && mediaFile && mediaFile.duration > 0) {
+    if (finalEndTime <= finalStartTime && mediaFile && mediaFile.duration > 0 && mediaFile.duration - finalStartTime < 0.001) {
         toast({ title: "Error Adding Subtitle", description: `Cannot add subtitle at the very end of the media or invalid time. ${finalStartTime.toFixed(3)}s - ${finalEndTime.toFixed(3)}s`, variant: "destructive"});
         return;
     }
@@ -112,7 +132,6 @@ export default function SubtitleSyncPage() {
         toast({ title: "Error Adding Subtitle", description: `Could not determine a valid time range. ${finalStartTime.toFixed(3)}s - ${finalEndTime.toFixed(3)}s`, variant: "destructive"});
         return;
     }
-
 
     const newEntry: SubtitleEntry = {
       id: newId,
@@ -144,6 +163,7 @@ export default function SubtitleSyncPage() {
         return track;
       })
     );
+    toast({ title: "Subtitle Deleted", description: "Cue removed from active track."});
   };
 
   const handleTimeUpdate = useCallback((time: number) => {
@@ -156,18 +176,85 @@ export default function SubtitleSyncPage() {
     setSubtitleTracks(prevTracks =>
       prevTracks.map(track => {
         if (track.id === activeTrackId) {
-          const newEntries = track.entries.map(sub => ({
-            ...sub,
-            startTime: Math.max(0, parseFloat((sub.startTime + offset).toFixed(3))),
-            endTime: Math.max(0, parseFloat((sub.endTime + offset).toFixed(3))),
-          })).filter(sub => !(mediaFile && mediaFile.duration > 0 && sub.startTime >= mediaFile.duration)) // Remove subs that start after media ends
-          .sort((a, b) => a.startTime - b.startTime);
+          const newEntries = track.entries.map(sub => {
+            let newStartTime = Math.max(0, parseFloat((sub.startTime + offset).toFixed(3)));
+            let newEndTime = Math.max(0, parseFloat((sub.endTime + offset).toFixed(3)));
+
+            if (mediaFile && mediaFile.duration > 0) {
+              newStartTime = Math.min(newStartTime, mediaFile.duration);
+              newEndTime = Math.min(newEndTime, mediaFile.duration);
+              if (newEndTime <= newStartTime && newStartTime > 0) { // If end becomes before start due to media cap
+                 newStartTime = Math.max(0, newEndTime - 0.001); // Ensure start is just before end
+              }
+            }
+             if (newEndTime <= newStartTime && newStartTime === 0 && newEndTime === 0 && offset < 0) { // Shifted to before 0
+                return null; // Mark for removal
+            }
+            return { ...sub, startTime: newStartTime, endTime: newEndTime };
+          })
+          .filter(subOrNull => subOrNull !== null) // Remove marked entries
+          .filter(sub => !(mediaFile && mediaFile.duration > 0 && sub!.startTime >= mediaFile.duration && sub!.endTime >= mediaFile.duration)) // Remove subs fully starting after media ends
+          .sort((a, b) => a!.startTime - b!.startTime) as SubtitleEntry[];
           return { ...track, entries: newEntries };
         }
         return track;
       })
     );
     toast({ title: "Subtitles Shifted", description: `Active track subtitles shifted by ${offset.toFixed(1)}s.` });
+  };
+
+  const handleRegenerateTranscription = async (entryId: string) => {
+    if (!mediaFile || !activeTrack) {
+      toast({ title: "Error", description: "Media file or active track not found.", variant: "destructive" });
+      return;
+    }
+
+    const entry = activeTrack.entries.find(e => e.id === entryId);
+    if (!entry) {
+      toast({ title: "Error", description: "Subtitle entry not found.", variant: "destructive" });
+      return;
+    }
+
+    const selectedModel = localStorage.getItem(TRANSCRIBE_MODEL_KEY) as TranscribeModelType | null || 'openai';
+    const openAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
+    const groqToken = localStorage.getItem(GROQ_TOKEN_KEY);
+
+    if (selectedModel === 'openai' && !openAIToken) {
+      toast({ title: "OpenAI Token Missing", description: "Please set your OpenAI API token in Settings.", variant: "destructive" });
+      return;
+    }
+    if (selectedModel === 'groq' && !groqToken) {
+      toast({ title: "Groq Token Missing", description: "Please set your Groq API token in Settings.", variant: "destructive" });
+      return;
+    }
+
+    setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: true }));
+
+    try {
+      const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, entry.startTime, entry.endTime);
+      
+      const result = await transcribeAudioSegment({
+        audioDataUri,
+        modelType: selectedModel,
+        // language: "en" // Optionally specify language
+      });
+
+      if (result.transcribedText !== undefined) {
+        handleSubtitleChange(entryId, { text: result.transcribedText });
+        toast({ title: "Transcription Updated", description: `Subtitle text regenerated using ${selectedModel}.` });
+      } else {
+        toast({ title: "Transcription Failed", description: "Received no text from the AI model.", variant: "destructive" });
+      }
+    } catch (error: any) {
+      console.error("Transcription regeneration error:", error);
+      toast({ title: "Transcription Error", description: error.message || "Failed to regenerate transcription.", variant: "destructive" });
+    } finally {
+      setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: false }));
+    }
+  };
+  
+  const isEntryTranscribing = (entryId: string): boolean => {
+    return !!entryTranscriptionLoading[entryId];
   };
   
   const editorDisabled = !mediaFile || !activeTrack;
@@ -178,8 +265,8 @@ export default function SubtitleSyncPage() {
       return;
     }
     if (subtitleTracks.length === 0) {
-      toast({ title: "Subtitles Required", description: "Please upload at least one subtitle track.", variant: "destructive" });
-      return;
+      // Allow proceeding to edit even without subtitles, to add them manually or via AI later
+       toast({ title: "No Subtitles Yet", description: "Proceeding to editor. You can add subtitles manually or upload a file.", variant: "default" });
     }
     if (!activeTrackId && subtitleTracks.length > 0) {
       setActiveTrackId(subtitleTracks[0].id);
@@ -202,8 +289,10 @@ export default function SubtitleSyncPage() {
       setActiveTrackId(null);
       setCurrentPlayerTime(0);
       if (playerRef.current) {
-        if (playerRef.current.src) URL.revokeObjectURL(playerRef.current.src); // Revoke old object URL
-        playerRef.current.removeAttribute('src'); // Remove src attribute
+        if (playerRef.current.src && playerRef.current.src.startsWith('blob:')) {
+             URL.revokeObjectURL(playerRef.current.src); 
+        }
+        playerRef.current.removeAttribute('src'); 
         playerRef.current.load(); 
       }
       toast({ title: "Project Reset", description: "All media and subtitles cleared." });
@@ -262,7 +351,7 @@ export default function SubtitleSyncPage() {
                 <CardFooter className="p-4">
                   <Button 
                     onClick={handleProceedToEdit} 
-                    disabled={!mediaFile || subtitleTracks.length === 0} 
+                    disabled={!mediaFile} 
                     className="w-full"
                   >
                     Proceed to Edit <ArrowRight className="ml-2 h-4 w-4" />
@@ -305,6 +394,8 @@ export default function SubtitleSyncPage() {
                   onSubtitleChange={handleSubtitleChange}
                   onSubtitleAdd={handleSubtitleAdd}
                   onSubtitleDelete={handleSubtitleDelete}
+                  onRegenerateTranscription={handleRegenerateTranscription}
+                  isEntryTranscribing={isEntryTranscribing}
                   currentTime={currentPlayerTime}
                   disabled={editorDisabled}
                 />
@@ -347,10 +438,9 @@ export default function SubtitleSyncPage() {
         </div>
       </main>
       <footer className="mt-8 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Subtitle Sync. Powered by Next.js.</p>
+        <p>&copy; {new Date().getFullYear()} Subtitle Sync. Powered by Next.js & Genkit.</p>
       </footer>
       
-      {/* Settings Button and Dialog */}
       <Button 
         variant="outline" 
         size="icon" 

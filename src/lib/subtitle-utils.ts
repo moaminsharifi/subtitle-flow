@@ -1,4 +1,5 @@
 
+
 import type { SubtitleEntry, SubtitleFormat } from './types';
 
 // Helper to convert HH:MM:SS,mmm or HH:MM:SS.mmm to seconds
@@ -154,3 +155,112 @@ export const fileToDataUri = (file: File): Promise<string> => {
     reader.readAsDataURL(file);
   });
 };
+
+// Helper function to encode AudioBuffer to WAV Data URI
+function audioBufferToWavDataURI(buffer: AudioBuffer): Promise<string> {
+  return new Promise((resolve) => {
+    const numOfChan = buffer.numberOfChannels;
+    const EOL = '\r\n';
+    let result = '';
+
+    function writeString(s: string) {
+      for (let i = 0; i < s.length; i++) {
+        result += String.fromCharCode(s.charCodeAt(i) & 0xFF);
+      }
+    }
+
+    // Initialize WAV Fmt Chunk parameters
+    const format = 1; // PCM
+    const bitDepth = 16;
+    const sampleRate = buffer.sampleRate;
+
+    // Generate the WAV header
+    const blockAlign = numOfChan * (bitDepth / 8);
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = buffer.length * blockAlign;
+
+    let header = 'RIFF';
+    header += writeString(String.fromCharCode.apply(null, [
+      (dataSize + 36) & 0xFF,
+      ((dataSize + 36) >> 8) & 0xFF,
+      ((dataSize + 36) >> 16) & 0xFF,
+      ((dataSize + 36) >> 24) & 0xFF,
+    ]));
+    header += 'WAVE';
+    header += 'fmt ';
+    header += writeString(String.fromCharCode.apply(null, [16, 0, 0, 0])); // Fmt Chunk size (16 bytes)
+    header += String.fromCharCode(format & 0xFF, (format >> 8) & 0xFF); // Format (PCM)
+    header += String.fromCharCode(numOfChan & 0xFF, (numOfChan >> 8) & 0xFF); // Number of channels
+    header += String.fromCharCode(sampleRate & 0xFF, (sampleRate >> 8) & 0xFF, (sampleRate >> 16) & 0xFF, (sampleRate >> 24) & 0xFF); // Sample rate
+    header += String.fromCharCode(byteRate & 0xFF, (byteRate >> 8) & 0xFF, (byteRate >> 16) & 0xFF, (byteRate >> 24) & 0xFF); // Byte rate
+    header += String.fromCharCode(blockAlign & 0xFF, (blockAlign >> 8) & 0xFF); // Block align
+    header += String.fromCharCode(bitDepth & 0xFF, (bitDepth >> 8) & 0xFF); // Bits per sample
+    header += 'data';
+    header += String.fromCharCode(dataSize & 0xFF, (dataSize >> 8) & 0xFF, (dataSize >> 16) & 0xFF, (dataSize >> 24) & 0xFF); // Data Chunk size
+
+    result = header;
+
+    // Write the PCM data
+    const channels = [];
+    for (let i = 0; i < numOfChan; i++) {
+      channels.push(buffer.getChannelData(i));
+    }
+
+    for (let i = 0; i < buffer.length; i++) {
+      for (let chan = 0; chan < numOfChan; chan++) {
+        let sample = Math.max(-1, Math.min(1, channels[chan][i]));
+        sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0; // Convert to 16-bit signed int
+        result += String.fromCharCode(sample & 0xFF, (sample >> 8) & 0xFF);
+      }
+    }
+    
+    const base64Wav = btoa(result);
+    resolve('data:audio/wav;base64,' + base64Wav);
+  });
+}
+
+
+export async function sliceAudioToDataURI(
+  rawFile: File,
+  startTime: number,
+  endTime: number
+): Promise<string> {
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const fileBuffer = await rawFile.arrayBuffer();
+  const originalBuffer = await audioContext.decodeAudioData(fileBuffer);
+
+  const startSample = Math.floor(startTime * originalBuffer.sampleRate);
+  const endSample = Math.floor(endTime * originalBuffer.sampleRate);
+  const durationSamples = endSample - startSample;
+
+  if (durationSamples <= 0) {
+    throw new Error('End time must be after start time for audio slicing.');
+  }
+
+  const slicedBuffer = audioContext.createBuffer(
+    originalBuffer.numberOfChannels,
+    durationSamples,
+    originalBuffer.sampleRate
+  );
+
+  for (let i = 0; i < originalBuffer.numberOfChannels; i++) {
+    const channelData = originalBuffer.getChannelData(i);
+    const slicedChannelData = slicedBuffer.getChannelData(i);
+    slicedChannelData.set(channelData.subarray(startSample, endSample));
+  }
+
+  // Use OfflineAudioContext to render the sliced buffer to ensure it's in a processable state
+  const offlineContext = new OfflineAudioContext(
+    slicedBuffer.numberOfChannels,
+    slicedBuffer.length,
+    slicedBuffer.sampleRate
+  );
+  const bufferSource = offlineContext.createBufferSource();
+  bufferSource.buffer = slicedBuffer;
+  bufferSource.connect(offlineContext.destination);
+  bufferSource.start();
+  
+  const renderedBuffer = await offlineContext.startRendering();
+  return audioBufferToWavDataURI(renderedBuffer);
+}
+

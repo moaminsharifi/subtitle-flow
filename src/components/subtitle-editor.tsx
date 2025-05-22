@@ -2,13 +2,13 @@
 "use client";
 
 import type React from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, PlusCircle, CaptionsIcon } from 'lucide-react'; // Using CaptionsIcon as a generic icon
+import { Trash2, PlusCircle, CaptionsIcon, Wand2, Loader2 } from 'lucide-react'; 
 import type { SubtitleEntry, SubtitleTrack } from '@/lib/types';
 
 interface SubtitleEditorProps {
@@ -16,6 +16,8 @@ interface SubtitleEditorProps {
   onSubtitleChange: (entryId: string, newEntryData: Partial<Omit<SubtitleEntry, 'id'>>) => void;
   onSubtitleAdd: () => void;
   onSubtitleDelete: (entryId: string) => void;
+  onRegenerateTranscription: (entryId: string) => void;
+  isEntryTranscribing: (entryId: string) => boolean;
   currentTime: number;
   disabled?: boolean;
 }
@@ -27,6 +29,8 @@ export function SubtitleEditor({
   onSubtitleChange,
   onSubtitleAdd,
   onSubtitleDelete,
+  onRegenerateTranscription,
+  isEntryTranscribing,
   currentTime,
   disabled
 }: SubtitleEditorProps) {
@@ -86,6 +90,7 @@ export function SubtitleEditor({
             <div className="space-y-4">
               {entriesToDisplay.map((entry) => {
                 const isActiveInPlayer = currentTime >= entry.startTime && currentTime <= entry.endTime;
+                const isTranscribingThisEntry = isEntryTranscribing(entry.id);
                 return (
                   <div 
                     key={entry.id} 
@@ -101,7 +106,7 @@ export function SubtitleEditor({
                           onChange={(e) => handleFieldChange(entry.id, 'startTime', e.target.value)}
                           step="0.001"
                           className="h-8 text-sm"
-                          disabled={disabled}
+                          disabled={disabled || isTranscribingThisEntry}
                         />
                       </div>
                       <div className="flex-1">
@@ -113,19 +118,32 @@ export function SubtitleEditor({
                           onChange={(e) => handleFieldChange(entry.id, 'endTime', e.target.value)}
                           step="0.001"
                           className="h-8 text-sm"
-                          disabled={disabled}
+                          disabled={disabled || isTranscribingThisEntry}
                         />
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => onSubtitleDelete(entry.id)} 
-                        aria-label="Delete subtitle" 
-                        className="self-end text-destructive hover:bg-destructive/10" 
-                        disabled={disabled}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex self-end space-x-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => onRegenerateTranscription(entry.id)} 
+                          aria-label="Regenerate transcription" 
+                          className="text-blue-500 hover:bg-blue-500/10" 
+                          disabled={disabled || isTranscribingThisEntry}
+                          title="Regenerate transcription for this segment"
+                        >
+                          {isTranscribingThisEntry ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => onSubtitleDelete(entry.id)} 
+                          aria-label="Delete subtitle" 
+                          className="text-destructive hover:bg-destructive/10" 
+                          disabled={disabled || isTranscribingThisEntry}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div>
                       <label htmlFor={`text-${entry.id}`} className="text-xs font-medium text-muted-foreground">Text</label>
@@ -135,7 +153,7 @@ export function SubtitleEditor({
                         onChange={(e) => handleFieldChange(entry.id, 'text', e.target.value)}
                         rows={2}
                         className="text-sm"
-                        disabled={disabled}
+                        disabled={disabled || isTranscribingThisEntry}
                       />
                     </div>
                   </div>
