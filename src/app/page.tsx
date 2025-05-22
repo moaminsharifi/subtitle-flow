@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList, WandSparkles } from 'lucide-react';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
@@ -29,6 +30,12 @@ const CHUNK_DURATION_SECONDS = 5 * 60; // 5 minutes for full transcription chunk
 
 type AppStep = 'upload' | 'edit' | 'export';
 
+interface FullTranscriptionProgress {
+  currentChunk: number;
+  totalChunks: number;
+  percentage: number;
+}
+
 export default function SubtitleSyncPage() {
   const [mediaFile, setMediaFile] = useState<MediaFile | null>(null);
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
@@ -40,6 +47,7 @@ export default function SubtitleSyncPage() {
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
   const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
   const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
+  const [fullTranscriptionProgress, setFullTranscriptionProgress] = useState<FullTranscriptionProgress | null>(null);
   const [transcriptionLanguage, setTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
 
@@ -149,14 +157,26 @@ export default function SubtitleSyncPage() {
         if (eTime <= sTime) { 
             sTime = Math.max(0, eTime - 0.001);
         }
-        if (sTime >= mediaDur) sTime = Math.max(0, mediaDur - defaultCueDuration);
-        if (eTime > mediaDur) eTime = mediaDur;
-        if (eTime <= sTime && mediaDur > 0) {
-             sTime = Math.max(0, mediaDur - 0.1);
+        if (sTime >= mediaDur && mediaDur > 0) { // If start time is at or beyond media duration
+            sTime = Math.max(0, mediaDur - defaultCueDuration); // Try to place it before the end
+            eTime = mediaDur;
+        } else if (eTime > mediaDur) { // If only end time is beyond
+             eTime = mediaDur;
+        }
+        
+        if (eTime <= sTime && mediaDur > 0) { // Final check for validity
+             if(mediaDur - sTime < 0.001 && sTime === mediaDur) { // Trying to add at the very end
+                const errorMsg = `Cannot add subtitle at the very end of media. Times: ${sTime.toFixed(3)}s - ${eTime.toFixed(3)}s`;
+                toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive"});
+                addLog(errorMsg, 'error');
+                return;
+             }
+             // Attempt to make a very small cue if pushed to the end
+             sTime = Math.max(0, mediaDur - 0.1); 
              eTime = mediaDur;
              if (sTime < 0) sTime = 0;
-             if (eTime <= sTime) {
-                 const errorMsg = `Cannot add subtitle at media end. Try adjusting manually. Times: ${sTime.toFixed(3)} - ${eTime.toFixed(3)}`;
+             if (eTime <= sTime && mediaDur > 0) { // If still invalid
+                 const errorMsg = `Could not determine a valid time range at media end. Times: ${sTime.toFixed(3)}s - ${eTime.toFixed(3)}s`;
                  toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive"});
                  addLog(errorMsg, 'error');
                  return;
@@ -170,14 +190,8 @@ export default function SubtitleSyncPage() {
     const finalStartTime = parseFloat(sTime.toFixed(3));
     const finalEndTime = parseFloat(eTime.toFixed(3));
 
-    if (finalEndTime <= finalStartTime && mediaFile && mediaFile.duration > 0 && mediaFile.duration - finalStartTime < 0.001) {
-        const errorMsg = `Cannot add subtitle at the very end of the media or invalid time. ${finalStartTime.toFixed(3)}s - ${finalEndTime.toFixed(3)}s`;
-        toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive"});
-        addLog(errorMsg, 'error');
-        return;
-    }
-     if (finalEndTime <= finalStartTime) {
-        const errorMsg = `Could not determine a valid time range. ${finalStartTime.toFixed(3)}s - ${finalEndTime.toFixed(3)}s`;
+    if (finalEndTime <= finalStartTime) {
+        const errorMsg = `Could not determine a valid time range for new subtitle. Start: ${finalStartTime.toFixed(3)}s, End: ${finalEndTime.toFixed(3)}s. Media Duration: ${mediaFile?.duration.toFixed(3)}s`;
         toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive"});
         addLog(errorMsg, 'error');
         return;
@@ -242,13 +256,15 @@ export default function SubtitleSyncPage() {
               }
             }
              if (newEndTime <= newStartTime && newStartTime === 0 && newEndTime === 0 && offset < 0) { 
-                return null; 
+                // Cue would be shifted to negative time and then clamped to 0, effectively disappearing
+                return null; // Mark for removal
             }
             return { ...sub, startTime: newStartTime, endTime: newEndTime };
           })
-          .filter(subOrNull => subOrNull !== null) 
+          .filter(subOrNull => subOrNull !== null) // Remove cues marked for removal
+          // Remove cues that are entirely outside the media duration after shifting
           .filter(sub => !(mediaFile && mediaFile.duration > 0 && sub!.startTime >= mediaFile.duration && sub!.endTime >= mediaFile.duration)) 
-          .sort((a, b) => a!.startTime - b!.startTime) as SubtitleEntry[];
+          .sort((a, b) => a!.startTime - b!.startTime) as SubtitleEntry[]; // Sort valid entries
           return { ...track, entries: newEntries };
         }
         return track;
@@ -293,7 +309,7 @@ export default function SubtitleSyncPage() {
       return;
     }
     
-    addLog(`Using OpenAI model: ${selectedOpenAIModel}, Language: ${transcriptionLanguage}. Segment: ${entry.startTime.toFixed(3)}s - ${entry.endTime.toFixed(3)}s.`, 'debug');
+    addLog(`Using OpenAI model: ${selectedOpenAIModel}, Language: ${transcriptionLanguage === "auto-detect" ? "auto-detect (OpenAI will detect)" : transcriptionLanguage}. Segment: ${entry.startTime.toFixed(3)}s - ${entry.endTime.toFixed(3)}s.`, 'debug');
     
     setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: true }));
     setIsAnyTranscriptionLoading(true);
@@ -309,8 +325,6 @@ export default function SubtitleSyncPage() {
         openAIApiKey: openAIToken!,
       });
 
-      // For single segment regeneration, we expect a single dominant text block.
-      // The new API returns segments, so we'll join them.
       const regeneratedText = result.segments.map(s => s.text).join(' ').trim() || result.fullText;
 
       if (regeneratedText) {
@@ -360,21 +374,30 @@ export default function SubtitleSyncPage() {
       return;
     }
 
-    addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language: ${transcriptionLanguage}. Media: ${mediaFile.name}`, 'info');
+    addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language: ${transcriptionLanguage === "auto-detect" ? "auto-detect" : transcriptionLanguage }. Media: ${mediaFile.name}`, 'info');
     setIsGeneratingFullTranscription(true);
+    setFullTranscriptionProgress({ currentChunk: 0, totalChunks: 0, percentage: 0 });
     
     const allSubtitleEntries: SubtitleEntry[] = [];
     const numChunks = Math.ceil(mediaFile.duration / CHUNK_DURATION_SECONDS);
+    setFullTranscriptionProgress({ currentChunk: 0, totalChunks: numChunks, percentage: 0 });
 
     try {
       for (let i = 0; i < numChunks; i++) {
+        const currentProgress = {
+          currentChunk: i + 1,
+          totalChunks: numChunks,
+          percentage: Math.round(((i + 1) / numChunks) * 100),
+        };
+        setFullTranscriptionProgress(currentProgress);
+
         const chunkStartTime = i * CHUNK_DURATION_SECONDS;
         const chunkEndTime = Math.min((i + 1) * CHUNK_DURATION_SECONDS, mediaFile.duration);
         
         if (chunkStartTime >= chunkEndTime) continue;
 
         const progressMsg = `Transcribing chunk ${i + 1} of ${numChunks} (${chunkStartTime.toFixed(1)}s - ${chunkEndTime.toFixed(1)}s)...`;
-        toast({ title: "Transcription Progress", description: progressMsg });
+        toast({ title: "Transcription Progress", description: progressMsg }); // Toast remains for quick updates
         addLog(progressMsg, 'debug');
 
         const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, chunkStartTime, chunkEndTime);
@@ -387,11 +410,11 @@ export default function SubtitleSyncPage() {
           openAIApiKey: openAIToken!,
         });
         
-        addLog(`Chunk ${i+1} transcribed. Segments received: ${result.segments.length}`, 'debug');
+        addLog(`Chunk ${i+1} transcribed. Segments received: ${result.segments.length}. Full text from chunk: "${result.fullText.substring(0,50)}..."`, 'debug');
 
         result.segments.forEach(segment => {
           allSubtitleEntries.push({
-            id: `gen-${chunkStartTime + segment.start}-${Date.now()}-${Math.random()}`,
+            id: `gen-${chunkStartTime + segment.start}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
             startTime: parseFloat((chunkStartTime + segment.start).toFixed(3)),
             endTime: parseFloat((chunkStartTime + segment.end).toFixed(3)),
             text: segment.text,
@@ -402,11 +425,12 @@ export default function SubtitleSyncPage() {
       allSubtitleEntries.sort((a, b) => a.startTime - b.startTime);
 
       const newTrackId = `track-generated-${Date.now()}`;
-      const newTrackFileName = `${mediaFile.name} - ${selectedOpenAIModel} - AI.srt`; // Default to SRT format for generated
+      const trackLangSuffix = transcriptionLanguage === "auto-detect" ? "auto" : transcriptionLanguage;
+      const newTrackFileName = `${mediaFile.name} - ${selectedOpenAIModel}-${trackLangSuffix}.srt`; 
       const newTrack: SubtitleTrack = {
         id: newTrackId,
         fileName: newTrackFileName,
-        format: 'srt', // Generated tracks will be SRT format by default
+        format: 'srt', 
         entries: allSubtitleEntries,
       };
 
@@ -417,7 +441,6 @@ export default function SubtitleSyncPage() {
       toast({ title: "Transcription Complete", description: successMsg, duration: 5000 });
       addLog(successMsg, 'success');
       
-      // Automatically proceed to edit step
       setCurrentStep('edit');
       addLog("Automatically navigated to Edit step after full transcription.", 'debug');
 
@@ -428,6 +451,7 @@ export default function SubtitleSyncPage() {
       addLog(errorMsg, 'error');
     } finally {
       setIsGeneratingFullTranscription(false);
+      setFullTranscriptionProgress(null); // Clear progress
       addLog("Full media transcription process finished.", 'debug');
     }
   };
@@ -436,7 +460,7 @@ export default function SubtitleSyncPage() {
     return !!entryTranscriptionLoading[entryId];
   };
   
-  const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription;
+  const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription || isAnyTranscriptionLoading;
 
   const handleProceedToEdit = () => {
     if (!mediaFile) {
@@ -547,23 +571,38 @@ export default function SubtitleSyncPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Alternatively, let AI generate subtitles for the entire media file. 
-                      This may take several minutes depending on the media length.
-                    </p>
-                    <Button 
-                      onClick={handleGenerateFullTranscription} 
-                      disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading} 
-                      className="w-full bg-accent hover:bg-accent/90"
-                    >
-                      {isGeneratingFullTranscription ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
-                        </>
-                      ) : (
-                        "Generate Full Subtitles with AI"
-                      )}
-                    </Button>
+                    {isGeneratingFullTranscription && fullTranscriptionProgress ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-center">
+                          Transcription in progress... 
+                        </p>
+                        <Progress value={fullTranscriptionProgress.percentage} className="w-full" />
+                        <p className="text-xs text-muted-foreground text-center">
+                          Chunk {fullTranscriptionProgress.currentChunk} of {fullTranscriptionProgress.totalChunks} ({fullTranscriptionProgress.percentage}%)
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Alternatively, let AI generate subtitles for the entire media file. 
+                          This may take several minutes depending on the media length.
+                        </p>
+                        <Button 
+                          onClick={handleGenerateFullTranscription} 
+                          disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading} 
+                          className="w-full bg-accent hover:bg-accent/90"
+                        >
+                          {isGeneratingFullTranscription ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                              {fullTranscriptionProgress ? `Generating (${fullTranscriptionProgress.percentage}%)` : "Generating..." }
+                            </>
+                          ) : (
+                            "Generate Full Subtitles with AI"
+                          )}
+                        </Button>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -617,8 +656,8 @@ export default function SubtitleSyncPage() {
                       value={transcriptionLanguage}
                       onValueChange={(value) => {
                         setTranscriptionLanguage(value as LanguageCode | "auto-detect");
-                        localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, value); // Also save selection as new default for convenience
-                        addLog(`Transcription language changed to: ${value}`, 'debug');
+                        // Do not save to localStorage here automatically, let settings dialog handle "default"
+                        addLog(`Transcription language for current session changed to: ${value}`, 'debug');
                       }}
                       disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                     >
@@ -746,3 +785,4 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
+
