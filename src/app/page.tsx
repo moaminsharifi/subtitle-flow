@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
@@ -34,6 +33,7 @@ export default function SubtitleSyncPage() {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [isDebugLogDialogOpen, setIsDebugLogDialogOpen] = useState(false);
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
+  const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
   const [transcriptionLanguage, setTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
 
@@ -248,6 +248,13 @@ export default function SubtitleSyncPage() {
   };
 
   const handleRegenerateTranscription = async (entryId: string) => {
+    if (isAnyTranscriptionLoading) {
+      const msg = "A transcription is already in progress. Please wait.";
+      toast({ title: "Transcription Busy", description: msg, variant: "destructive" });
+      addLog(msg, 'warn');
+      return;
+    }
+
     addLog(`Transcription regeneration started for entry ID: ${entryId}.`, 'debug');
     if (!mediaFile || !activeTrack) {
       const msg = "Transcription Error: Media file or active track not found.";
@@ -275,7 +282,9 @@ export default function SubtitleSyncPage() {
     }
     
     addLog(`Using OpenAI model: ${selectedOpenAIModel}, Language: ${transcriptionLanguage}. Segment: ${entry.startTime.toFixed(3)}s - ${entry.endTime.toFixed(3)}s.`, 'debug');
+    
     setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: true }));
+    setIsAnyTranscriptionLoading(true);
 
     try {
       const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, entry.startTime, entry.endTime);
@@ -305,6 +314,7 @@ export default function SubtitleSyncPage() {
       addLog(errorMsg, 'error');
     } finally {
       setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: false }));
+      setIsAnyTranscriptionLoading(false);
       addLog(`Transcription regeneration finished for entry ID: ${entryId}.`, 'debug');
     }
   };
@@ -494,6 +504,7 @@ export default function SubtitleSyncPage() {
                   isEntryTranscribing={isEntryTranscribing}
                   currentTime={currentPlayerTime}
                   disabled={editorDisabled}
+                  isAnyTranscriptionLoading={isAnyTranscriptionLoading}
                 />
               </div>
               <Card>
@@ -587,4 +598,3 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
-

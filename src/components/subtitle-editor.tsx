@@ -1,4 +1,3 @@
-
 "use client";
 
 import type React from 'react';
@@ -18,6 +17,7 @@ interface SubtitleEditorProps {
   onSubtitleDelete: (entryId: string) => void;
   onRegenerateTranscription: (entryId: string) => void;
   isEntryTranscribing: (entryId: string) => boolean;
+  isAnyTranscriptionLoading?: boolean; // Optional: To disable all regenerate buttons
   currentTime: number;
   disabled?: boolean;
 }
@@ -31,6 +31,7 @@ export function SubtitleEditor({
   onSubtitleDelete,
   onRegenerateTranscription,
   isEntryTranscribing,
+  isAnyTranscriptionLoading,
   currentTime,
   disabled
 }: SubtitleEditorProps) {
@@ -64,7 +65,7 @@ export function SubtitleEditor({
             <CaptionsIcon className="h-6 w-6 text-primary"/>
             Subtitle Editor {activeTrack ? `(${activeTrack.fileName})` : ''}
           </div>
-          <Button onClick={onSubtitleAdd} size="sm" disabled={disabled} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button onClick={onSubtitleAdd} size="sm" disabled={disabled || isAnyTranscriptionLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             <PlusCircle className="mr-2 h-4 w-4" /> Add New
           </Button>
         </CardTitle>
@@ -91,6 +92,7 @@ export function SubtitleEditor({
               {entriesToDisplay.map((entry) => {
                 const isActiveInPlayer = currentTime >= entry.startTime && currentTime <= entry.endTime;
                 const isTranscribingThisEntry = isEntryTranscribing(entry.id);
+                const disableRegenerate = disabled || isTranscribingThisEntry || isAnyTranscriptionLoading;
                 return (
                   <div 
                     key={entry.id} 
@@ -106,7 +108,7 @@ export function SubtitleEditor({
                           onChange={(e) => handleFieldChange(entry.id, 'startTime', e.target.value)}
                           step="0.001"
                           className="h-8 text-sm"
-                          disabled={disabled || isTranscribingThisEntry}
+                          disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
                         />
                       </div>
                       <div className="flex-1">
@@ -118,7 +120,7 @@ export function SubtitleEditor({
                           onChange={(e) => handleFieldChange(entry.id, 'endTime', e.target.value)}
                           step="0.001"
                           className="h-8 text-sm"
-                          disabled={disabled || isTranscribingThisEntry}
+                          disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
                         />
                       </div>
                       <div className="flex self-end space-x-1">
@@ -128,7 +130,7 @@ export function SubtitleEditor({
                           onClick={() => onRegenerateTranscription(entry.id)} 
                           aria-label="Regenerate transcription" 
                           className="text-blue-500 hover:bg-blue-500/10" 
-                          disabled={disabled || isTranscribingThisEntry}
+                          disabled={disableRegenerate}
                           title="Regenerate transcription for this segment"
                         >
                           {isTranscribingThisEntry ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
@@ -139,7 +141,7 @@ export function SubtitleEditor({
                           onClick={() => onSubtitleDelete(entry.id)} 
                           aria-label="Delete subtitle" 
                           className="text-destructive hover:bg-destructive/10" 
-                          disabled={disabled || isTranscribingThisEntry}
+                          disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -153,7 +155,7 @@ export function SubtitleEditor({
                         onChange={(e) => handleFieldChange(entry.id, 'text', e.target.value)}
                         rows={2}
                         className="text-sm"
-                        disabled={disabled || isTranscribingThisEntry}
+                        disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
                       />
                     </div>
                   </div>
