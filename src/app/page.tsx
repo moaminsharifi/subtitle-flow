@@ -28,7 +28,7 @@ export default function SubtitleSyncPage() {
 
   const handleMediaUpload = (file: File, url: string, type: 'audio' | 'video', duration: number) => {
     setMediaFile({ name: file.name, type, url, duration, rawFile: file });
-    setSubtitleTracks([]);
+    setSubtitleTracks([]); // Reset tracks when new media is loaded
     setActiveTrackId(null);
     setCurrentPlayerTime(0);
     if (playerRef.current) {
@@ -47,7 +47,7 @@ export default function SubtitleSyncPage() {
       entries: entries.sort((a, b) => a.startTime - b.startTime),
     };
     setSubtitleTracks(prevTracks => [...prevTracks, newTrack]);
-    setActiveTrackId(newTrackId); // Activate the newly uploaded track
+    setActiveTrackId(newTrackId);
     toast({ title: "Subtitle Track Loaded", description: `${fileName} added.` });
   };
 
@@ -58,7 +58,7 @@ export default function SubtitleSyncPage() {
         if (track.id === activeTrackId) {
           const updatedEntries = track.entries
             .map(entry => (entry.id === entryId ? { ...entry, ...newEntryData } : entry))
-            .sort((a, b) => a.startTime - b.startTime);
+            .sort((a, b) => a.startTime - b.startTime); // Ensure sort after modification
           return { ...track, entries: updatedEntries };
         }
         return track;
@@ -67,30 +67,67 @@ export default function SubtitleSyncPage() {
   };
 
   const handleSubtitleAdd = () => {
-    if (!activeTrackId) {
-      toast({ title: "No active track", description: "Please select or upload a subtitle track first.", variant: "destructive"});
+    if (!activeTrackId || !activeTrack) {
+      toast({ title: "No Active Track", description: "Please select or upload a subtitle track first.", variant: "destructive" });
       return;
     }
 
     const newId = `new-${Date.now()}`;
-    let newStartTime = 0;
-    const currentEntries = activeTrack?.entries || [];
+    const defaultCueDuration = 2.0; // seconds
+    let sTime: number;
 
-    if (currentEntries.length > 0) {
-      newStartTime = currentEntries[currentEntries.length - 1].endTime + 0.1;
-    } else if (mediaFile) {
-      newStartTime = Math.min(currentPlayerTime, mediaFile.duration > 1 ? mediaFile.duration -1 : 0) ;
+    if (activeTrack.entries.length > 0) {
+      const lastCue = activeTrack.entries[activeTrack.entries.length - 1];
+      sTime = lastCue.endTime + 0.1; // Add a small gap
+    } else {
+      sTime = currentPlayerTime; // Start at current player time if track is empty
+    }
+
+    let eTime = sTime + defaultCueDuration;
+
+    // Adjust times based on media duration if media is loaded
+    if (mediaFile) {
+      const mediaDur = mediaFile.duration;
+      if (mediaDur <= 0.001) { // Effectively zero or very short media
+        sTime = 0;
+        eTime = 0.001; // Minimal valid cue
+      } else {
+        // Clamp sTime
+        sTime = Math.max(0, sTime);
+        if (sTime >= mediaDur) { // If proposed sTime is at or after media end
+          sTime = Math.max(0, mediaDur - 0.1); // Place it 0.1s before end
+        }
+        
+        // Clamp eTime
+        eTime = Math.max(sTime + 0.001, eTime); // Ensure eTime is after sTime
+        eTime = Math.min(eTime, mediaDur);     // And not beyond media duration
+
+        // If clamping eTime made it too short or invalid relative to sTime, readjust sTime
+        if (sTime >= eTime) {
+          sTime = Math.max(0, eTime - 0.001);
+        }
+      }
+    } else { // No media file, less constrained
+      sTime = Math.max(0, sTime);
+      eTime = Math.max(sTime + 0.001, eTime);
     }
     
-    const newEndTime = newStartTime + 2;
+    const finalStartTime = parseFloat(sTime.toFixed(3));
+    const finalEndTime = parseFloat(eTime.toFixed(3));
 
-    const newEntry: SubtitleEntry = { 
-      id: newId, 
-      startTime: parseFloat(newStartTime.toFixed(3)), 
-      endTime: parseFloat(newEndTime.toFixed(3)), 
-      text: 'New subtitle' 
+    // Final check for validity
+    if (finalEndTime <= finalStartTime) {
+      toast({ title: "Error Adding Subtitle", description: "Could not determine a valid time range for the new subtitle cue.", variant: "destructive"});
+      return;
+    }
+
+    const newEntry: SubtitleEntry = {
+      id: newId,
+      startTime: finalStartTime,
+      endTime: finalEndTime,
+      text: 'New subtitle',
     };
-    
+
     setSubtitleTracks(prevTracks =>
       prevTracks.map(track => {
         if (track.id === activeTrackId) {
@@ -100,6 +137,7 @@ export default function SubtitleSyncPage() {
         return track;
       })
     );
+    toast({ title: "Subtitle Added", description: `New cue added from ${finalStartTime.toFixed(3)}s to ${finalEndTime.toFixed(3)}s.` });
   };
 
   const handleSubtitleDelete = (entryId: string) => {
@@ -107,7 +145,7 @@ export default function SubtitleSyncPage() {
     setSubtitleTracks(prevTracks =>
       prevTracks.map(track => {
         if (track.id === activeTrackId) {
-          const updatedEntries = track.entries.filter(entry => entry.id !== entryId).sort((a, b) => a.startTime - b.startTime);
+          const updatedEntries = track.entries.filter(entry => entry.id !== entryId).sort((a, b) => a.startTime - b.startTime); // Sort after delete, though likely not strictly necessary
           return { ...track, entries: updatedEntries };
         }
         return track;
@@ -129,7 +167,7 @@ export default function SubtitleSyncPage() {
             ...sub,
             startTime: Math.max(0, parseFloat((sub.startTime + offset).toFixed(3))),
             endTime: Math.max(0, parseFloat((sub.endTime + offset).toFixed(3))),
-          })).sort((a, b) => a.startTime - b.startTime);
+          })).sort((a, b) => a.startTime - b.startTime); // Sort after shift
           return { ...track, entries: newEntries };
         }
         return track;
