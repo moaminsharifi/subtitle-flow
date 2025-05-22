@@ -32,7 +32,7 @@ export interface AppSettings {
 }
 
 export const LANGUAGE_OPTIONS = [
-  { value: "", label: "Auto-detect" }, // Empty string for undefined/auto-detect
+  { value: "auto-detect", label: "Auto-detect" }, // Changed from ""
   { value: "af", label: "Afrikaans" },
   { value: "ar", label: "Arabic" },
   { value: "hy", label: "Armenian" },

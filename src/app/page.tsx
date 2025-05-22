@@ -20,7 +20,6 @@ import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
-// const GROQ_TOKEN_KEY = 'app-settings-groq-token'; // Kept for UI consistency, but not used by transcription logic
 const OPENAI_MODEL_KEY = 'app-settings-openai-model';
 
 type AppStep = 'upload' | 'edit' | 'export';
@@ -33,7 +32,7 @@ export default function SubtitleSyncPage() {
   const [currentStep, setCurrentStep] = useState<AppStep>('upload');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
-  const [transcriptionLanguage, setTranscriptionLanguage] = useState<LanguageCode>("");
+  const [transcriptionLanguage, setTranscriptionLanguage] = useState<LanguageCode | "">(""); // Allow empty string for placeholder
 
 
   const playerRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
@@ -235,7 +234,7 @@ export default function SubtitleSyncPage() {
       const result = await transcribeAudioSegment({
         audioDataUri,
         openAIModel: selectedOpenAIModel,
-        language: transcriptionLanguage === "" ? undefined : transcriptionLanguage, // Pass undefined for auto-detect
+        language: transcriptionLanguage === "auto-detect" || transcriptionLanguage === "" ? undefined : transcriptionLanguage,
         openAIApiKey: openAIToken!,
       });
 
@@ -391,15 +390,15 @@ export default function SubtitleSyncPage() {
                     <Label htmlFor="transcription-language-select">Transcription Language</Label>
                     <Select
                       value={transcriptionLanguage}
-                      onValueChange={(value: LanguageCode) => setTranscriptionLanguage(value)}
+                      onValueChange={(value) => setTranscriptionLanguage(value as LanguageCode | "")}
                       disabled={!mediaFile}
                     >
                       <SelectTrigger id="transcription-language-select" className="w-full">
-                        <SelectValue placeholder="Select transcription language" />
+                        <SelectValue placeholder="Select transcription language (default: Auto-detect)" />
                       </SelectTrigger>
                       <SelectContent>
                         {LANGUAGE_OPTIONS.map((lang) => (
-                          <SelectItem key={lang.value || 'auto'} value={lang.value || ""}>
+                          <SelectItem key={lang.value} value={lang.value}>
                             {lang.label}
                           </SelectItem>
                         ))}
