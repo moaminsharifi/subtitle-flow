@@ -27,12 +27,13 @@ export type OpenAIModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-t
 
 export interface AppSettings {
   openAIToken?: string;
-  groqToken?: string; // Kept for potential future use or other features
+  groqToken?: string;
   openAIModel?: OpenAIModelType;
+  defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
 }
 
 export const LANGUAGE_OPTIONS = [
-  { value: "auto-detect", label: "Auto-detect" },
+  { value: "auto-detect", label: "Auto-detect (Default)" },
   { value: "af", label: "Afrikaans" },
   { value: "ar", label: "Arabic" },
   { value: "hy", label: "Armenian" },

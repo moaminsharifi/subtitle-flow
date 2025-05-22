@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
@@ -21,6 +22,8 @@ import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 const OPENAI_MODEL_KEY = 'app-settings-openai-model';
+const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
+
 
 type AppStep = 'upload' | 'edit' | 'export';
 
@@ -57,6 +60,14 @@ export default function SubtitleSyncPage() {
 
   useEffect(() => {
     addLog("Application initialized.", "debug");
+    // Load default transcription language from settings
+    const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
+    if (savedDefaultLang) {
+      setTranscriptionLanguage(savedDefaultLang);
+      addLog(`Default transcription language loaded from settings: ${savedDefaultLang}`, "debug");
+    } else {
+      addLog("No default transcription language found in settings, using 'auto-detect'.", "debug");
+    }
   }, [addLog]);
 
 
@@ -480,7 +491,7 @@ export default function SubtitleSyncPage() {
                       disabled={!mediaFile}
                     >
                       <SelectTrigger id="transcription-language-select" className="w-full">
-                        <SelectValue placeholder="Select transcription language (default: Auto-detect)" />
+                        <SelectValue placeholder="Select transcription language" />
                       </SelectTrigger>
                       <SelectContent>
                         {LANGUAGE_OPTIONS.map((lang) => (

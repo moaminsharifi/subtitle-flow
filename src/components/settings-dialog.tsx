@@ -17,7 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { AppSettings, OpenAIModelType, LogEntry } from '@/lib/types';
+import type { AppSettings, OpenAIModelType, LogEntry, LanguageCode } from '@/lib/types';
+import { LANGUAGE_OPTIONS } from '@/lib/types';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -26,13 +27,15 @@ interface SettingsDialogProps {
 }
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
-const GROQ_TOKEN_KEY = 'app-settings-groq-token';
+const GROQ_TOKEN_KEY = 'app-settings-groq-token'; // Kept for consistency if other features use it
 const OPENAI_MODEL_KEY = 'app-settings-openai-model';
+const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
 
 export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps) {
   const [openAIToken, setOpenAIToken] = useState('');
   const [groqToken, setGroqToken] = useState('');
   const [openAIModel, setOpenAIModel] = useState<OpenAIModelType>('whisper-1');
+  const [defaultTranscriptionLanguage, setDefaultTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -41,6 +44,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       const storedOpenAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
       const storedGroqToken = localStorage.getItem(GROQ_TOKEN_KEY);
       const storedOpenAIModel = localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType | null;
+      const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
       
       if (storedOpenAIToken) setOpenAIToken(storedOpenAIToken);
       if (storedGroqToken) setGroqToken(storedGroqToken);
@@ -49,7 +53,12 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       } else {
         setOpenAIModel('whisper-1'); 
       }
-      addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Token statuses: OpenAI - ${storedOpenAIToken ? 'Set' : 'Not Set'}, Groq - ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
+      if (storedDefaultLang) {
+        setDefaultTranscriptionLanguage(storedDefaultLang);
+      } else {
+        setDefaultTranscriptionLanguage("auto-detect");
+      }
+      addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Default Language - ${storedDefaultLang || 'auto-detect'}. Token statuses: OpenAI - ${storedOpenAIToken ? 'Set' : 'Not Set'}, Groq - ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
     }
   }, [isOpen, addLog]);
 
@@ -57,7 +66,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken);
     localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
     localStorage.setItem(OPENAI_MODEL_KEY, openAIModel);
-    const message = `Settings Saved. OpenAI Model: ${openAIModel}. OpenAI Token: ${openAIToken ? 'Set' : 'Not Set'}. Groq Token: ${groqToken ? 'Set' : 'Not Set'}.`;
+    localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
+    const message = `Settings Saved. OpenAI Model: ${openAIModel}. Default Language: ${defaultTranscriptionLanguage}. OpenAI Token: ${openAIToken ? 'Set' : 'Not Set'}. Groq Token: ${groqToken ? 'Set' : 'Not Set'}.`;
     toast({
       title: 'Settings Saved',
       description: 'Your API tokens and preferences have been saved to browser storage.',
@@ -68,7 +78,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Application Settings</DialogTitle>
           <DialogDescription>
@@ -115,8 +125,28 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="whisper-1">whisper-1</SelectItem>
-                <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (Experimental)</SelectItem>
-                <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe (Experimental)</SelectItem>
+                <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</SelectItem>
+                <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="default-language-select" className="text-right col-span-1">
+              Default Language
+            </Label>
+            <Select
+              value={defaultTranscriptionLanguage}
+              onValueChange={(value) => setDefaultTranscriptionLanguage(value as LanguageCode | "auto-detect")}
+            >
+              <SelectTrigger className="col-span-3" id="default-language-select">
+                <SelectValue placeholder="Select default transcription language" />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
