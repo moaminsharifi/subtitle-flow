@@ -8,11 +8,12 @@ import { SubtitleUploader } from '@/components/subtitle-uploader';
 import { MediaPlayer } from '@/components/media-player';
 import { SubtitleEditor } from '@/components/subtitle-editor';
 import { SubtitleExporter } from '@/components/subtitle-exporter';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { SettingsDialog } from '@/components/settings-dialog'; // Import SettingsDialog
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRight, ArrowLeft, RotateCcw } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon } from 'lucide-react'; // Import SettingsIcon
 
 type AppStep = 'upload' | 'edit' | 'export';
 
@@ -22,6 +23,7 @@ export default function SubtitleSyncPage() {
   const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
   const [currentPlayerTime, setCurrentPlayerTime] = useState(0);
   const [currentStep, setCurrentStep] = useState<AppStep>('upload');
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false); // State for settings dialog
 
   const playerRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -32,7 +34,6 @@ export default function SubtitleSyncPage() {
 
   const handleMediaUpload = (file: File, url: string, type: 'audio' | 'video', duration: number) => {
     setMediaFile({ name: file.name, type, url, duration, rawFile: file });
-    // Don't reset tracks here, allow multiple media uploads if user goes back
     setCurrentPlayerTime(0);
     if (playerRef.current) {
       playerRef.current.currentTime = 0;
@@ -50,7 +51,7 @@ export default function SubtitleSyncPage() {
       entries: entries.sort((a, b) => a.startTime - b.startTime),
     };
     setSubtitleTracks(prevTracks => [...prevTracks, newTrack]);
-    setActiveTrackId(newTrackId); // Automatically select new track
+    setActiveTrackId(newTrackId);
     toast({ title: "Subtitle Track Loaded", description: `${fileName} added.` });
   };
 
@@ -76,47 +77,42 @@ export default function SubtitleSyncPage() {
     }
 
     const newId = `new-${Date.now()}`;
-    const defaultCueDuration = 2.0; 
+    const defaultCueDuration = 2.0;
     let sTime: number;
 
     if (activeTrack.entries.length > 0) {
       const lastCue = activeTrack.entries[activeTrack.entries.length - 1];
-      sTime = lastCue.endTime + 0.1; 
+      sTime = lastCue.endTime + 0.1;
     } else {
-      sTime = currentPlayerTime; 
+      sTime = currentPlayerTime;
     }
 
     let eTime = sTime + defaultCueDuration;
 
-    if (mediaFile) {
-      const mediaDur = mediaFile.duration;
-      if (mediaDur <= 0.001) {
-        sTime = 0;
-        eTime = 0.001; 
-      } else {
+    if (mediaFile && mediaFile.duration > 0) {
+        const mediaDur = mediaFile.duration;
+        sTime = Math.max(0, Math.min(sTime, mediaDur));
+        eTime = Math.max(sTime + 0.001, Math.min(eTime, mediaDur));
+        if (eTime <= sTime) { // Ensure end time is after start time, adjusting start time if needed
+            sTime = Math.max(0, eTime - 0.001);
+        }
+    } else { // No media file or zero duration media
         sTime = Math.max(0, sTime);
-        if (sTime >= mediaDur) { 
-          sTime = Math.max(0, mediaDur - 0.1); 
-        }
-        eTime = Math.max(sTime + 0.001, eTime); 
-        eTime = Math.min(eTime, mediaDur);     
-
-        if (sTime >= eTime) {
-          sTime = Math.max(0, eTime - 0.001);
-        }
-      }
-    } else { 
-      sTime = Math.max(0, sTime);
-      eTime = Math.max(sTime + 0.001, eTime);
+        eTime = Math.max(sTime + 0.001, eTime);
     }
     
     const finalStartTime = parseFloat(sTime.toFixed(3));
     const finalEndTime = parseFloat(eTime.toFixed(3));
 
-    if (finalEndTime <= finalStartTime) {
-      toast({ title: "Error Adding Subtitle", description: "Could not determine a valid time range for the new subtitle cue.", variant: "destructive"});
-      return;
+    if (finalEndTime <= finalStartTime && mediaFile && mediaFile.duration > 0) {
+        toast({ title: "Error Adding Subtitle", description: `Cannot add subtitle at the very end of the media or invalid time. ${finalStartTime.toFixed(3)}s - ${finalEndTime.toFixed(3)}s`, variant: "destructive"});
+        return;
     }
+     if (finalEndTime <= finalStartTime) {
+        toast({ title: "Error Adding Subtitle", description: `Could not determine a valid time range. ${finalStartTime.toFixed(3)}s - ${finalEndTime.toFixed(3)}s`, variant: "destructive"});
+        return;
+    }
+
 
     const newEntry: SubtitleEntry = {
       id: newId,
@@ -164,7 +160,8 @@ export default function SubtitleSyncPage() {
             ...sub,
             startTime: Math.max(0, parseFloat((sub.startTime + offset).toFixed(3))),
             endTime: Math.max(0, parseFloat((sub.endTime + offset).toFixed(3))),
-          })).sort((a, b) => a.startTime - b.startTime);
+          })).filter(sub => !(mediaFile && mediaFile.duration > 0 && sub.startTime >= mediaFile.duration)) // Remove subs that start after media ends
+          .sort((a, b) => a.startTime - b.startTime);
           return { ...track, entries: newEntries };
         }
         return track;
@@ -175,7 +172,6 @@ export default function SubtitleSyncPage() {
   
   const editorDisabled = !mediaFile || !activeTrack;
 
-  // Step navigation logic
   const handleProceedToEdit = () => {
     if (!mediaFile) {
       toast({ title: "Media Required", description: "Please upload a media file first.", variant: "destructive" });
@@ -186,7 +182,7 @@ export default function SubtitleSyncPage() {
       return;
     }
     if (!activeTrackId && subtitleTracks.length > 0) {
-      setActiveTrackId(subtitleTracks[0].id); // Default to first track if none selected
+      setActiveTrackId(subtitleTracks[0].id);
     }
     setCurrentStep('edit');
   };
@@ -206,8 +202,9 @@ export default function SubtitleSyncPage() {
       setActiveTrackId(null);
       setCurrentPlayerTime(0);
       if (playerRef.current) {
-        playerRef.current.src = ''; 
-        playerRef.current.load(); // Important to reset the media element
+        if (playerRef.current.src) URL.revokeObjectURL(playerRef.current.src); // Revoke old object URL
+        playerRef.current.removeAttribute('src'); // Remove src attribute
+        playerRef.current.load(); 
       }
       toast({ title: "Project Reset", description: "All media and subtitles cleared." });
     }
@@ -228,14 +225,13 @@ export default function SubtitleSyncPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col p-4 md:p-6 bg-background text-foreground">
+    <div className="min-h-screen flex flex-col p-4 md:p-6 bg-background text-foreground relative">
       <header className="mb-6">
         <h1 className="text-4xl font-bold text-primary tracking-tight">Subtitle Sync</h1>
         <p className="text-muted-foreground">{getStepTitle()}</p>
       </header>
 
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Always shows media player if media is loaded, otherwise uploader */}
         <div className="space-y-6 flex flex-col">
           {currentStep === 'upload' && !mediaFile && (
             <MediaUploader onMediaUpload={handleMediaUpload} />
@@ -253,12 +249,11 @@ export default function SubtitleSyncPage() {
               </CardContent>
             </Card>
           )}
-           {currentStep === 'upload' && mediaFile && ( // Show uploader again if media is loaded but still in upload step
+           {currentStep === 'upload' && mediaFile && (
             <MediaUploader onMediaUpload={handleMediaUpload} />
           )}
         </div>
 
-        {/* Right Column: Step-dependent content */}
         <div className="space-y-6 flex flex-col h-full">
           {currentStep === 'upload' && (
             <>
@@ -354,8 +349,21 @@ export default function SubtitleSyncPage() {
       <footer className="mt-8 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Subtitle Sync. Powered by Next.js.</p>
       </footer>
+      
+      {/* Settings Button and Dialog */}
+      <Button 
+        variant="outline" 
+        size="icon" 
+        className="fixed bottom-4 right-4 rounded-full shadow-lg z-50"
+        onClick={() => setIsSettingsDialogOpen(true)}
+        aria-label="Open Settings"
+      >
+        <SettingsIcon className="h-5 w-5" />
+      </Button>
+      <SettingsDialog 
+        isOpen={isSettingsDialogOpen} 
+        onClose={() => setIsSettingsDialogOpen(false)} 
+      />
     </div>
   );
 }
-
-    

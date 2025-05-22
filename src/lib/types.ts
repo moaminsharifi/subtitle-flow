@@ -1,3 +1,4 @@
+
 export interface SubtitleEntry {
   id: string;
   startTime: number; // in seconds
@@ -20,4 +21,9 @@ export interface SubtitleTrack {
   fileName: string;
   format: SubtitleFormat;
   entries: SubtitleEntry[];
+}
+
+export interface AppSettings {
+  openAIToken?: string;
+  groqToken?: string;
 }
