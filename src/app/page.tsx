@@ -48,7 +48,7 @@ export default function SubtitleSyncPage() {
   const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
   const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
   const [fullTranscriptionProgress, setFullTranscriptionProgress] = useState<FullTranscriptionProgress | null>(null);
-  const [transcriptionLanguage, setTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
+  const [transcriptionLanguage, setTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect"); // For editor segment regeneration
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
 
   const playerRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
@@ -71,12 +71,13 @@ export default function SubtitleSyncPage() {
 
   useEffect(() => {
     addLog("Application initialized.", "debug");
+    // Initialize transcriptionLanguage state for the editor from settings
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     if (savedDefaultLang) {
       setTranscriptionLanguage(savedDefaultLang);
-      addLog(`Default transcription language loaded from settings: ${savedDefaultLang}`, "debug");
+      addLog(`Editor transcription language initialized from settings: ${savedDefaultLang}`, "debug");
     } else {
-      addLog("No default transcription language found in settings, using 'auto-detect'.", "debug");
+      addLog("No default transcription language in settings, editor will use 'auto-detect'.", "debug");
     }
   }, [addLog]);
 
@@ -275,6 +276,7 @@ export default function SubtitleSyncPage() {
     addLog(message, 'info');
   };
 
+  // For individual segment regeneration, uses transcriptionLanguage state (from editor dropdown)
   const handleRegenerateTranscription = async (entryId: string) => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
       const msg = "A transcription process is already running. Please wait.";
@@ -309,7 +311,9 @@ export default function SubtitleSyncPage() {
       return;
     }
     
-    addLog(`Using OpenAI model: ${selectedOpenAIModel}, Language: ${transcriptionLanguage === "auto-detect" ? "auto-detect (OpenAI will detect)" : transcriptionLanguage}. Segment: ${entry.startTime.toFixed(3)}s - ${entry.endTime.toFixed(3)}s.`, 'debug');
+    // Uses the transcriptionLanguage state from the editor's dropdown
+    const langForSegment = transcriptionLanguage === "auto-detect" ? undefined : transcriptionLanguage;
+    addLog(`Using OpenAI model: ${selectedOpenAIModel}, Language (for segment): ${langForSegment || 'auto-detect'}. Segment: ${entry.startTime.toFixed(3)}s - ${entry.endTime.toFixed(3)}s.`, 'debug');
     
     setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: true }));
     setIsAnyTranscriptionLoading(true);
@@ -321,7 +325,7 @@ export default function SubtitleSyncPage() {
       const result = await transcribeAudioSegment({
         audioDataUri,
         openAIModel: selectedOpenAIModel,
-        language: transcriptionLanguage === "auto-detect" ? undefined : transcriptionLanguage,
+        language: langForSegment,
         openAIApiKey: openAIToken!,
       });
 
@@ -350,6 +354,7 @@ export default function SubtitleSyncPage() {
     }
   };
 
+  // For full media transcription, directly uses default language from settings
   const handleGenerateFullTranscription = async () => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
       const msg = "A transcription process is already running. Please wait.";
@@ -374,7 +379,11 @@ export default function SubtitleSyncPage() {
       return;
     }
 
-    addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language: ${transcriptionLanguage === "auto-detect" ? "auto-detect" : transcriptionLanguage }. Media: ${mediaFile.name}`, 'info');
+    // Directly use the default language from settings for full transcription
+    const defaultLanguageFromSettings = (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect";
+    const langForFullTranscription = defaultLanguageFromSettings === "auto-detect" ? undefined : defaultLanguageFromSettings;
+
+    addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language (from settings): ${langForFullTranscription || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
     setIsGeneratingFullTranscription(true);
     setFullTranscriptionProgress({ currentChunk: 0, totalChunks: 0, percentage: 0 });
     
@@ -406,7 +415,7 @@ export default function SubtitleSyncPage() {
         const result = await transcribeAudioSegment({
           audioDataUri,
           openAIModel: selectedOpenAIModel,
-          language: transcriptionLanguage === "auto-detect" ? undefined : transcriptionLanguage,
+          language: langForFullTranscription,
           openAIApiKey: openAIToken!,
         });
         
@@ -436,7 +445,7 @@ export default function SubtitleSyncPage() {
       allSubtitleEntries.sort((a, b) => a.startTime - b.startTime);
 
       const newTrackId = `track-generated-${Date.now()}`;
-      const trackLangSuffix = transcriptionLanguage === "auto-detect" ? "auto" : transcriptionLanguage;
+      const trackLangSuffix = defaultLanguageFromSettings === "auto-detect" ? "auto" : defaultLanguageFromSettings;
       const newTrackFileName = `${mediaFile.name} - ${selectedOpenAIModel}-${trackLangSuffix}.srt`; 
       const newTrack: SubtitleTrack = {
         id: newTrackId,
@@ -662,12 +671,13 @@ export default function SubtitleSyncPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="transcription-language-select">Transcription Language (for AI)</Label>
+                    <Label htmlFor="transcription-language-select">Transcription Language (for AI segment regeneration)</Label>
                     <Select
-                      value={transcriptionLanguage === "auto-detect" ? "auto-detect" : transcriptionLanguage}
+                      value={transcriptionLanguage} // Uses state initialized from settings
                       onValueChange={(value) => {
-                        setTranscriptionLanguage(value as LanguageCode | "auto-detect");
-                        addLog(`Transcription language for current session changed to: ${value}`, 'debug');
+                        const lang = value as LanguageCode | "auto-detect";
+                        setTranscriptionLanguage(lang);
+                        addLog(`Editor transcription language for segment regeneration set to: ${lang}`, 'debug');
                       }}
                       disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                     >
@@ -780,6 +790,17 @@ export default function SubtitleSyncPage() {
         onClose={() => {
           setIsSettingsDialogOpen(false);
           addLog("Settings dialog closed.", "debug");
+          // Re-initialize transcriptionLanguage state for the editor if default language setting changed
+          const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
+            if (savedDefaultLang) {
+                if (transcriptionLanguage !== savedDefaultLang) {
+                    setTranscriptionLanguage(savedDefaultLang);
+                    addLog(`Editor transcription language updated from settings change: ${savedDefaultLang}`, "debug");
+                }
+            } else if (transcriptionLanguage !== "auto-detect") {
+                setTranscriptionLanguage("auto-detect");
+                addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");
+            }
         }}
         addLog={addLog}
       />
