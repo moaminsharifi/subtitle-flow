@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Initializes and configures the Genkit AI toolkit.
  * Exports the configured 'ai' instance for use in flows.
