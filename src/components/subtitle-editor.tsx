@@ -1,12 +1,14 @@
+
 "use client";
 
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress'; // Import Progress
 import { Trash2, PlusCircle, CaptionsIcon, Wand2, Loader2 } from 'lucide-react'; 
 import type { SubtitleEntry, SubtitleTrack } from '@/lib/types';
 
@@ -17,7 +19,7 @@ interface SubtitleEditorProps {
   onSubtitleDelete: (entryId: string) => void;
   onRegenerateTranscription: (entryId: string) => void;
   isEntryTranscribing: (entryId: string) => boolean;
-  isAnyTranscriptionLoading?: boolean; // Optional: To disable all regenerate buttons
+  isAnyTranscriptionLoading?: boolean;
   currentTime: number;
   disabled?: boolean;
 }
@@ -54,7 +56,7 @@ export function SubtitleEditor({
 
     return activeTrack.entries
       .filter(entry => entry.endTime >= windowStart && entry.startTime <= windowEnd)
-      .sort((a, b) => a.startTime - b.startTime); // Ensure sorted display within the window
+      .sort((a, b) => a.startTime - b.startTime);
   }, [activeTrack, currentTime]);
 
   return (
@@ -158,6 +160,9 @@ export function SubtitleEditor({
                         disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
                       />
                     </div>
+                    {isTranscribingThisEntry && (
+                      <Progress value={100} className="mt-2 h-2 animate-pulse" />
+                    )}
                   </div>
                 );
               })}
@@ -168,3 +173,4 @@ export function SubtitleEditor({
     </Card>
   );
 }
+
