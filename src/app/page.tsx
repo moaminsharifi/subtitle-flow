@@ -21,6 +21,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList, WandSparkles, HelpCircle, Languages, FileText } from 'lucide-react';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
+import { cn } from '@/lib/utils';
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 const OPENAI_MODEL_KEY = 'app-settings-openai-model';
@@ -78,7 +79,7 @@ export default function SubtitleSyncPage() {
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     if (savedDefaultLang) {
       setEditorTranscriptionLanguage(savedDefaultLang);
-      setFullTranscriptionLanguageOverride(savedDefaultLang); // Initialize override with saved default
+      setFullTranscriptionLanguageOverride(savedDefaultLang);
       addLog(`Editor and Full Transcription language override initialized from settings: ${savedDefaultLang}`, "debug");
     } else {
       setEditorTranscriptionLanguage("auto-detect");
@@ -100,7 +101,6 @@ export default function SubtitleSyncPage() {
       playerRef.current.currentTime = 0;
       playerRef.current.pause();
     }
-    // When new media is uploaded, reset full transcription language override to global default
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect");
     addLog(`Full transcription language override reset to settings default: ${savedDefaultLang || "auto-detect"} on new media upload.`, "debug");
@@ -383,8 +383,7 @@ export default function SubtitleSyncPage() {
       addLog(msg, 'error');
       return;
     }
-
-    // Use the fullTranscriptionLanguageOverride for this specific generation job
+    
     const langForFullTranscription = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
 
     addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language (override): ${langForFullTranscription || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
@@ -605,7 +604,6 @@ export default function SubtitleSyncPage() {
             <MediaUploader 
               onMediaUpload={handleMediaUpload} 
               disabled={isGeneratingFullTranscription} 
-              // This uploader is secondary, so no flex-grow needed for same height
             />
           )}
         </div>
@@ -627,80 +625,80 @@ export default function SubtitleSyncPage() {
                 </CardContent>
               </Card>
               
-              {mediaFile && (
-                <Card className="shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <WandSparkles className="h-6 w-6 text-accent" />
-                      Option 2: Generate with AI
-                    </CardTitle>
-                    <CardDescription>
-                        Let AI generate subtitles for the entire media file.
-                        This may take several minutes.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="full-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
-                        <Languages className="h-4 w-4" />
-                        Transcription Language
-                      </Label>
-                      <Select
-                        value={fullTranscriptionLanguageOverride}
-                        onValueChange={(value) => {
-                          const lang = value as LanguageCode | "auto-detect";
-                          setFullTranscriptionLanguageOverride(lang);
-                          addLog(`Full transcription language override set to: ${lang}`, 'debug');
-                        }}
-                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                      >
-                        <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label="Select transcription language for full generation">
-                          <SelectValue placeholder="Select transcription language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LANGUAGE_OPTIONS.map((lang) => (
-                            <SelectItem key={lang.value} value={lang.value}>
-                              {lang.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                       <p className="text-xs text-muted-foreground mt-1">
-                        Uses the language selected here for this generation. Initial value from Settings.
+              <Card className={cn("shadow-lg", !mediaFile && "opacity-60 pointer-events-none")}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <WandSparkles className="h-6 w-6 text-accent" />
+                    Option 2: Generate with AI
+                  </CardTitle>
+                  <CardDescription>
+                      Let AI generate subtitles for the entire media file.
+                      {!mediaFile && " (Upload a media file first)"}
+                      {mediaFile && " This may take several minutes."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="full-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
+                      <Languages className="h-4 w-4" />
+                      Transcription Language
+                    </Label>
+                    <Select
+                      value={fullTranscriptionLanguageOverride}
+                      onValueChange={(value) => {
+                        const lang = value as LanguageCode | "auto-detect";
+                        setFullTranscriptionLanguageOverride(lang);
+                        addLog(`Full transcription language override set to: ${lang}`, 'debug');
+                      }}
+                      disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                    >
+                      <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label="Select transcription language for full generation">
+                        <SelectValue placeholder="Select transcription language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGE_OPTIONS.map((lang) => (
+                          <SelectItem key={lang.value} value={lang.value}>
+                            {lang.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                     <p className="text-xs text-muted-foreground mt-1">
+                      Uses the language selected here for this generation. Initial value from Settings.
+                    </p>
+                  </div>
+                  
+                  {isGeneratingFullTranscription && fullTranscriptionProgress ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-center">
+                        Transcription in progress...
+                        {fullTranscriptionProgress.currentStage && ` (${fullTranscriptionProgress.currentStage})`}
+                      </p>
+                      <Progress value={fullTranscriptionProgress.percentage} className="w-full" />
+                      <p className="text-xs text-muted-foreground text-center">
+                        Chunk {fullTranscriptionProgress.currentChunk} of {fullTranscriptionProgress.totalChunks} ({fullTranscriptionProgress.percentage}%)
                       </p>
                     </div>
-                    
-                    {isGeneratingFullTranscription && fullTranscriptionProgress ? (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-center">
-                          Transcription in progress...
-                          {fullTranscriptionProgress.currentStage && ` (${fullTranscriptionProgress.currentStage})`}
-                        </p>
-                        <Progress value={fullTranscriptionProgress.percentage} className="w-full" />
-                        <p className="text-xs text-muted-foreground text-center">
-                          Chunk {fullTranscriptionProgress.currentChunk} of {fullTranscriptionProgress.totalChunks} ({fullTranscriptionProgress.percentage}%)
-                        </p>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={handleGenerateFullTranscription}
-                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                        aria-label="Generate Full Subtitles with AI"
-                      >
-                        {isGeneratingFullTranscription ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            {fullTranscriptionProgress ? `Generating (${fullTranscriptionProgress.percentage}%)` : "Generating..." }
-                          </>
-                        ) : (
-                          "Generate Full Subtitles with AI"
-                        )}
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                  ) : (
+                    <Button
+                      onClick={handleGenerateFullTranscription}
+                      disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                      className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                      aria-label="Generate Full Subtitles with AI"
+                    >
+                      {isGeneratingFullTranscription ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {fullTranscriptionProgress ? `Generating (${fullTranscriptionProgress.percentage}%)` : "Generating..." }
+                        </>
+                      ) : (
+                        "Generate Full Subtitles with AI"
+                      )}
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Next Step</CardTitle>
@@ -893,18 +891,17 @@ export default function SubtitleSyncPage() {
         onClose={() => {
           setIsSettingsDialogOpen(false);
           addLog("Settings dialog closed.", "debug");
-          // Refresh language settings if they changed
           const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
             if (savedDefaultLang) {
                 if (editorTranscriptionLanguage !== savedDefaultLang) {
                     setEditorTranscriptionLanguage(savedDefaultLang);
                     addLog(`Editor transcription language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-                if (fullTranscriptionLanguageOverride !== savedDefaultLang) { // Also update override if it was matching default
+                if (fullTranscriptionLanguageOverride !== savedDefaultLang) { 
                     setFullTranscriptionLanguageOverride(savedDefaultLang);
                      addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-            } else { // If default was cleared, reset to auto-detect
+            } else { 
                 if (editorTranscriptionLanguage !== "auto-detect") {
                     setEditorTranscriptionLanguage("auto-detect");
                     addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");
@@ -936,4 +933,3 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
-
