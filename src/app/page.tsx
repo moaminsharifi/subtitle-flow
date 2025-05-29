@@ -577,268 +577,276 @@ export default function SubtitleSyncPage() {
         <p className="text-muted-foreground">{getStepTitle()}</p>
       </header>
 
-      <main className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Media Player / Initial Uploader Section */}
-        <div className="space-y-6 flex flex-col h-full">
-          {currentStep === 'upload' && !mediaFile && (
-            <MediaUploader
-              onMediaUpload={handleMediaUpload}
-              disabled={isGeneratingFullTranscription}
-              className="flex flex-col flex-grow"
-            />
-          )}
-           {mediaFile && (
-             <Card className="flex-grow shadow-lg sticky top-6 animate-fade-in"> 
-               <CardContent className="p-4 h-full">
-                 <MediaPlayer
-                   mediaFile={mediaFile}
-                   activeSubtitlesToDisplay={currentStep === 'edit' && activeTrack ? activeTrack.entries : []}
-                   onTimeUpdate={handleTimeUpdate}
-                   onShiftTime={handleShiftTime}
-                   playerRef={playerRef}
-                 />
-               </CardContent>
-             </Card>
-           )}
-           {currentStep === 'upload' && mediaFile && ( 
-            <MediaUploader 
-              onMediaUpload={handleMediaUpload} 
-              disabled={isGeneratingFullTranscription} 
-            />
-          )}
-        </div>
-
-        {/* Dynamic Content Section - Changes based on currentStep */}
-        <StepContentWrapper>
-          {currentStep === 'upload' && (
-            <>
-              <Card className="shadow-lg flex flex-col flex-grow">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                        <FileText className="h-6 w-6 text-primary" />
-                        Option 1: Upload Subtitle File
-                    </CardTitle>
-                    <CardDescription>Upload an existing .SRT or .VTT subtitle file.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription} />
+      <main className="flex-grow flex flex-col gap-6">
+        {/* Main 2-column content area (for Upload & Edit steps mostly) */}
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* === Left Column: Media Player / Initial Uploader Section === */}
+          <div className="space-y-6 flex flex-col h-full">
+            {currentStep === 'upload' && !mediaFile && (
+              <MediaUploader
+                onMediaUpload={handleMediaUpload}
+                disabled={isGeneratingFullTranscription}
+                className="flex flex-col flex-grow"
+              />
+            )}
+            {mediaFile && (
+              <Card className="flex-grow shadow-lg sticky top-6 animate-fade-in"> 
+                <CardContent className="p-4 h-full">
+                  <MediaPlayer
+                    mediaFile={mediaFile}
+                    activeSubtitlesToDisplay={currentStep === 'edit' && activeTrack ? activeTrack.entries : []}
+                    onTimeUpdate={handleTimeUpdate}
+                    onShiftTime={handleShiftTime}
+                    playerRef={playerRef}
+                  />
                 </CardContent>
               </Card>
-              
-              <Card className={cn("shadow-lg", !mediaFile && "opacity-60 pointer-events-none")}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <WandSparkles className="h-6 w-6 text-accent" />
-                    Option 2: Generate with AI
-                  </CardTitle>
-                  <CardDescription>
-                      Let AI generate subtitles for the entire media file.
-                      {!mediaFile && " (Upload a media file first)"}
-                      {mediaFile && " This may take several minutes."}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="full-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
-                      <Languages className="h-4 w-4" />
-                      Transcription Language
-                    </Label>
-                    <Select
-                      value={fullTranscriptionLanguageOverride}
-                      onValueChange={(value) => {
-                        const lang = value as LanguageCode | "auto-detect";
-                        setFullTranscriptionLanguageOverride(lang);
-                        addLog(`Full transcription language override set to: ${lang}`, 'debug');
-                      }}
-                      disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                    >
-                      <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label="Select transcription language for full generation">
-                        <SelectValue placeholder="Select transcription language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LANGUAGE_OPTIONS.map((lang) => (
-                          <SelectItem key={lang.value} value={lang.value}>
-                            {lang.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                     <p className="text-xs text-muted-foreground mt-1">
-                      Uses the language selected here for this generation. Initial value from Settings.
-                    </p>
-                  </div>
-                  
-                  {isGeneratingFullTranscription && fullTranscriptionProgress ? (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-center">
-                        Transcription in progress...
-                        {fullTranscriptionProgress.currentStage && ` (${fullTranscriptionProgress.currentStage})`}
-                      </p>
-                      <Progress value={fullTranscriptionProgress.percentage} className="w-full" />
-                      <p className="text-xs text-muted-foreground text-center">
-                        Chunk {fullTranscriptionProgress.currentChunk} of {fullTranscriptionProgress.totalChunks} ({fullTranscriptionProgress.percentage}%)
+            )}
+            {currentStep === 'upload' && mediaFile && ( 
+              <MediaUploader 
+                onMediaUpload={handleMediaUpload} 
+                disabled={isGeneratingFullTranscription} 
+              />
+            )}
+          </div>
+
+          {/* === Right Column: Dynamic Content (Upload Options / Editor / Exporter) === */}
+          {/* StepContentWrapper will render specific content based on currentStep */}
+          <StepContentWrapper>
+            {currentStep === 'upload' && (
+              <>
+                <Card className="shadow-lg flex flex-col flex-grow">
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                          <FileText className="h-6 w-6 text-primary" />
+                          Option 1: Upload Subtitle File
+                      </CardTitle>
+                      <CardDescription>Upload an existing .SRT or .VTT subtitle file.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription} />
+                  </CardContent>
+                </Card>
+                
+                <Card className={cn("shadow-lg", !mediaFile && "opacity-60 pointer-events-none")}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <WandSparkles className="h-6 w-6 text-accent" />
+                      Option 2: Generate with AI
+                    </CardTitle>
+                    <CardDescription>
+                        Let AI generate subtitles for the entire media file.
+                        {!mediaFile && " (Upload a media file first)"}
+                        {mediaFile && " This may take several minutes."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="full-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
+                        <Languages className="h-4 w-4" />
+                        Transcription Language
+                      </Label>
+                      <Select
+                        value={fullTranscriptionLanguageOverride}
+                        onValueChange={(value) => {
+                          const lang = value as LanguageCode | "auto-detect";
+                          setFullTranscriptionLanguageOverride(lang);
+                          addLog(`Full transcription language override set to: ${lang}`, 'debug');
+                        }}
+                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                      >
+                        <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label="Select transcription language for full generation">
+                          <SelectValue placeholder="Select transcription language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LANGUAGE_OPTIONS.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>
+                              {lang.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Uses the language selected here for this generation. Initial value from Settings.
                       </p>
                     </div>
-                  ) : (
+                    
+                    {isGeneratingFullTranscription && fullTranscriptionProgress ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-center">
+                          Transcription in progress...
+                          {fullTranscriptionProgress.currentStage && ` (${fullTranscriptionProgress.currentStage})`}
+                        </p>
+                        <Progress value={fullTranscriptionProgress.percentage} className="w-full" />
+                        <p className="text-xs text-muted-foreground text-center">
+                          Chunk {fullTranscriptionProgress.currentChunk} of {fullTranscriptionProgress.totalChunks} ({fullTranscriptionProgress.percentage}%)
+                        </p>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={handleGenerateFullTranscription}
+                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                        aria-label="Generate Full Subtitles with AI"
+                      >
+                        {isGeneratingFullTranscription ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {fullTranscriptionProgress ? `Generating (${fullTranscriptionProgress.percentage}%)` : "Generating..." }
+                          </>
+                        ) : (
+                          "Generate Full Subtitles with AI"
+                        )}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+                {/* "Next Step" card is REMOVED from here and placed below */}
+              </>
+            )}
+
+            {currentStep === 'edit' && (
+              <>
+                <Card className="shadow-md">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Track & Language Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="active-track-select">Active Subtitle Track</Label>
+                      <Select
+                        value={activeTrackId || ""}
+                        onValueChange={(trackId) => {
+                          setActiveTrackId(trackId);
+                          const selectedTrack = subtitleTracks.find(t => t.id === trackId);
+                          addLog(`Active track changed to: ${selectedTrack?.fileName || 'None'}`, 'debug');
+                        }}
+                        disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                      >
+                        <SelectTrigger id="active-track-select" className="w-full" aria-label="Select active subtitle track">
+                          <SelectValue placeholder="Select a subtitle track to edit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subtitleTracks.map((track) => (
+                            <SelectItem key={track.id} value={track.id}>
+                              {track.fileName} ({track.format.toUpperCase()}, {track.entries.length} cues)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {subtitleTracks.length === 0 && <p className="text-xs text-muted-foreground mt-1">No subtitle tracks loaded. Go back to Upload to add or generate one.</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="editor-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
+                          <Languages className="h-4 w-4" />
+                          Transcription Language (for AI segment regeneration)
+                      </Label>
+                      <Select
+                        value={editorTranscriptionLanguage}
+                        onValueChange={(value) => {
+                          const lang = value as LanguageCode | "auto-detect";
+                          setEditorTranscriptionLanguage(lang);
+                          addLog(`Editor transcription language for segment regeneration set to: ${lang}`, 'debug');
+                        }}
+                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                      >
+                        <SelectTrigger id="editor-transcription-language-select" className="w-full" aria-label="Select transcription language for segment regeneration">
+                          <SelectValue placeholder="Select transcription language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LANGUAGE_OPTIONS.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>
+                              {lang.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <div className="flex-grow min-h-[300px] lg:min-h-0">
+                  <SubtitleEditor
+                    activeTrack={activeTrack}
+                    onSubtitleChange={handleSubtitleChange}
+                    onSubtitleAdd={handleSubtitleAdd}
+                    onSubtitleDelete={handleSubtitleDelete}
+                    onRegenerateTranscription={handleRegenerateTranscription}
+                    isEntryTranscribing={isEntryTranscribing}
+                    currentTime={currentPlayerTime}
+                    disabled={editorDisabled}
+                    isAnyTranscriptionLoading={isAnyTranscriptionLoading || isGeneratingFullTranscription}
+                  />
+                </div>
+                <Card>
+                  <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
                     <Button
-                      onClick={handleGenerateFullTranscription}
-                      disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                      className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                      aria-label="Generate Full Subtitles with AI"
+                      onClick={() => handleGoToUpload(false)}
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      disabled={isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                      aria-label="Back to Uploads Step"
                     >
-                      {isGeneratingFullTranscription ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {fullTranscriptionProgress ? `Generating (${fullTranscriptionProgress.percentage}%)` : "Generating..." }
-                        </>
-                      ) : (
-                        "Generate Full Subtitles with AI"
-                      )}
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Back to Uploads
                     </Button>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Next Step</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                        Once your media is loaded and you've either uploaded subtitles or chosen to generate them, proceed to the editor.
-                    </p>
-                </CardContent>
-                <CardFooter className="p-4 pt-0">
-                  <Button
-                    onClick={handleProceedToEdit}
-                    disabled={!mediaFile || isGeneratingFullTranscription}
-                    className="w-full"
-                    aria-label="Proceed to Edit Step"
-                  >
-                    Proceed to Edit <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            </>
-          )}
-
-          {currentStep === 'edit' && (
-            <>
-              <Card className="shadow-md">
-                <CardHeader>
-                  <CardTitle className="text-lg">Track & Language Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="active-track-select">Active Subtitle Track</Label>
-                    <Select
-                      value={activeTrackId || ""}
-                      onValueChange={(trackId) => {
-                        setActiveTrackId(trackId);
-                        const selectedTrack = subtitleTracks.find(t => t.id === trackId);
-                        addLog(`Active track changed to: ${selectedTrack?.fileName || 'None'}`, 'debug');
-                      }}
-                      disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                    <Button
+                      onClick={handleProceedToExport}
+                      disabled={!activeTrack || !activeTrack.entries.length || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                      className="w-full sm:flex-1"
+                      aria-label="Proceed to Export Step"
                     >
-                      <SelectTrigger id="active-track-select" className="w-full" aria-label="Select active subtitle track">
-                        <SelectValue placeholder="Select a subtitle track to edit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subtitleTracks.map((track) => (
-                          <SelectItem key={track.id} value={track.id}>
-                            {track.fileName} ({track.format.toUpperCase()}, {track.entries.length} cues)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {subtitleTracks.length === 0 && <p className="text-xs text-muted-foreground mt-1">No subtitle tracks loaded. Go back to Upload to add or generate one.</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="editor-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
-                         <Languages className="h-4 w-4" />
-                         Transcription Language (for AI segment regeneration)
-                    </Label>
-                    <Select
-                      value={editorTranscriptionLanguage}
-                      onValueChange={(value) => {
-                        const lang = value as LanguageCode | "auto-detect";
-                        setEditorTranscriptionLanguage(lang);
-                        addLog(`Editor transcription language for segment regeneration set to: ${lang}`, 'debug');
-                      }}
-                      disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                    >
-                      <SelectTrigger id="editor-transcription-language-select" className="w-full" aria-label="Select transcription language for segment regeneration">
-                        <SelectValue placeholder="Select transcription language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LANGUAGE_OPTIONS.map((lang) => (
-                          <SelectItem key={lang.value} value={lang.value}>
-                            {lang.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <div className="flex-grow min-h-[300px] lg:min-h-0">
-                <SubtitleEditor
+                      Proceed to Export <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </>
+            )}
+
+            {currentStep === 'export' && (
+              <>
+                <SubtitleExporter
                   activeTrack={activeTrack}
-                  onSubtitleChange={handleSubtitleChange}
-                  onSubtitleAdd={handleSubtitleAdd}
-                  onSubtitleDelete={handleSubtitleDelete}
-                  onRegenerateTranscription={handleRegenerateTranscription}
-                  isEntryTranscribing={isEntryTranscribing}
-                  currentTime={currentPlayerTime}
-                  disabled={editorDisabled}
-                  isAnyTranscriptionLoading={isAnyTranscriptionLoading || isGeneratingFullTranscription}
+                  disabled={!activeTrack || !activeTrack.entries.length}
+                  addLog={addLog}
                 />
-              </div>
-              <Card>
-                <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
-                  <Button
-                    onClick={() => handleGoToUpload(false)}
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                    disabled={isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                    aria-label="Back to Uploads Step"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Uploads
-                  </Button>
-                  <Button
-                    onClick={handleProceedToExport}
-                    disabled={!activeTrack || !activeTrack.entries.length || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                    className="w-full sm:flex-1"
-                    aria-label="Proceed to Export Step"
-                  >
-                    Proceed to Export <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            </>
-          )}
+                <Card>
+                  <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
+                    <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label="Go back to Edit Step">
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Edit More
+                    </Button>
+                    <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label="Start Over and Clear All Data">
+                      <RotateCcw className="mr-2 h-4 w-4" /> Start Over (Clear Data)
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </>
+            )}
+          </StepContentWrapper>
+        </div>
 
-          {currentStep === 'export' && (
-            <>
-              <SubtitleExporter
-                activeTrack={activeTrack}
-                disabled={!activeTrack || !activeTrack.entries.length}
-                addLog={addLog}
-              />
-              <Card>
-                <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
-                  <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label="Go back to Edit Step">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Edit More
-                  </Button>
-                  <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label="Start Over and Clear All Data">
-                     <RotateCcw className="mr-2 h-4 w-4" /> Start Over (Clear Data)
-                  </Button>
-                </CardFooter>
-              </Card>
-            </>
-          )}
-        </StepContentWrapper>
+        {/* === Full-width "Next Step" Card (Only for Upload Step) === */}
+        {currentStep === 'upload' && (
+          <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Next Step</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                    Once your media is loaded and you've either uploaded subtitles or chosen to generate them, proceed to the editor.
+                </p>
+            </CardContent>
+            <CardFooter className="p-4 pt-0">
+              <Button
+                onClick={handleProceedToEdit}
+                disabled={!mediaFile || isGeneratingFullTranscription}
+                className="w-full"
+                aria-label="Proceed to Edit Step"
+              >
+                Proceed to Edit <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
       </main>
       <footer className="mt-8 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Subtitle Sync. Powered by Next.js & OpenAI.</p>
@@ -933,3 +941,6 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
+
+
+    
