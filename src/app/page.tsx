@@ -509,9 +509,10 @@ export default function SubtitleSyncPage() {
       return;
     }
     if (subtitleTracks.length === 0) {
-       const msg = "No Subtitles Yet: Proceeding to editor. You can add subtitles manually, upload a file, or generate with AI.";
-       toast({ title: "No Subtitles Yet", description: msg, variant: "default", duration: 5000 }); 
-       addLog(msg, 'info');
+       const msg = "Subtitles Required: Please upload or generate a subtitle track before proceeding to edit.";
+       toast({ title: "Subtitles Required", description: msg, variant: "destructive", duration: 5000 }); 
+       addLog(msg, 'warn');
+       return;
     }
     if (!activeTrackId && subtitleTracks.length > 0) {
       setActiveTrackId(subtitleTracks[0].id);
@@ -621,6 +622,7 @@ export default function SubtitleSyncPage() {
                           }}
                           className="w-full"
                           aria-label="Change current media file"
+                          disabled={isGeneratingFullTranscription}
                         >
                           <Pencil className="mr-2 h-4 w-4" /> Change Media File
                         </Button>
@@ -870,13 +872,13 @@ export default function SubtitleSyncPage() {
             </CardHeader>
             <CardContent>
                 <p className="text-sm text-muted-foreground mb-3">
-                    Once your media is loaded and you've either uploaded subtitles or chosen to generate them, proceed to the editor.
+                    Once your media is loaded and you've either uploaded or generated subtitles, proceed to the editor.
                 </p>
             </CardContent>
             <CardFooter className="p-4 pt-0">
               <Button
                 onClick={handleProceedToEdit}
-                disabled={!mediaFile || isGeneratingFullTranscription || isReplacingMedia}
+                disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isReplacingMedia}
                 className="w-full"
                 aria-label="Proceed to Edit Step"
               >
