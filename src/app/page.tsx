@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ScrollText, WandSparkles, Languages, FileText } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ScrollText, WandSparkles, Languages, FileText, Pencil, HelpCircle } from 'lucide-react';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,7 @@ export default function SubtitleSyncPage() {
   const [currentStep, setCurrentStep] = useState<AppStep>('upload');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [isDebugLogDialogOpen, setIsDebugLogDialogOpen] = useState(false);
+  const [isCheatsheetDialogOpen, setIsCheatsheetDialogOpen] = useState(false);
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
   const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
   const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
@@ -54,6 +55,8 @@ export default function SubtitleSyncPage() {
   const [editorTranscriptionLanguage, setEditorTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [fullTranscriptionLanguageOverride, setFullTranscriptionLanguageOverride] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
+  const [isReplacingMedia, setIsReplacingMedia] = useState<boolean>(false);
+
 
   const playerRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -101,12 +104,13 @@ export default function SubtitleSyncPage() {
       playerRef.current.pause();
     }
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
-    setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect");
+    setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect"); // Reset language override on new media
     addLog(`Full transcription language override reset to settings default: ${savedDefaultLang || "auto-detect"} on new media upload.`, "debug");
     
     const message = `Media Loaded: ${file.name} (Type: ${type}, Duration: ${duration.toFixed(2)}s)`;
     toast({ title: "Media Loaded", description: message, duration: 5000 });
     addLog(message, 'success');
+    setIsReplacingMedia(false); // Hide replacement uploader after new file is selected
   };
 
   const handleSubtitleUpload = (entries: SubtitleEntry[], fileName: string, format: SubtitleFormat) => {
@@ -383,6 +387,7 @@ export default function SubtitleSyncPage() {
       return;
     }
     
+    // Use fullTranscriptionLanguageOverride for full transcription
     const langForFullTranscription = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
 
     addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language (override): ${langForFullTranscription || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
@@ -545,6 +550,7 @@ export default function SubtitleSyncPage() {
       addLog(msg, 'info');
     }
     setCurrentStep('upload');
+    setIsReplacingMedia(false); // Ensure replacement uploader is hidden when going to upload
     addLog(`Navigated to Upload step. Reset: ${reset}`, 'debug');
   };
 
@@ -589,28 +595,62 @@ export default function SubtitleSyncPage() {
               />
             )}
             {mediaFile && (
-              <Card className="flex-grow shadow-lg sticky top-6 animate-fade-in"> 
-                <CardContent className="p-4 h-full">
-                  <MediaPlayer
-                    mediaFile={mediaFile}
-                    activeSubtitlesToDisplay={currentStep === 'edit' && activeTrack ? activeTrack.entries : []}
-                    onTimeUpdate={handleTimeUpdate}
-                    onShiftTime={handleShiftTime}
-                    playerRef={playerRef}
-                  />
+              <Card className={cn(
+                "shadow-lg animate-fade-in",
+                 // flex-grow ensures it takes space in edit/export too
+                (currentStep === 'upload' || currentStep === 'edit') ? "sticky top-6 flex-grow" : "flex-grow"
+              )}> 
+                <CardContent className="p-4 h-full flex flex-col">
+                  <div className="flex-grow">
+                    <MediaPlayer
+                      mediaFile={mediaFile}
+                      activeSubtitlesToDisplay={currentStep === 'edit' && activeTrack ? activeTrack.entries : []}
+                      onTimeUpdate={handleTimeUpdate}
+                      onShiftTime={handleShiftTime}
+                      playerRef={playerRef}
+                    />
+                  </div>
+                   {currentStep === 'upload' && (
+                    <div className="mt-4 pt-4 border-t">
+                      {!isReplacingMedia ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIsReplacingMedia(true);
+                            addLog("Media replacement uploader shown.", "debug");
+                          }}
+                          className="w-full"
+                          aria-label="Change current media file"
+                        >
+                          <Pencil className="mr-2 h-4 w-4" /> Change Media File
+                        </Button>
+                      ) : (
+                        <div className="w-full space-y-2">
+                          <MediaUploader
+                            onMediaUpload={handleMediaUpload}
+                            disabled={isGeneratingFullTranscription}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setIsReplacingMedia(false);
+                              addLog("Media replacement uploader hidden.", "debug");
+                            }}
+                            className="w-full"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            )}
-            {currentStep === 'upload' && mediaFile && ( 
-              <MediaUploader 
-                onMediaUpload={handleMediaUpload} 
-                disabled={isGeneratingFullTranscription} 
-              />
             )}
           </div>
 
           {/* === Right Column: Dynamic Content (Upload Options / Editor / Exporter) === */}
-          {/* StepContentWrapper will render specific content based on currentStep */}
           <StepContentWrapper>
             {currentStep === 'upload' && (
               <>
@@ -623,11 +663,11 @@ export default function SubtitleSyncPage() {
                       <CardDescription>Upload an existing .SRT or .VTT subtitle file.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                      <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription} />
+                      <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription || isReplacingMedia} />
                   </CardContent>
                 </Card>
                 
-                <Card className={cn("shadow-lg", !mediaFile && "opacity-60 pointer-events-none")}>
+                <Card className={cn("shadow-lg", (!mediaFile || isReplacingMedia) && "opacity-60 pointer-events-none")}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-xl">
                       <WandSparkles className="h-6 w-6 text-accent" />
@@ -635,8 +675,8 @@ export default function SubtitleSyncPage() {
                     </CardTitle>
                     <CardDescription>
                         Let AI generate subtitles for the entire media file.
-                        {!mediaFile && " (Upload a media file first)"}
-                        {mediaFile && " This may take several minutes."}
+                        {(!mediaFile || isReplacingMedia) && " (Upload or finalize media file first)"}
+                        {mediaFile && !isReplacingMedia && " This may take several minutes."}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -652,7 +692,7 @@ export default function SubtitleSyncPage() {
                           setFullTranscriptionLanguageOverride(lang);
                           addLog(`Full transcription language override set to: ${lang}`, 'debug');
                         }}
-                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                        disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                       >
                         <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label="Select transcription language for full generation">
                           <SelectValue placeholder="Select transcription language" />
@@ -684,7 +724,7 @@ export default function SubtitleSyncPage() {
                     ) : (
                       <Button
                         onClick={handleGenerateFullTranscription}
-                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                        disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                         className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
                         aria-label="Generate Full Subtitles with AI"
                       >
@@ -700,7 +740,6 @@ export default function SubtitleSyncPage() {
                     )}
                   </CardContent>
                 </Card>
-                {/* "Next Step" card is REMOVED from here and placed below */}
               </>
             )}
 
@@ -837,7 +876,7 @@ export default function SubtitleSyncPage() {
             <CardFooter className="p-4 pt-0">
               <Button
                 onClick={handleProceedToEdit}
-                disabled={!mediaFile || isGeneratingFullTranscription}
+                disabled={!mediaFile || isGeneratingFullTranscription || isReplacingMedia}
                 className="w-full"
                 aria-label="Proceed to Edit Step"
               >
@@ -917,6 +956,15 @@ export default function SubtitleSyncPage() {
         logs={logEntries}
         onClearLogs={clearLogs}
       />
+      <CheatsheetDialog
+        isOpen={isCheatsheetDialogOpen}
+        onClose={() => {
+            setIsCheatsheetDialogOpen(false);
+            addLog("Cheatsheet dialog closed.", "debug");
+        }}
+       />
     </div>
   );
 }
+
+    
