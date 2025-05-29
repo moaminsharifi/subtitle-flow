@@ -559,6 +559,13 @@ export default function SubtitleSyncPage() {
       default: return "Subtitle Sync";
     }
   };
+  
+  const StepContentWrapper = ({ children }: { children: React.ReactNode }) => (
+    <div className="space-y-6 flex flex-col h-full animate-fade-in" key={currentStep}>
+      {children}
+    </div>
+  );
+
 
   return (
     <div className="min-h-screen flex flex-col p-4 md:p-6 bg-background text-foreground relative">
@@ -574,7 +581,7 @@ export default function SubtitleSyncPage() {
             <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
           )}
            {mediaFile && (
-             <Card className="flex-grow shadow-lg sticky top-6"> {/* Sticky player for better UX on scroll */}
+             <Card className="flex-grow shadow-lg sticky top-6 animate-fade-in"> {/* Sticky player for better UX on scroll */}
                <CardContent className="p-4 h-full">
                  <MediaPlayer
                    mediaFile={mediaFile}
@@ -592,7 +599,7 @@ export default function SubtitleSyncPage() {
         </div>
 
         {/* Dynamic Content Section - Changes based on currentStep */}
-        <div className="space-y-6 flex flex-col h-full">
+        <StepContentWrapper>
           {currentStep === 'upload' && (
             <>
               <Card className="shadow-lg">
@@ -821,7 +828,7 @@ export default function SubtitleSyncPage() {
               </Card>
             </>
           )}
-        </div>
+        </StepContentWrapper>
       </main>
       <footer className="mt-8 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Subtitle Sync. Powered by Next.js & OpenAI.</p>
