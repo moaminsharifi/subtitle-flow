@@ -78,10 +78,12 @@ export default function SubtitleSyncPage() {
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     if (savedDefaultLang) {
       setEditorTranscriptionLanguage(savedDefaultLang);
-      setFullTranscriptionLanguageOverride(savedDefaultLang);
-      addLog(`Editor and Full Transcription language initialized from settings: ${savedDefaultLang}`, "debug");
+      setFullTranscriptionLanguageOverride(savedDefaultLang); // Initialize override with saved default
+      addLog(`Editor and Full Transcription language override initialized from settings: ${savedDefaultLang}`, "debug");
     } else {
-      addLog("No default transcription language in settings, using 'auto-detect'.", "debug");
+      setEditorTranscriptionLanguage("auto-detect");
+      setFullTranscriptionLanguageOverride("auto-detect");
+      addLog("No default transcription language in settings, using 'auto-detect' for both.", "debug");
     }
   }, [addLog]);
 
@@ -98,6 +100,7 @@ export default function SubtitleSyncPage() {
       playerRef.current.currentTime = 0;
       playerRef.current.pause();
     }
+    // When new media is uploaded, reset full transcription language override to global default
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect");
     addLog(`Full transcription language override reset to settings default: ${savedDefaultLang || "auto-detect"} on new media upload.`, "debug");
@@ -576,10 +579,14 @@ export default function SubtitleSyncPage() {
       </header>
 
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Media Player Section - Always visible if mediaFile exists, or placeholder */}
-        <div className="space-y-6 flex flex-col">
+        {/* Media Player / Initial Uploader Section */}
+        <div className="space-y-6 flex flex-col h-full">
           {currentStep === 'upload' && !mediaFile && (
-            <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
+            <MediaUploader
+              onMediaUpload={handleMediaUpload}
+              disabled={isGeneratingFullTranscription}
+              className="flex flex-col flex-grow"
+            />
           )}
            {mediaFile && (
              <Card className="flex-grow shadow-lg sticky top-6 animate-fade-in"> 
@@ -595,7 +602,11 @@ export default function SubtitleSyncPage() {
              </Card>
            )}
            {currentStep === 'upload' && mediaFile && ( 
-            <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
+            <MediaUploader 
+              onMediaUpload={handleMediaUpload} 
+              disabled={isGeneratingFullTranscription} 
+              // This uploader is secondary, so no flex-grow needed for same height
+            />
           )}
         </div>
 
@@ -882,17 +893,18 @@ export default function SubtitleSyncPage() {
         onClose={() => {
           setIsSettingsDialogOpen(false);
           addLog("Settings dialog closed.", "debug");
+          // Refresh language settings if they changed
           const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
             if (savedDefaultLang) {
                 if (editorTranscriptionLanguage !== savedDefaultLang) {
                     setEditorTranscriptionLanguage(savedDefaultLang);
                     addLog(`Editor transcription language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-                if (fullTranscriptionLanguageOverride !== savedDefaultLang) {
+                if (fullTranscriptionLanguageOverride !== savedDefaultLang) { // Also update override if it was matching default
                     setFullTranscriptionLanguageOverride(savedDefaultLang);
                      addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-            } else { 
+            } else { // If default was cleared, reset to auto-detect
                 if (editorTranscriptionLanguage !== "auto-detect") {
                     setEditorTranscriptionLanguage("auto-detect");
                     addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");
@@ -924,3 +936,4 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
+

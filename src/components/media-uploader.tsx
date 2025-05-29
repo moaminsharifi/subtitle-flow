@@ -6,15 +6,17 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UploadCloud } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface MediaUploaderProps {
   onMediaUpload: (file: File, url: string, type: 'audio' | 'video', duration: number) => void;
   disabled?: boolean;
+  className?: string;
 }
 
-export function MediaUploader({ onMediaUpload, disabled }: MediaUploaderProps) {
+export function MediaUploader({ onMediaUpload, disabled, className }: MediaUploaderProps) {
   const [fileName, setFileName] = useState<string | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,12 +39,13 @@ export function MediaUploader({ onMediaUpload, disabled }: MediaUploaderProps) {
   };
 
   return (
-    <Card className="shadow-lg">
+    <Card className={cn("shadow-lg", className)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
           <UploadCloud className="h-6 w-6 text-primary" />
           Upload Media
         </CardTitle>
+        <CardDescription>Select an audio or video file to get started.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid w-full max-w-sm items-center gap-1.5">
@@ -65,3 +68,4 @@ export function MediaUploader({ onMediaUpload, disabled }: MediaUploaderProps) {
     </Card>
   );
 }
+
