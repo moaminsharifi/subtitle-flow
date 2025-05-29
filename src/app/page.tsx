@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList, WandSparkles, HelpCircle, Languages, FileText } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ScrollText, WandSparkles, Languages, FileText } from 'lucide-react';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,6 @@ export default function SubtitleSyncPage() {
   const [currentStep, setCurrentStep] = useState<AppStep>('upload');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [isDebugLogDialogOpen, setIsDebugLogDialogOpen] = useState(false);
-  const [isCheatsheetDialogOpen, setIsCheatsheetDialogOpen] = useState(false);
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
   const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
   const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
@@ -853,19 +852,6 @@ export default function SubtitleSyncPage() {
       </footer>
       
       <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
-        <Button
-          variant="outline"
-          size="icon"
-          className="rounded-full shadow-lg"
-          onClick={() => {
-            setIsCheatsheetDialogOpen(true);
-            addLog("Cheatsheet dialog opened.", "debug");
-          }}
-          aria-label="Open Keyboard Cheatsheet"
-          title="Open Keyboard Cheatsheet"
-        >
-          <HelpCircle className="h-5 w-5" />
-        </Button>
          <Button
           variant="outline"
           size="icon"
@@ -877,7 +863,7 @@ export default function SubtitleSyncPage() {
           aria-label="Open Debug Logs"
           title="Open Debug Logs"
         >
-          <ClipboardList className="h-5 w-5" />
+          <ScrollText className="h-5 w-5" />
         </Button>
         <Button
           variant="outline"
@@ -931,16 +917,6 @@ export default function SubtitleSyncPage() {
         logs={logEntries}
         onClearLogs={clearLogs}
       />
-      <CheatsheetDialog
-        isOpen={isCheatsheetDialogOpen}
-        onClose={() => {
-          setIsCheatsheetDialogOpen(false);
-          addLog("Cheatsheet dialog closed.", "debug");
-        }}
-      />
     </div>
   );
 }
-
-
-    
