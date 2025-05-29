@@ -103,7 +103,7 @@ export default function SubtitleSyncPage() {
     addLog(`Full transcription language override reset to settings default: ${savedDefaultLang || "auto-detect"} on new media upload.`, "debug");
     
     const message = `Media Loaded: ${file.name} (Type: ${type}, Duration: ${duration.toFixed(2)}s)`;
-    toast({ title: "Media Loaded", description: message });
+    toast({ title: "Media Loaded", description: message, duration: 5000 });
     addLog(message, 'success');
   };
 
@@ -119,7 +119,7 @@ export default function SubtitleSyncPage() {
     setSubtitleTracks(prevTracks => [...prevTracks, newTrack]);
     setActiveTrackId(newTrackId);
     const message = `Subtitle Track Loaded: ${fileName} (Format: ${format.toUpperCase()}, Cues: ${entries.length})`;
-    toast({ title: "Subtitle Track Loaded", description: message });
+    toast({ title: "Subtitle Track Loaded", description: message, duration: 5000 });
     addLog(message, 'success');
   };
 
@@ -141,7 +141,7 @@ export default function SubtitleSyncPage() {
   const handleSubtitleAdd = () => {
     if (!activeTrackId || !activeTrack) {
       const msg = "Cannot add subtitle: No Active Track. Please select or upload a subtitle track first.";
-      toast({ title: "No Active Track", description: msg, variant: "destructive" });
+      toast({ title: "No Active Track", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'warn');
       return;
     }
@@ -176,7 +176,7 @@ export default function SubtitleSyncPage() {
         if (eTime <= sTime && mediaDur > 0) {
              if(mediaDur - sTime < 0.001 && sTime === mediaDur) {
                 const errorMsg = `Cannot add subtitle at the very end of media. Times: ${sTime.toFixed(3)}s - ${eTime.toFixed(3)}s`;
-                toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive"});
+                toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive", duration: 5000});
                 addLog(errorMsg, 'error');
                 return;
              }
@@ -185,7 +185,7 @@ export default function SubtitleSyncPage() {
              if (sTime < 0) sTime = 0;
              if (eTime <= sTime && mediaDur > 0) {
                  const errorMsg = `Could not determine a valid time range at media end. Times: ${sTime.toFixed(3)}s - ${eTime.toFixed(3)}s`;
-                 toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive"});
+                 toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive", duration: 5000});
                  addLog(errorMsg, 'error');
                  return;
              }
@@ -200,7 +200,7 @@ export default function SubtitleSyncPage() {
 
     if (finalEndTime <= finalStartTime) {
         const errorMsg = `Could not determine a valid time range for new subtitle. Start: ${finalStartTime.toFixed(3)}s, End: ${finalEndTime.toFixed(3)}s. Media Duration: ${mediaFile?.duration.toFixed(3)}s`;
-        toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive"});
+        toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive", duration: 5000});
         addLog(errorMsg, 'error');
         return;
     }
@@ -222,7 +222,7 @@ export default function SubtitleSyncPage() {
       })
     );
     const successMsg = `Subtitle Added: New cue from ${finalStartTime.toFixed(3)}s to ${finalEndTime.toFixed(3)}s.`;
-    toast({ title: "Subtitle Added", description: successMsg });
+    toast({ title: "Subtitle Added", description: successMsg, duration: 5000 });
     addLog(successMsg, 'success');
   };
 
@@ -238,7 +238,7 @@ export default function SubtitleSyncPage() {
       })
     );
     const message = `Subtitle cue ${entryId} deleted.`;
-    toast({ title: "Subtitle Deleted", description: "Cue removed from active track."});
+    toast({ title: "Subtitle Deleted", description: "Cue removed from active track.", duration: 5000});
     addLog(message, 'info');
   };
 
@@ -277,14 +277,14 @@ export default function SubtitleSyncPage() {
       })
     );
     const message = `Subtitles Shifted: Active track subtitles shifted by ${offset.toFixed(1)}s for track ${activeTrack.fileName}.`;
-    toast({ title: "Subtitles Shifted", description: message });
+    toast({ title: "Subtitles Shifted", description: message, duration: 5000 });
     addLog(message, 'info');
   };
 
   const handleRegenerateTranscription = async (entryId: string) => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
       const msg = "A transcription process is already running. Please wait.";
-      toast({ title: "Transcription Busy", description: msg, variant: "destructive" });
+      toast({ title: "Transcription Busy", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'warn');
       return;
     }
@@ -292,7 +292,7 @@ export default function SubtitleSyncPage() {
     addLog(`Transcription regeneration started for entry ID: ${entryId}.`, 'debug');
     if (!mediaFile || !activeTrack) {
       const msg = "Transcription Error: Media file or active track not found.";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      toast({ title: "Error", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
@@ -300,7 +300,7 @@ export default function SubtitleSyncPage() {
     const entry = activeTrack.entries.find(e => e.id === entryId);
     if (!entry) {
       const msg = `Transcription Error: Subtitle entry ID ${entryId} not found.`;
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      toast({ title: "Error", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
@@ -310,7 +310,7 @@ export default function SubtitleSyncPage() {
 
     if (!openAIToken) {
       const msg = "OpenAI Token Missing. Please set your OpenAI API token in Settings.";
-      toast({ title: "OpenAI Token Missing", description: msg, variant: "destructive" });
+      toast({ title: "OpenAI Token Missing", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
@@ -337,18 +337,18 @@ export default function SubtitleSyncPage() {
       if (regeneratedText) {
         handleSubtitleChange(entryId, { text: regeneratedText });
         const successMsg = `Transcription Updated for entry ${entryId} using ${selectedOpenAIModel}. New text: "${regeneratedText.substring(0, 30)}..."`;
-        toast({ title: "Transcription Updated", description: successMsg });
+        toast({ title: "Transcription Updated", description: successMsg, duration: 5000 });
         addLog(successMsg, 'success');
       } else {
         const warnMsg = `Transcription for entry ${entryId} resulted in empty text from the AI model.`;
-        toast({ title: "Transcription Potentially Failed", description: warnMsg, variant: "destructive" });
+        toast({ title: "Transcription Potentially Failed", description: warnMsg, variant: "destructive", duration: 5000 });
         addLog(warnMsg, 'warn');
          handleSubtitleChange(entryId, { text: "" });
       }
     } catch (error: any) {
       console.error("Transcription regeneration error:", error);
       const errorMsg = `Transcription Error for entry ${entryId}: ${error.message || "Failed to regenerate transcription."}`;
-      toast({ title: "Transcription Error", description: errorMsg, variant: "destructive" });
+      toast({ title: "Transcription Error", description: errorMsg, variant: "destructive", duration: 5000 });
       addLog(errorMsg, 'error');
     } finally {
       setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: false }));
@@ -360,13 +360,13 @@ export default function SubtitleSyncPage() {
   const handleGenerateFullTranscription = async () => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
       const msg = "A transcription process is already running. Please wait.";
-      toast({ title: "Transcription Busy", description: msg, variant: "destructive" });
+      toast({ title: "Transcription Busy", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'warn');
       return;
     }
     if (!mediaFile) {
       const msg = "Full Transcription Error: No media file loaded.";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      toast({ title: "Error", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
@@ -376,11 +376,12 @@ export default function SubtitleSyncPage() {
 
     if (!openAIToken) {
       const msg = "OpenAI Token Missing. Please set your OpenAI API token in Settings.";
-      toast({ title: "OpenAI Token Missing", description: msg, variant: "destructive" });
+      toast({ title: "OpenAI Token Missing", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
 
+    // Use the fullTranscriptionLanguageOverride for this specific generation job
     const langForFullTranscription = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
 
     addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language (override): ${langForFullTranscription || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
@@ -400,7 +401,7 @@ export default function SubtitleSyncPage() {
         const baseProgress = {
           currentChunk: i + 1,
           totalChunks: numChunks,
-          percentage: Math.round(((i) / numChunks) * 100), // Percentage at start of chunk processing
+          percentage: Math.round(((i) / numChunks) * 100), 
         };
 
         setFullTranscriptionProgress({ ...baseProgress, currentStage: "Slicing audio..." });
@@ -462,7 +463,7 @@ export default function SubtitleSyncPage() {
       const newTrack: SubtitleTrack = {
         id: newTrackId,
         fileName: newTrackFileName,
-        format: 'srt', // Default to SRT for generated tracks
+        format: 'srt', 
         entries: allSubtitleEntries,
       };
 
@@ -479,7 +480,7 @@ export default function SubtitleSyncPage() {
     } catch (error: any) {
       console.error("Full transcription error:", error);
       const errorMsg = `Full Transcription Error: ${error.message || "Failed to generate full transcription."}`;
-      toast({ title: "Full Transcription Error", description: errorMsg, variant: "destructive" });
+      toast({ title: "Full Transcription Error", description: errorMsg, variant: "destructive", duration: 5000 });
       addLog(errorMsg, 'error');
     } finally {
       setIsGeneratingFullTranscription(false);
@@ -497,13 +498,13 @@ export default function SubtitleSyncPage() {
   const handleProceedToEdit = () => {
     if (!mediaFile) {
       const msg = "Media Required: Please upload a media file first.";
-      toast({ title: "Media Required", description: msg, variant: "destructive" });
+      toast({ title: "Media Required", description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'warn');
       return;
     }
     if (subtitleTracks.length === 0) {
        const msg = "No Subtitles Yet: Proceeding to editor. You can add subtitles manually, upload a file, or generate with AI.";
-       toast({ title: "No Subtitles Yet", description: msg, variant: "default" }); // Not destructive
+       toast({ title: "No Subtitles Yet", description: msg, variant: "default", duration: 5000 }); 
        addLog(msg, 'info');
     }
     if (!activeTrackId && subtitleTracks.length > 0) {
@@ -517,7 +518,7 @@ export default function SubtitleSyncPage() {
   const handleProceedToExport = () => {
     if (!activeTrack || activeTrack.entries.length === 0) {
       const msg = "No Subtitles to Export: The active track has no subtitles to export.";
-      toast({ title: "No Subtitles to Export", description: msg, variant: "destructive"});
+      toast({ title: "No Subtitles to Export", description: msg, variant: "destructive", duration: 5000});
       addLog(msg, 'warn');
       return;
     }
@@ -539,7 +540,7 @@ export default function SubtitleSyncPage() {
         playerRef.current.load();
       }
       const msg = "Project Reset: All media and subtitles cleared.";
-      toast({ title: "Project Reset", description: msg });
+      toast({ title: "Project Reset", description: msg, duration: 5000 });
       addLog(msg, 'info');
     }
     setCurrentStep('upload');
@@ -581,7 +582,7 @@ export default function SubtitleSyncPage() {
             <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
           )}
            {mediaFile && (
-             <Card className="flex-grow shadow-lg sticky top-6 animate-fade-in"> {/* Sticky player for better UX on scroll */}
+             <Card className="flex-grow shadow-lg sticky top-6 animate-fade-in"> 
                <CardContent className="p-4 h-full">
                  <MediaPlayer
                    mediaFile={mediaFile}
@@ -593,7 +594,7 @@ export default function SubtitleSyncPage() {
                </CardContent>
              </Card>
            )}
-           {currentStep === 'upload' && mediaFile && ( /* Show uploader again if media exists but user wants to change */
+           {currentStep === 'upload' && mediaFile && ( 
             <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
           )}
         </div>
@@ -602,7 +603,7 @@ export default function SubtitleSyncPage() {
         <StepContentWrapper>
           {currentStep === 'upload' && (
             <>
-              <Card className="shadow-lg">
+              <Card className="shadow-lg flex flex-col flex-grow">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-xl">
                         <FileText className="h-6 w-6 text-primary" />
@@ -610,7 +611,7 @@ export default function SubtitleSyncPage() {
                     </CardTitle>
                     <CardDescription>Upload an existing .SRT or .VTT subtitle file.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                     <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription} />
                 </CardContent>
               </Card>
@@ -891,7 +892,7 @@ export default function SubtitleSyncPage() {
                     setFullTranscriptionLanguageOverride(savedDefaultLang);
                      addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-            } else { // Default language was cleared in settings
+            } else { 
                 if (editorTranscriptionLanguage !== "auto-detect") {
                     setEditorTranscriptionLanguage("auto-detect");
                     addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");

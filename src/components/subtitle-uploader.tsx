@@ -4,10 +4,10 @@
 import type React from 'react';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+// Button removed as it's not used here
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileUp } from 'lucide-react';
+// Card, CardContent, CardHeader, CardTitle removed
+// FileUp icon removed as the title is now handled by the parent
 import { useToast } from '@/hooks/use-toast';
 import { parseSrt, parseVtt } from '@/lib/subtitle-utils';
 import type { SubtitleEntry, SubtitleFormat } from '@/lib/types';
@@ -43,7 +43,7 @@ export function SubtitleUploader({ onSubtitleUpload, disabled }: SubtitleUploade
             return;
           }
           onSubtitleUpload(entries, file.name, format);
-          toast({ title: "Success", description: `${file.name} uploaded and parsed.` });
+          // Toast moved to page.tsx for consistency with other uploads
         } catch (error) {
           toast({ title: "Parsing Error", description: `Failed to parse ${file.name}.`, variant: "destructive" });
           console.error("Parsing error:", error);
@@ -58,32 +58,28 @@ export function SubtitleUploader({ onSubtitleUpload, disabled }: SubtitleUploade
   };
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
-          <FileUp className="h-6 w-6 text-primary" />
-          Upload Existing Subtitle File
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid w-full max-w-sm items-center gap-1.5">
-          <Label htmlFor="subtitle-file-input" className="font-semibold">Subtitle File (.srt, .vtt)</Label>
-          <Input 
-            id="subtitle-file-input" 
-            type="file" 
-            accept=".srt,.vtt" 
-            onChange={handleFileChange}
-            className="file:text-primary file:font-semibold hover:file:bg-primary/10"
-            disabled={disabled}
-            aria-describedby="subtitle-file-description"
-          />
-           <p id="subtitle-file-description" className="text-sm text-muted-foreground sr-only">
-            Select an SRT or VTT subtitle file to upload. Press Enter or Space to open file dialog when focused.
-          </p>
-        </div>
-        {fileName && <p className="text-sm text-muted-foreground">Selected for upload: {fileName}</p>}
-         {!fileName && <p className="text-sm text-muted-foreground">Or use the AI generation option below if media is loaded.</p>}
-      </CardContent>
-    </Card>
+    <div className="space-y-3"> {/* Provides internal spacing */}
+      <div className="grid w-full items-center gap-1.5">
+        <Label htmlFor="subtitle-file-input" className="font-semibold">Subtitle File (.srt, .vtt)</Label>
+        <Input 
+          id="subtitle-file-input" 
+          type="file" 
+          accept=".srt,.vtt" 
+          onChange={handleFileChange}
+          className="file:text-primary file:font-semibold hover:file:bg-primary/10"
+          disabled={disabled}
+          aria-describedby="subtitle-file-description"
+        />
+        <p id="subtitle-file-description" className="text-sm text-muted-foreground sr-only">
+          Select an SRT or VTT subtitle file to upload. Press Enter or Space to open file dialog when focused.
+        </p>
+      </div>
+      {fileName && <p className="text-sm text-muted-foreground">Selected: {fileName}</p>}
+      {!fileName && (
+        <p className="text-sm text-muted-foreground">
+          Select a .SRT or .VTT file.
+        </p>
+      )}
+    </div>
   );
 }
