@@ -12,13 +12,13 @@ import { SubtitleExporter } from '@/components/subtitle-exporter';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { DebugLogDialog } from '@/components/debug-log-dialog';
 import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList, WandSparkles, HelpCircle, Languages } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ClipboardList, WandSparkles, HelpCircle, Languages, FileText } from 'lucide-react';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 
@@ -98,13 +98,10 @@ export default function SubtitleSyncPage() {
       playerRef.current.currentTime = 0;
       playerRef.current.pause();
     }
-    // Initialize full transcription language override based on settings when new media is loaded
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
-    if (savedDefaultLang) {
-      setFullTranscriptionLanguageOverride(savedDefaultLang);
-    } else {
-      setFullTranscriptionLanguageOverride("auto-detect");
-    }
+    setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect");
+    addLog(`Full transcription language override reset to settings default: ${savedDefaultLang || "auto-detect"} on new media upload.`, "debug");
+    
     const message = `Media Loaded: ${file.name} (Type: ${type}, Duration: ${duration.toFixed(2)}s)`;
     toast({ title: "Media Loaded", description: message });
     addLog(message, 'success');
@@ -450,11 +447,10 @@ export default function SubtitleSyncPage() {
           });
            addLog(`Chunk ${i+1} (GPT-4o like model): Added as a single entry for the chunk.`, 'debug');
         }
-        // Update percentage to reflect completion of this chunk for the main progress bar
          setFullTranscriptionProgress(prev => ({
             ...prev!,
             percentage: Math.round(((i + 1) / numChunks) * 100),
-            currentStage: null, // Stage complete for this chunk
+            currentStage: null, 
         }));
       }
 
@@ -466,7 +462,7 @@ export default function SubtitleSyncPage() {
       const newTrack: SubtitleTrack = {
         id: newTrackId,
         fileName: newTrackFileName,
-        format: 'srt',
+        format: 'srt', // Default to SRT for generated tracks
         entries: allSubtitleEntries,
       };
 
@@ -507,7 +503,7 @@ export default function SubtitleSyncPage() {
     }
     if (subtitleTracks.length === 0) {
        const msg = "No Subtitles Yet: Proceeding to editor. You can add subtitles manually, upload a file, or generate with AI.";
-       toast({ title: "No Subtitles Yet", description: msg, variant: "default" });
+       toast({ title: "No Subtitles Yet", description: msg, variant: "default" }); // Not destructive
        addLog(msg, 'info');
     }
     if (!activeTrackId && subtitleTracks.length > 0) {
@@ -557,10 +553,10 @@ export default function SubtitleSyncPage() {
 
   const getStepTitle = () => {
     switch (currentStep) {
-      case 'upload': return "Step 1 of 3: Upload Files or Generate Subtitles";
-      case 'edit': return "Step 2 of 3: Edit Subtitles";
-      case 'export': return "Step 3 of 3: Export Subtitles";
-      default: return "";
+      case 'upload': return "Step 1 of 3: Prepare Your Media & Subtitles";
+      case 'edit': return "Step 2 of 3: Edit & Refine Subtitles";
+      case 'export': return "Step 3 of 3: Export Your Work";
+      default: return "Subtitle Sync";
     }
   };
 
@@ -572,39 +568,57 @@ export default function SubtitleSyncPage() {
       </header>
 
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Media Player Section - Always visible if mediaFile exists, or placeholder */}
         <div className="space-y-6 flex flex-col">
           {currentStep === 'upload' && !mediaFile && (
             <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
           )}
-          {mediaFile && (
-            <Card className="flex-grow shadow-lg">
-              <CardContent className="p-4 h-full">
-                <MediaPlayer
-                  mediaFile={mediaFile}
-                  activeSubtitlesToDisplay={currentStep === 'edit' && activeTrack ? activeTrack.entries : []}
-                  onTimeUpdate={handleTimeUpdate}
-                  onShiftTime={handleShiftTime}
-                  playerRef={playerRef}
-                />
-              </CardContent>
-            </Card>
-          )}
-           {currentStep === 'upload' && mediaFile && (
+           {mediaFile && (
+             <Card className="flex-grow shadow-lg sticky top-6"> {/* Sticky player for better UX on scroll */}
+               <CardContent className="p-4 h-full">
+                 <MediaPlayer
+                   mediaFile={mediaFile}
+                   activeSubtitlesToDisplay={currentStep === 'edit' && activeTrack ? activeTrack.entries : []}
+                   onTimeUpdate={handleTimeUpdate}
+                   onShiftTime={handleShiftTime}
+                   playerRef={playerRef}
+                 />
+               </CardContent>
+             </Card>
+           )}
+           {currentStep === 'upload' && mediaFile && ( /* Show uploader again if media exists but user wants to change */
             <MediaUploader onMediaUpload={handleMediaUpload} disabled={isGeneratingFullTranscription} />
           )}
         </div>
 
+        {/* Dynamic Content Section - Changes based on currentStep */}
         <div className="space-y-6 flex flex-col h-full">
           {currentStep === 'upload' && (
             <>
-              <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription} />
+              <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <FileText className="h-6 w-6 text-primary" />
+                        Option 1: Upload Subtitle File
+                    </CardTitle>
+                    <CardDescription>Upload an existing .SRT or .VTT subtitle file.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription} />
+                </CardContent>
+              </Card>
+              
               {mediaFile && (
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-xl">
                       <WandSparkles className="h-6 w-6 text-accent" />
-                      Generate with AI
+                      Option 2: Generate with AI
                     </CardTitle>
+                    <CardDescription>
+                        Let AI generate subtitles for the entire media file.
+                        This may take several minutes.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
@@ -633,7 +647,7 @@ export default function SubtitleSyncPage() {
                         </SelectContent>
                       </Select>
                        <p className="text-xs text-muted-foreground mt-1">
-                        Uses the language selected here for this generation. Default is from settings.
+                        Uses the language selected here for this generation. Initial value from Settings.
                       </p>
                     </div>
                     
@@ -649,33 +663,35 @@ export default function SubtitleSyncPage() {
                         </p>
                       </div>
                     ) : (
-                      <>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Alternatively, let AI generate subtitles for the entire media file.
-                          This may take several minutes depending on the media length.
-                        </p>
-                        <Button
-                          onClick={handleGenerateFullTranscription}
-                          disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                          className="w-full bg-accent hover:bg-accent/90"
-                          aria-label="Generate Full Subtitles with AI"
-                        >
-                          {isGeneratingFullTranscription ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              {fullTranscriptionProgress ? `Generating (${fullTranscriptionProgress.percentage}%)` : "Generating..." }
-                            </>
-                          ) : (
-                            "Generate Full Subtitles with AI"
-                          )}
-                        </Button>
-                      </>
+                      <Button
+                        onClick={handleGenerateFullTranscription}
+                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                        aria-label="Generate Full Subtitles with AI"
+                      >
+                        {isGeneratingFullTranscription ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {fullTranscriptionProgress ? `Generating (${fullTranscriptionProgress.percentage}%)` : "Generating..." }
+                          </>
+                        ) : (
+                          "Generate Full Subtitles with AI"
+                        )}
+                      </Button>
                     )}
                   </CardContent>
                 </Card>
               )}
               <Card>
-                <CardFooter className="p-4">
+                <CardHeader>
+                    <CardTitle className="text-lg">Next Step</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">
+                        Once your media is loaded and you've either uploaded subtitles or chosen to generate them, proceed to the editor.
+                    </p>
+                </CardContent>
+                <CardFooter className="p-4 pt-0">
                   <Button
                     onClick={handleProceedToEdit}
                     disabled={!mediaFile || isGeneratingFullTranscription}
@@ -693,7 +709,7 @@ export default function SubtitleSyncPage() {
             <>
               <Card className="shadow-md">
                 <CardHeader>
-                  <CardTitle className="text-lg">Track & Language</CardTitle>
+                  <CardTitle className="text-lg">Track & Language Settings</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
@@ -718,6 +734,7 @@ export default function SubtitleSyncPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {subtitleTracks.length === 0 && <p className="text-xs text-muted-foreground mt-1">No subtitle tracks loaded. Go back to Upload to add or generate one.</p>}
                   </div>
                   <div>
                     <Label htmlFor="editor-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
@@ -867,7 +884,7 @@ export default function SubtitleSyncPage() {
                     setFullTranscriptionLanguageOverride(savedDefaultLang);
                      addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-            } else {
+            } else { // Default language was cleared in settings
                 if (editorTranscriptionLanguage !== "auto-detect") {
                     setEditorTranscriptionLanguage("auto-detect");
                     addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");
@@ -899,4 +916,3 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
-
