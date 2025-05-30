@@ -20,48 +20,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import type { AppSettings, OpenAIModelType, LogEntry, LanguageCode, Theme } from '@/lib/types';
-import { LANGUAGE_OPTIONS, THEME_KEY } from '@/lib/types';
+import type { AppSettings, OpenAIModelType, LogEntry, LanguageCode, Theme, Language } from '@/lib/types';
+import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY } from '@/lib/types';
 import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
-import { HelpCircle, Sun, Moon, Laptop } from 'lucide-react';
-
-interface SettingsDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  addLog: (message: string, type?: LogEntry['type']) => void;
-}
+import { HelpCircle, Sun, Moon, Laptop, Languages } from 'lucide-react';
+import { useTranslation } from '@/contexts/LanguageContext'; // Import useTranslation
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
-const GROQ_TOKEN_KEY = 'app-settings-groq-token'; 
+const GROQ_TOKEN_KEY = 'app-settings-groq-token';
 const OPENAI_MODEL_KEY = 'app-settings-openai-model';
 const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
 
 
 export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps) {
+  const { t, language: currentAppLanguage, setLanguage: setAppLanguage, dir } = useTranslation(); // Get t and language functions
+
   const [openAIToken, setOpenAIToken] = useState('');
   const [groqToken, setGroqToken] = useState('');
   const [openAIModel, setOpenAIModel] = useState<OpenAIModelType>('whisper-1');
   const [defaultTranscriptionLanguage, setDefaultTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [selectedTheme, setSelectedTheme] = useState<Theme>('system');
+  const [selectedAppLanguage, setSelectedAppLanguage] = useState<Language>(currentAppLanguage);
   const [isCheatsheetDialogOpen, setIsCheatsheetDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const applyTheme = (theme: Theme) => {
-    localStorage.setItem(THEME_KEY, theme);
-    if (theme === 'dark') {
+  const applyTheme = (themeToApply: Theme) => {
+    localStorage.setItem(THEME_KEY, themeToApply);
+    if (themeToApply === 'dark') {
       document.documentElement.classList.add('dark');
-      addLog("Theme changed to Dark.", "debug");
-    } else if (theme === 'light') {
+    } else if (themeToApply === 'light') {
       document.documentElement.classList.remove('dark');
-      addLog("Theme changed to Light.", "debug");
     } else { // system
       if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');
       }
-      addLog("Theme changed to System. Applied system preference.", "debug");
     }
+    addLog(`Theme changed to ${themeToApply}.`, "debug");
   };
 
   useEffect(() => {
@@ -72,36 +68,53 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       const storedOpenAIModel = localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType | null;
       const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
       const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
-      
+      const storedAppLanguage = localStorage.getItem(LANGUAGE_KEY) as Language | null;
+
       if (storedOpenAIToken) setOpenAIToken(storedOpenAIToken);
       if (storedGroqToken) setGroqToken(storedGroqToken);
       setOpenAIModel(storedOpenAIModel || 'whisper-1');
       setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
       setSelectedTheme(storedTheme || 'system');
-      
-      addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Default Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${storedTheme || 'system'}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
+      setSelectedAppLanguage(storedAppLanguage || 'en');
+
+
+      addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${storedTheme || 'system'}. App Language - ${storedAppLanguage || 'en'}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
     }
   }, [isOpen, addLog]);
 
 
   const handleThemeChange = (newTheme: Theme) => {
     setSelectedTheme(newTheme);
-    applyTheme(newTheme); // Apply theme immediately on selection
+    applyTheme(newTheme);
   };
-  
+
+  const handleAppLanguageChange = (newLang: Language) => {
+    setSelectedAppLanguage(newLang);
+    // No immediate application here, will be applied on save by LanguageProvider
+  };
+
   const handleSave = () => {
     localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken);
     localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
     localStorage.setItem(OPENAI_MODEL_KEY, openAIModel);
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
-    if (localStorage.getItem(THEME_KEY) !== selectedTheme) {
-       applyTheme(selectedTheme);
-    }
     
-    const message = `Settings Saved. Theme: ${selectedTheme}. OpenAI Model: ${openAIModel}. Default Language: ${defaultTranscriptionLanguage}. OpenAI Token: ${openAIToken ? 'Set' : 'Not Set'}. Groq Token: ${groqToken ? 'Set' : 'Not Set'}.`;
+    if (localStorage.getItem(THEME_KEY) !== selectedTheme) {
+       applyTheme(selectedTheme); // Ensures theme is applied if changed then saved
+    } else {
+      localStorage.setItem(THEME_KEY, selectedTheme); // Save even if not "changed" from initial load but different from prev save
+    }
+
+    if (currentAppLanguage !== selectedAppLanguage) {
+      setAppLanguage(selectedAppLanguage); // This will update context and save to localStorage
+    } else {
+      localStorage.setItem(LANGUAGE_KEY, selectedAppLanguage);
+    }
+
+    const message = `Settings Saved. Theme: ${selectedTheme}. App Language: ${selectedAppLanguage}. OpenAI Model: ${openAIModel}. Default Language: ${defaultTranscriptionLanguage}. OpenAI Token: ${openAIToken ? 'Set' : 'Not Set'}. Groq Token: ${groqToken ? 'Set' : 'Not Set'}.`;
     toast({
-      title: 'Settings Saved',
-      description: 'Your preferences have been saved to browser storage.',
+      title: t('settings.toast.saved'),
+      description: t('settings.toast.savedDescription'),
       duration: 5000,
     });
     addLog(message, 'success');
@@ -113,25 +126,26 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-[700px] flex flex-col max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle>Application Settings</DialogTitle>
+            <DialogTitle>{t('settings.title')}</DialogTitle>
             <DialogDescription>
-              Manage your API tokens, theme, and other preferences here.
+              {t('settings.description')}
             </DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="flex-grow my-1 pr-2">
             <div className="grid gap-6 py-4">
               <div className="space-y-2">
-                <Label className="text-base font-semibold">Theme</Label>
+                <Label className="text-base font-semibold">{t('settings.theme.label')}</Label>
                 <RadioGroup
                   value={selectedTheme}
                   onValueChange={(value: string) => handleThemeChange(value as Theme)}
                   className="grid grid-cols-3 gap-2"
+                  dir={dir}
                 >
                   {[
-                    { value: 'light', label: 'Light', icon: Sun },
-                    { value: 'dark', label: 'Dark', icon: Moon },
-                    { value: 'system', label: 'System', icon: Laptop },
+                    { value: 'light', label: t('settings.theme.light'), icon: Sun },
+                    { value: 'dark', label: t('settings.theme.dark'), icon: Moon },
+                    { value: 'system', label: t('settings.theme.system'), icon: Laptop },
                   ].map((item) => (
                     <Label
                       key={item.value}
@@ -145,48 +159,72 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                   ))}
                 </RadioGroup>
               </div>
+              
+              <Separator />
+
+               <div className="space-y-2">
+                <Label className="text-base font-semibold flex items-center gap-1">
+                    <Languages className="h-5 w-5"/>
+                    {t('settings.language.label')}
+                </Label>
+                <Select
+                    value={selectedAppLanguage}
+                    onValueChange={(value) => handleAppLanguageChange(value as Language)}
+                    dir={dir}
+                >
+                    <SelectTrigger className="w-full" aria-label={t('settings.language.label')}>
+                        <SelectValue placeholder="Select application language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="en">{t('settings.language.english')}</SelectItem>
+                        <SelectItem value="fa">{t('settings.language.persian')}</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
+
 
               <Separator />
 
               <div className="space-y-2">
-                <Label className="text-base font-semibold">API & Model Configuration</Label>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="openai-token" className="text-right col-span-1">
-                    OpenAI Token
+                <Label className="text-base font-semibold">{t('settings.apiConfig.label')}</Label>
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                  <Label htmlFor="openai-token" className="md:text-right col-span-1">
+                    {t('settings.apiConfig.openAIToken')}
                   </Label>
                   <Input
                     id="openai-token"
                     type="password"
                     value={openAIToken}
                     onChange={(e) => setOpenAIToken(e.target.value)}
-                    className="col-span-3"
+                    className="col-span-1 md:col-span-3"
                     placeholder="sk-..."
-                    aria-label="OpenAI API Token Input"
+                    aria-label={t('settings.apiConfig.openAIToken')}
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="groq-token" className="text-right col-span-1">
-                    Groq Token
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                  <Label htmlFor="groq-token" className="md:text-right col-span-1">
+                    {t('settings.apiConfig.groqToken')}
                   </Label>
                   <Input
                     id="groq-token"
                     type="password"
                     value={groqToken}
                     onChange={(e) => setGroqToken(e.target.value)}
-                    className="col-span-3"
+                    className="col-span-1 md:col-span-3"
                     placeholder="gsk_..."
-                    aria-label="Groq API Token Input (optional)"
+                    aria-label={t('settings.apiConfig.groqToken')}
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="openai-model-select" className="text-right col-span-1">
-                    OpenAI Model
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                  <Label htmlFor="openai-model-select" className="md:text-right col-span-1">
+                    {t('settings.apiConfig.openAIModel')}
                   </Label>
-                  <Select 
-                    value={openAIModel} 
+                  <Select
+                    value={openAIModel}
                     onValueChange={(value: string) => setOpenAIModel(value as OpenAIModelType)}
+                    dir={dir}
                   >
-                    <SelectTrigger className="col-span-3" id="openai-model-select" aria-label="Select OpenAI Transcription Model">
+                    <SelectTrigger className="col-span-1 md:col-span-3" id="openai-model-select" aria-label={t('settings.apiConfig.openAIModel')}>
                       <SelectValue placeholder="Select OpenAI model" />
                     </SelectTrigger>
                     <SelectContent>
@@ -196,21 +234,22 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="default-language-select" className="text-right col-span-1">
-                    Default Language
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                  <Label htmlFor="default-language-select" className="md:text-right col-span-1">
+                    {t('settings.apiConfig.defaultLanguage')}
                   </Label>
                   <Select
                     value={defaultTranscriptionLanguage}
                     onValueChange={(value) => setDefaultTranscriptionLanguage(value as LanguageCode | "auto-detect")}
+                    dir={dir}
                   >
-                    <SelectTrigger className="col-span-3" id="default-language-select" aria-label="Select Default Transcription Language">
+                    <SelectTrigger className="col-span-1 md:col-span-3" id="default-language-select" aria-label={t('settings.apiConfig.defaultLanguage')}>
                       <SelectValue placeholder="Select default transcription language" />
                     </SelectTrigger>
                     <SelectContent>
-                      {LANGUAGE_OPTIONS.map((lang) => (
-                        <SelectItem key={lang.value} value={lang.value}>
-                          {lang.label}
+                      {LANGUAGE_OPTIONS.map((langOpt) => (
+                        <SelectItem key={langOpt.value} value={langOpt.value}>
+                          {langOpt.label} {/* These labels might need translation too in a full setup */}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -218,30 +257,30 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                 </div>
               </div>
             </div>
-            
+
             <Separator className="my-2" />
-            
+
             <div className="py-2 px-1">
-              <Button 
-                variant="outline" 
-                className="w-full" 
+              <Button
+                variant="outline"
+                className="w-full"
                 onClick={() => {
                   setIsCheatsheetDialogOpen(true);
                   addLog("Cheatsheet dialog opened from settings.", "debug");
                 }}
               >
-                <HelpCircle className="mr-2 h-4 w-4" />
-                View Keyboard Cheatsheet
+                <HelpCircle className={dir === 'rtl' ? 'ms-2' : 'me-2'} />
+                {t('settings.cheatsheet.button')}
               </Button>
             </div>
 
             <Separator className="my-2" />
 
             <div className="px-1">
-                <h3 className="text-lg font-medium mb-2">Credits</h3>
+                <h3 className="text-lg font-medium mb-2">{t('settings.credits.title')}</h3>
                 <div className="text-sm text-muted-foreground space-y-1">
-                    <p>This application is proudly built with:</p>
-                    <ul className="list-disc list-inside pl-4">
+                    <p>{t('settings.credits.builtWith')}</p>
+                    <ul className="list-disc list-inside ps-4">
                         <li>Next.js by Vercel</li>
                         <li>React</li>
                         <li>ShadCN UI Components</li>
@@ -249,11 +288,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                         <li>OpenAI API for transcription</li>
                     </ul>
                     <p className="mt-2">
-                        Developed by the Firebase Studio AI.
+                        {t('settings.credits.developedByFS')}
                     </p>
-                    <p className="mt-2">
-                        Created by Amin Sharifi - <a href="https://github.com/moaminsharifi" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">github.com/moaminsharifi</a>
-                    </p>
+                    <p className="mt-2" dangerouslySetInnerHTML={{ __html: t('settings.credits.createdByAS', { '0': '<a href="https://github.com/moaminsharifi" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary">' }) }} />
                 </div>
             </div>
           </ScrollArea>
@@ -261,21 +298,21 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
           <DialogFooter className="mt-auto pt-4">
             <DialogClose asChild>
               <Button type="button" variant="outline" onClick={() => addLog("Settings changes cancelled.", "debug")}>
-                Cancel
+                {t('settings.buttons.cancel')}
               </Button>
             </DialogClose>
             <Button type="button" onClick={handleSave}>
-              Save Settings
+              {t('settings.buttons.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <CheatsheetDialog 
-        isOpen={isCheatsheetDialogOpen} 
+      <CheatsheetDialog
+        isOpen={isCheatsheetDialogOpen}
         onClose={() => {
           setIsCheatsheetDialogOpen(false);
           addLog("Cheatsheet dialog closed.", "debug");
-        }} 
+        }}
       />
     </>
   );

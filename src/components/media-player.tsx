@@ -10,6 +10,7 @@ import type { SubtitleEntry, MediaFile } from '@/lib/types';
 import { formatSecondsToTime } from '@/lib/subtitle-utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from '@/contexts/LanguageContext'; // Import useTranslation
 
 interface MediaPlayerProps {
   mediaFile: MediaFile | null;
@@ -20,12 +21,13 @@ interface MediaPlayerProps {
 }
 
 export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate, onShiftTime, playerRef }: MediaPlayerProps) {
+  const { dir } = useTranslation(); // Get text direction
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  
+
   const internalPlayerRef = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const activePlayerRef = playerRef || internalPlayerRef;
 
@@ -52,7 +54,7 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
       player.addEventListener('volumechange', handleVolumeChange);
 
       if (mediaFile) {
-         player.src = mediaFile.url; 
+         player.src = mediaFile.url;
          setDuration(mediaFile.duration);
       }
       setCurrentTime(player.currentTime);
@@ -87,7 +89,7 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
       setCurrentTime(value[0]);
     }
   };
-  
+
   const handleVolumeChange = (value: number[]) => {
     const player = activePlayerRef.current;
     if (player) {
@@ -124,7 +126,11 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
       </div>
     );
   }
-  
+
+  const RewindIcon = dir === 'rtl' ? FastForward : Rewind;
+  const FastForwardIcon = dir === 'rtl' ? Rewind : FastForward;
+
+
   return (
     <div className="w-full space-y-3">
       <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-xl">
@@ -156,19 +162,20 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
           step={0.1}
           onValueChange={handleSeek}
           aria-label="Media progress slider"
+          dir={dir}
         />
       </div>
 
       <div className="flex items-center justify-between gap-2 p-2 bg-card rounded-lg shadow-md">
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={() => handleSkip(-5)} aria-label="Rewind 5 seconds">
-            <Rewind />
+          <Button variant="ghost" size="icon" onClick={() => handleSkip(dir === 'rtl' ? 5 : -5)} aria-label="Rewind 5 seconds">
+            <RewindIcon />
           </Button>
           <Button variant="ghost" size="icon" onClick={togglePlayPause} aria-label={isPlaying ? "Pause media" : "Play media"}>
             {isPlaying ? <Pause /> : <Play />}
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => handleSkip(5)} aria-label="Fast forward 5 seconds">
-            <FastForward />
+          <Button variant="ghost" size="icon" onClick={() => handleSkip(dir === 'rtl' ? -5 : 5)} aria-label="Fast forward 5 seconds">
+            <FastForwardIcon />
           </Button>
         </div>
 
@@ -176,23 +183,24 @@ export function MediaPlayer({ mediaFile, activeSubtitlesToDisplay, onTimeUpdate,
           <Button variant="ghost" size="icon" onClick={toggleMute} aria-label={isMuted ? "Unmute volume" : "Mute volume"}>
             {isMuted || volume === 0 ? <VolumeX /> : <Volume2 />}
           </Button>
-          <Slider 
-            value={[volume]} 
-            max={1} 
-            step={0.05} 
-            onValueChange={handleVolumeChange} 
+          <Slider
+            value={[volume]}
+            max={1}
+            step={0.05}
+            onValueChange={handleVolumeChange}
             className="w-24"
             aria-label="Volume slider"
+            dir={dir}
           />
         </div>
-        
+
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Active track timing shift settings">
               <Settings2 />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-2 space-y-2">
+          <PopoverContent className="w-56 p-2 space-y-2" dir={dir}>
             <Label className="text-sm font-medium">Active Track Timing Shift</Label>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => onShiftTime(-0.1)} className="flex-1" aria-label="Shift subtitles back by 0.1 seconds">-0.1s</Button>

@@ -3,7 +3,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import type { MediaFile, OpenAIModelType, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, Segment } from '@/lib/types';
-import { LANGUAGE_OPTIONS } from '@/lib/types';
+import { LANGUAGE_OPTIONS, LANGUAGE_KEY } from '@/lib/types';
 import { MediaUploader } from '@/components/media-uploader';
 import { SubtitleUploader } from '@/components/subtitle-uploader';
 import { MediaPlayer } from '@/components/media-player';
@@ -22,6 +22,7 @@ import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ScrollText, Wa
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/contexts/LanguageContext'; // Import useTranslation
 
 const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 const OPENAI_MODEL_KEY = 'app-settings-openai-model';
@@ -40,6 +41,8 @@ interface FullTranscriptionProgress {
 }
 
 export default function SubtitleSyncPage() {
+  const { t, dir, language } = useTranslation(); // Use the translation hook
+
   const [mediaFile, setMediaFile] = useState<MediaFile | null>(null);
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
   const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
@@ -88,7 +91,9 @@ export default function SubtitleSyncPage() {
       setFullTranscriptionLanguageOverride("auto-detect");
       addLog("No default transcription language in settings, using 'auto-detect' for both.", "debug");
     }
-  }, [addLog]);
+     // Ensure document title is updated when language changes
+    document.title = t('app.title');
+  }, [addLog, t, language]);
 
 
   const activeTrack = useMemo(() => {
@@ -104,13 +109,13 @@ export default function SubtitleSyncPage() {
       playerRef.current.pause();
     }
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
-    setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect"); 
+    setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect");
     addLog(`Full transcription language override reset to settings default: ${savedDefaultLang || "auto-detect"} on new media upload.`, "debug");
-    
-    const message = `Media Loaded: ${file.name} (Type: ${type}, Duration: ${duration.toFixed(2)}s)`;
-    toast({ title: "Media Loaded", description: message, duration: 5000 });
+
+    const message = t('toast.mediaLoadedDescription', { fileName: file.name, type, duration: duration.toFixed(2) });
+    toast({ title: t('toast.mediaLoaded'), description: message, duration: 5000 });
     addLog(message, 'success');
-    setIsReplacingMedia(false); 
+    setIsReplacingMedia(false);
   };
 
   const handleSubtitleUpload = (entries: SubtitleEntry[], fileName: string, format: SubtitleFormat) => {
@@ -124,8 +129,8 @@ export default function SubtitleSyncPage() {
     };
     setSubtitleTracks(prevTracks => [...prevTracks, newTrack]);
     setActiveTrackId(newTrackId);
-    const message = `Subtitle Track Loaded: ${fileName} (Format: ${format.toUpperCase()}, Cues: ${entries.length})`;
-    toast({ title: "Subtitle Track Loaded", description: message, duration: 5000 });
+    const message = t('toast.subtitleTrackLoadedDescription', { fileName, format: format.toUpperCase(), count: entries.length });
+    toast({ title: t('toast.subtitleTrackLoaded'), description: message, duration: 5000 });
     addLog(message, 'success');
   };
 
@@ -146,8 +151,8 @@ export default function SubtitleSyncPage() {
 
   const handleSubtitleAdd = () => {
     if (!activeTrackId || !activeTrack) {
-      const msg = "Cannot add subtitle: No Active Track. Please select or upload a subtitle track first.";
-      toast({ title: "No Active Track", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.noActiveTrackDescription');
+      toast({ title: t('toast.noActiveTrack'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'warn');
       return;
     }
@@ -178,11 +183,11 @@ export default function SubtitleSyncPage() {
         } else if (eTime > mediaDur) {
              eTime = mediaDur;
         }
-        
+
         if (eTime <= sTime && mediaDur > 0) {
              if(mediaDur - sTime < 0.001 && sTime === mediaDur) {
-                const errorMsg = `Cannot add subtitle at the very end of media. Times: ${sTime.toFixed(3)}s - ${eTime.toFixed(3)}s`;
-                toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive", duration: 5000});
+                const errorMsg = t('toast.errorAddingSubtitle.atEnd', { startTime: sTime.toFixed(3), endTime: eTime.toFixed(3) });
+                toast({ title: t('toast.errorAddingSubtitle'), description: errorMsg, variant: "destructive", duration: 5000});
                 addLog(errorMsg, 'error');
                 return;
              }
@@ -190,8 +195,8 @@ export default function SubtitleSyncPage() {
              eTime = mediaDur;
              if (sTime < 0) sTime = 0;
              if (eTime <= sTime && mediaDur > 0) {
-                 const errorMsg = `Could not determine a valid time range at media end. Times: ${sTime.toFixed(3)}s - ${eTime.toFixed(3)}s`;
-                 toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive", duration: 5000});
+                 const errorMsg = t('toast.errorAddingSubtitle.invalidRange', { startTime: sTime.toFixed(3), endTime: eTime.toFixed(3), duration: mediaFile?.duration.toFixed(3) || 'N/A' });
+                 toast({ title: t('toast.errorAddingSubtitle'), description: errorMsg, variant: "destructive", duration: 5000});
                  addLog(errorMsg, 'error');
                  return;
              }
@@ -200,13 +205,13 @@ export default function SubtitleSyncPage() {
         sTime = Math.max(0, sTime);
         eTime = Math.max(sTime + 0.001, eTime);
     }
-    
+
     const finalStartTime = parseFloat(sTime.toFixed(3));
     const finalEndTime = parseFloat(eTime.toFixed(3));
 
     if (finalEndTime <= finalStartTime) {
-        const errorMsg = `Could not determine a valid time range for new subtitle. Start: ${finalStartTime.toFixed(3)}s, End: ${finalEndTime.toFixed(3)}s. Media Duration: ${mediaFile?.duration.toFixed(3)}s`;
-        toast({ title: "Error Adding Subtitle", description: errorMsg, variant: "destructive", duration: 5000});
+        const errorMsg = t('toast.errorAddingSubtitle.invalidRange', { startTime: finalStartTime.toFixed(3), endTime: finalEndTime.toFixed(3), duration: mediaFile?.duration.toFixed(3) || 'N/A' });
+        toast({ title: t('toast.errorAddingSubtitle'), description: errorMsg, variant: "destructive", duration: 5000});
         addLog(errorMsg, 'error');
         return;
     }
@@ -215,7 +220,7 @@ export default function SubtitleSyncPage() {
       id: newId,
       startTime: finalStartTime,
       endTime: finalEndTime,
-      text: 'New subtitle',
+      text: 'New subtitle', // This could be translated if needed: t('subtitleEditor.newSubtitleTextPlaceholder')
     };
 
     setSubtitleTracks(prevTracks =>
@@ -227,8 +232,8 @@ export default function SubtitleSyncPage() {
         return track;
       })
     );
-    const successMsg = `Subtitle Added: New cue from ${finalStartTime.toFixed(3)}s to ${finalEndTime.toFixed(3)}s.`;
-    toast({ title: "Subtitle Added", description: successMsg, duration: 5000 });
+    const successMsg = t('toast.subtitleAddedDescription', { startTime: finalStartTime.toFixed(3), endTime: finalEndTime.toFixed(3) });
+    toast({ title: t('toast.subtitleAdded'), description: successMsg, duration: 5000 });
     addLog(successMsg, 'success');
   };
 
@@ -243,8 +248,8 @@ export default function SubtitleSyncPage() {
         return track;
       })
     );
-    const message = `Subtitle cue ${entryId} deleted.`;
-    toast({ title: "Subtitle Deleted", description: "Cue removed from active track.", duration: 5000});
+    const message = `Subtitle cue ${entryId} deleted.`; // Could be t('toast.subtitleDeletedDescriptionSimple', {entryId})
+    toast({ title: t('toast.subtitleDeleted'), description: t('toast.subtitleDeletedDescription'), duration: 5000});
     addLog(message, 'info');
   };
 
@@ -254,7 +259,7 @@ export default function SubtitleSyncPage() {
 
   const handleShiftTime = (offset: number) => {
     if (!activeTrackId || !activeTrack || activeTrack.entries.length === 0) return;
-    
+
     setSubtitleTracks(prevTracks =>
       prevTracks.map(track => {
         if (track.id === activeTrackId) {
@@ -282,31 +287,31 @@ export default function SubtitleSyncPage() {
         return track;
       })
     );
-    const message = `Subtitles Shifted: Active track subtitles shifted by ${offset.toFixed(1)}s for track ${activeTrack.fileName}.`;
-    toast({ title: "Subtitles Shifted", description: message, duration: 5000 });
+    const message = t('toast.subtitlesShiftedDescription', { offset: offset.toFixed(1), trackName: activeTrack.fileName });
+    toast({ title: t('toast.subtitlesShifted'), description: message, duration: 5000 });
     addLog(message, 'info');
   };
 
   const handleRegenerateTranscription = async (entryId: string) => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
-      const msg = "A transcription process is already running. Please wait.";
-      toast({ title: "Transcription Busy", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.transcriptionBusyDescription');
+      toast({ title: t('toast.transcriptionBusy'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'warn');
       return;
     }
 
     addLog(`Transcription regeneration started for entry ID: ${entryId}.`, 'debug');
     if (!mediaFile || !activeTrack) {
-      const msg = "Transcription Error: Media file or active track not found.";
-      toast({ title: "Error", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.transcriptionError.mediaOrTrackMissing');
+      toast({ title: t('toast.transcriptionError.generic'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
 
     const entry = activeTrack.entries.find(e => e.id === entryId);
     if (!entry) {
-      const msg = `Transcription Error: Subtitle entry ID ${entryId} not found.`;
-      toast({ title: "Error", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.transcriptionError.entryNotFound', { entryId });
+      toast({ title: t('toast.transcriptionError.generic'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
@@ -315,22 +320,22 @@ export default function SubtitleSyncPage() {
     const openAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
 
     if (!openAIToken) {
-      const msg = "OpenAI Token Missing. Please set your OpenAI API token in Settings.";
-      toast({ title: "OpenAI Token Missing", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.openAITokenMissingDescription');
+      toast({ title: t('toast.openAITokenMissing'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
-    
+
     const langForSegment = editorTranscriptionLanguage === "auto-detect" ? undefined : editorTranscriptionLanguage;
     addLog(`Using OpenAI model: ${selectedOpenAIModel}, Language (for segment): ${langForSegment || 'auto-detect'}. Segment: ${entry.startTime.toFixed(3)}s - ${entry.endTime.toFixed(3)}s.`, 'debug');
-    
+
     setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: true }));
     setIsAnyTranscriptionLoading(true);
 
     try {
       const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, entry.startTime, entry.endTime);
       addLog(`Audio segment sliced for transcription (entry ID: ${entryId}). Data URI length: ${audioDataUri.length}`, 'debug');
-      
+
       const result = await transcribeAudioSegment({
         audioDataUri,
         openAIModel: selectedOpenAIModel,
@@ -342,19 +347,19 @@ export default function SubtitleSyncPage() {
 
       if (regeneratedText) {
         handleSubtitleChange(entryId, { text: regeneratedText });
-        const successMsg = `Transcription Updated for entry ${entryId} using ${selectedOpenAIModel}. New text: "${regeneratedText.substring(0, 30)}..."`;
-        toast({ title: "Transcription Updated", description: successMsg, duration: 5000 });
+        const successMsg = t('toast.transcriptionUpdatedDescription', { entryId, model: selectedOpenAIModel, text: regeneratedText.substring(0, 30) });
+        toast({ title: t('toast.transcriptionUpdated'), description: successMsg, duration: 5000 });
         addLog(successMsg, 'success');
       } else {
-        const warnMsg = `Transcription for entry ${entryId} resulted in empty text from the AI model.`;
-        toast({ title: "Transcription Potentially Failed", description: warnMsg, variant: "destructive", duration: 5000 });
+        const warnMsg = t('toast.transcriptionPotentiallyFailedDescription', { entryId });
+        toast({ title: t('toast.transcriptionPotentiallyFailed'), description: warnMsg, variant: "destructive", duration: 5000 });
         addLog(warnMsg, 'warn');
          handleSubtitleChange(entryId, { text: "" });
       }
     } catch (error: any) {
       console.error("Transcription regeneration error:", error);
-      const errorMsg = `Transcription Error for entry ${entryId}: ${error.message || "Failed to regenerate transcription."}`;
-      toast({ title: "Transcription Error", description: errorMsg, variant: "destructive", duration: 5000 });
+      const errorMsg = t('toast.transcriptionError.genericDescription', { entryId, errorMessage: error.message || "Failed to regenerate transcription."});
+      toast({ title: t('toast.transcriptionError.generic'), description: errorMsg, variant: "destructive", duration: 5000 });
       addLog(errorMsg, 'error');
     } finally {
       setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: false }));
@@ -365,14 +370,14 @@ export default function SubtitleSyncPage() {
 
   const handleGenerateFullTranscription = async () => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
-      const msg = "A transcription process is already running. Please wait.";
-      toast({ title: "Transcription Busy", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.transcriptionBusyDescription');
+      toast({ title: t('toast.transcriptionBusy'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'warn');
       return;
     }
     if (!mediaFile) {
-      const msg = "Full Transcription Error: No media file loaded.";
-      toast({ title: "Error", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.fullTranscriptionError.noMedia');
+      toast({ title: t('toast.fullTranscriptionError.generic'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
@@ -381,17 +386,17 @@ export default function SubtitleSyncPage() {
     const openAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
 
     if (!openAIToken) {
-      const msg = "OpenAI Token Missing. Please set your OpenAI API token in Settings.";
-      toast({ title: "OpenAI Token Missing", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.openAITokenMissingDescription');
+      toast({ title: t('toast.openAITokenMissing'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'error');
       return;
     }
-    
+
     const langForFullTranscription = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
 
     addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language (override): ${langForFullTranscription || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
     setIsGeneratingFullTranscription(true);
-    
+
     const allSubtitleEntries: SubtitleEntry[] = [];
     const numChunks = Math.ceil(mediaFile.duration / CHUNK_DURATION_SECONDS);
     setFullTranscriptionProgress({ currentChunk: 0, totalChunks: numChunks, percentage: 0, currentStage: null });
@@ -400,27 +405,27 @@ export default function SubtitleSyncPage() {
       for (let i = 0; i < numChunks; i++) {
         const chunkStartTime = i * CHUNK_DURATION_SECONDS;
         const chunkEndTime = Math.min((i + 1) * CHUNK_DURATION_SECONDS, mediaFile.duration);
-        
+
         if (chunkStartTime >= chunkEndTime) continue;
-        
+
         const baseProgress = {
           currentChunk: i + 1,
           totalChunks: numChunks,
-          percentage: Math.round(((i) / numChunks) * 100), 
+          percentage: Math.round(((i) / numChunks) * 100),
         };
 
-        setFullTranscriptionProgress({ ...baseProgress, currentStage: "Slicing audio..." });
-        const slicingMsg = `Slicing audio for chunk ${i + 1} of ${numChunks} (${chunkStartTime.toFixed(1)}s - ${chunkEndTime.toFixed(1)}s)...`;
+        setFullTranscriptionProgress({ ...baseProgress, currentStage: "Slicing audio..." }); // This string could be translated
+        const slicingMsg = t('toast.fullTranscriptionProgress.slicing', { currentChunk: i + 1, totalChunks: numChunks, startTime: chunkStartTime.toFixed(1), endTime: chunkEndTime.toFixed(1) });
         addLog(slicingMsg, 'debug');
-        toast({ title: "Transcription Progress", description: slicingMsg, duration: 2000});
+        toast({ title: t('aiGenerator.progress.inProgress'), description: slicingMsg, duration: 2000});
 
         const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, chunkStartTime, chunkEndTime);
         addLog(`Audio chunk ${i+1} sliced. Data URI length: ${audioDataUri.length}`, 'debug');
 
-        setFullTranscriptionProgress({ ...baseProgress, currentStage: "Transcribing with AI..." });
-        const transcribingMsg = `Transcribing chunk ${i + 1} of ${numChunks} with ${selectedOpenAIModel}...`;
+        setFullTranscriptionProgress({ ...baseProgress, currentStage: "Transcribing with AI..." }); // This string could be translated
+        const transcribingMsg = t('toast.fullTranscriptionProgress.transcribing', { currentChunk: i + 1, totalChunks: numChunks, model: selectedOpenAIModel });
         addLog(transcribingMsg, 'debug');
-        toast({ title: "Transcription Progress", description: transcribingMsg, duration: 2000 });
+        toast({ title: t('aiGenerator.progress.inProgress'), description: transcribingMsg, duration: 2000 });
 
         const result = await transcribeAudioSegment({
           audioDataUri,
@@ -428,11 +433,11 @@ export default function SubtitleSyncPage() {
           language: langForFullTranscription,
           openAIApiKey: openAIToken!,
         });
-        
-        setFullTranscriptionProgress({ ...baseProgress, currentStage: "Processing results..." });
-        const processingMsg = `Processing results for chunk ${i + 1}...`;
+
+        setFullTranscriptionProgress({ ...baseProgress, currentStage: "Processing results..." }); // This string could be translated
+        const processingMsg = t('toast.fullTranscriptionProgress.processing', { currentChunk: i + 1 });
         addLog(processingMsg, 'debug');
-        toast({ title: "Transcription Progress", description: processingMsg, duration: 2000 });
+        toast({ title: t('aiGenerator.progress.inProgress'), description: processingMsg, duration: 2000 });
         addLog(`Chunk ${i+1} transcribed. Segments received: ${result.segments.length}. Full text from chunk: "${result.fullText.substring(0,50)}..."`, 'debug');
 
         if (result.segments.length > 0) {
@@ -456,7 +461,7 @@ export default function SubtitleSyncPage() {
          setFullTranscriptionProgress(prev => ({
             ...prev!,
             percentage: Math.round(((i + 1) / numChunks) * 100),
-            currentStage: null, 
+            currentStage: null,
         }));
       }
 
@@ -468,24 +473,24 @@ export default function SubtitleSyncPage() {
       const newTrack: SubtitleTrack = {
         id: newTrackId,
         fileName: newTrackFileName,
-        format: 'srt', 
+        format: 'srt',
         entries: allSubtitleEntries,
       };
 
       setSubtitleTracks(prevTracks => [...prevTracks, newTrack]);
       setActiveTrackId(newTrackId);
-      
-      const successMsg = `Full transcription complete! New track "${newTrackFileName}" added with ${allSubtitleEntries.length} cues.`;
-      toast({ title: "Transcription Complete", description: successMsg, duration: 5000 });
+
+      const successMsg = t('toast.fullTranscriptionCompleteDescription', { trackName: newTrackFileName, count: allSubtitleEntries.length });
+      toast({ title: t('toast.fullTranscriptionComplete'), description: successMsg, duration: 5000 });
       addLog(successMsg, 'success');
-      
+
       setCurrentStep('edit');
       addLog("Automatically navigated to Edit step after full transcription.", 'debug');
 
     } catch (error: any) {
       console.error("Full transcription error:", error);
-      const errorMsg = `Full Transcription Error: ${error.message || "Failed to generate full transcription."}`;
-      toast({ title: "Full Transcription Error", description: errorMsg, variant: "destructive", duration: 5000 });
+      const errorMsg = t('toast.fullTranscriptionError.genericDescription', { errorMessage: error.message || "Failed to generate full transcription."});
+      toast({ title: t('toast.fullTranscriptionError.generic'), description: errorMsg, variant: "destructive", duration: 5000 });
       addLog(errorMsg, 'error');
     } finally {
       setIsGeneratingFullTranscription(false);
@@ -493,23 +498,23 @@ export default function SubtitleSyncPage() {
       addLog("Full media transcription process finished.", 'debug');
     }
   };
-  
+
   const isEntryTranscribing = (entryId: string): boolean => {
     return !!entryTranscriptionLoading[entryId];
   };
-  
+
   const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription || isAnyTranscriptionLoading;
 
   const handleProceedToEdit = () => {
     if (!mediaFile) {
-      const msg = "Media Required: Please upload a media file first.";
-      toast({ title: "Media Required", description: msg, variant: "destructive", duration: 5000 });
+      const msg = t('toast.mediaRequiredDescription');
+      toast({ title: t('toast.mediaRequired'), description: msg, variant: "destructive", duration: 5000 });
       addLog(msg, 'warn');
       return;
     }
     if (subtitleTracks.length === 0) {
-       const msg = "Subtitles Required: Please upload or generate a subtitle track before proceeding to edit.";
-       toast({ title: "Subtitles Required", description: msg, variant: "destructive", duration: 5000 }); 
+       const msg = t('toast.subtitlesRequiredDescription');
+       toast({ title: t('toast.subtitlesRequired'), description: msg, variant: "destructive", duration: 5000 });
        addLog(msg, 'warn');
        return;
     }
@@ -523,8 +528,8 @@ export default function SubtitleSyncPage() {
 
   const handleProceedToExport = () => {
     if (!activeTrack || activeTrack.entries.length === 0) {
-      const msg = "No Subtitles to Export: The active track has no subtitles to export.";
-      toast({ title: "No Subtitles to Export", description: msg, variant: "destructive", duration: 5000});
+      const msg = t('toast.noSubtitlesToExportDescription');
+      toast({ title: t('toast.noSubtitlesToExport'), description: msg, variant: "destructive", duration: 5000});
       addLog(msg, 'warn');
       return;
     }
@@ -545,12 +550,12 @@ export default function SubtitleSyncPage() {
         playerRef.current.removeAttribute('src');
         playerRef.current.load();
       }
-      const msg = "Project Reset: All media and subtitles cleared.";
-      toast({ title: "Project Reset", description: msg, duration: 5000 });
+      const msg = t('toast.projectResetDescription');
+      toast({ title: t('toast.projectReset'), description: msg, duration: 5000 });
       addLog(msg, 'info');
     }
     setCurrentStep('upload');
-    setIsReplacingMedia(false); 
+    setIsReplacingMedia(false);
     addLog(`Navigated to Upload step. Reset: ${reset}`, 'debug');
   };
 
@@ -561,24 +566,27 @@ export default function SubtitleSyncPage() {
 
   const getStepTitle = () => {
     switch (currentStep) {
-      case 'upload': return "Step 1 of 3: Prepare Your Media & Subtitles";
-      case 'edit': return "Step 2 of 3: Edit & Refine Subtitles";
-      case 'export': return "Step 3 of 3: Export Your Work";
-      default: return "Subtitle Sync";
+      case 'upload': return t('page.steps.upload');
+      case 'edit': return t('page.steps.edit');
+      case 'export': return t('page.steps.export');
+      default: return t('app.title');
     }
   };
-  
+
   const StepContentWrapper = ({ children }: { children: React.ReactNode }) => (
     <div className="space-y-6 flex flex-col h-full animate-fade-in" key={currentStep}>
       {children}
     </div>
   );
 
+  const LeftArrowIcon = dir === 'rtl' ? ArrowRight : ArrowLeft;
+  const RightArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
+
 
   return (
     <div className="min-h-screen flex flex-col p-4 md:p-6 bg-background text-foreground relative">
       <header className="mb-6">
-        <h1 className="text-4xl font-bold text-primary tracking-tight">Subtitle Sync</h1>
+        <h1 className="text-4xl font-bold text-primary tracking-tight">{t('app.title')}</h1>
         <p className="text-muted-foreground">{getStepTitle()}</p>
       </header>
 
@@ -586,17 +594,19 @@ export default function SubtitleSyncPage() {
         <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-6 flex flex-col h-full">
             {currentStep === 'upload' && !mediaFile && (
-              <MediaUploader
-                onMediaUpload={handleMediaUpload}
-                disabled={isGeneratingFullTranscription}
-                className="flex flex-col flex-grow"
-              />
+              <div className="h-full">
+                <MediaUploader
+                  onMediaUpload={handleMediaUpload}
+                  disabled={isGeneratingFullTranscription}
+                  className="flex flex-col flex-grow h-full"
+                />
+              </div>
             )}
             {mediaFile && (
               <Card className={cn(
                 "shadow-lg animate-fade-in",
                 (currentStep === 'upload' || currentStep === 'edit') ? "sticky top-6 flex-grow" : "flex-grow"
-              )}> 
+              )}>
                 <CardContent className="p-4 h-full flex flex-col">
                   <div className="flex-grow">
                     <MediaPlayer
@@ -617,10 +627,10 @@ export default function SubtitleSyncPage() {
                             addLog("Media replacement uploader shown.", "debug");
                           }}
                           className="w-full"
-                          aria-label="Change current media file"
+                          aria-label={t('mediaPlayer.changeMediaButton')}
                           disabled={isGeneratingFullTranscription}
                         >
-                          <Pencil className="mr-2 h-4 w-4" /> Change Media File
+                          <Pencil className={dir === 'rtl' ? 'ms-2' : 'me-2'} /> {t('mediaPlayer.changeMediaButton')}
                         </Button>
                       ) : (
                         <div className="w-full space-y-2">
@@ -637,7 +647,7 @@ export default function SubtitleSyncPage() {
                             }}
                             className="w-full"
                           >
-                            Cancel
+                            {t('mediaPlayer.cancelChangeMediaButton')}
                           </Button>
                         </div>
                       )}
@@ -655,32 +665,32 @@ export default function SubtitleSyncPage() {
                   <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-xl">
                           <FileText className="h-6 w-6 text-primary" />
-                          Option 1: Upload Subtitle File
+                          {t('subtitleUploader.option1.title')}
                       </CardTitle>
-                      <CardDescription>Upload an existing .SRT or .VTT subtitle file.</CardDescription>
+                      <CardDescription>{t('subtitleUploader.option1.description')}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                       <SubtitleUploader onSubtitleUpload={handleSubtitleUpload} disabled={!mediaFile || isGeneratingFullTranscription || isReplacingMedia} />
                   </CardContent>
                 </Card>
-                
+
                 <Card className={cn("shadow-lg", (!mediaFile || isReplacingMedia) && "opacity-60 pointer-events-none")}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-xl">
                       <WandSparkles className="h-6 w-6 text-accent" />
-                      Option 2: Generate with AI
+                      {t('aiGenerator.option2.title')}
                     </CardTitle>
                     <CardDescription>
-                        Let AI generate subtitles for the entire media file.
-                        {(!mediaFile || isReplacingMedia) && " (Upload or finalize media file first)"}
-                        {mediaFile && !isReplacingMedia && " This may take several minutes."}
+                        {t('aiGenerator.option2.description')}
+                        {(!mediaFile || isReplacingMedia) && t('aiGenerator.option2.descriptionDisabled')}
+                        {mediaFile && !isReplacingMedia && t('aiGenerator.option2.descriptionEnabled')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
                       <Label htmlFor="full-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
                         <Languages className="h-4 w-4" />
-                        Transcription Language
+                        {t('aiGenerator.language.label')}
                       </Label>
                       <Select
                         value={fullTranscriptionLanguageOverride}
@@ -690,32 +700,33 @@ export default function SubtitleSyncPage() {
                           addLog(`Full transcription language override set to: ${lang}`, 'debug');
                         }}
                         disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                        dir={dir}
                       >
-                        <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label="Select transcription language for full generation">
+                        <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label={t('aiGenerator.language.label')}>
                           <SelectValue placeholder="Select transcription language" />
                         </SelectTrigger>
                         <SelectContent>
-                          {LANGUAGE_OPTIONS.map((lang) => (
-                            <SelectItem key={lang.value} value={lang.value}>
-                              {lang.label}
+                          {LANGUAGE_OPTIONS.map((langOpt) => (
+                            <SelectItem key={langOpt.value} value={langOpt.value}>
+                              {langOpt.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Uses the language selected here for this generation. Initial value from Settings.
+                        {t('aiGenerator.language.description')}
                       </p>
                     </div>
-                    
+
                     {isGeneratingFullTranscription && fullTranscriptionProgress ? (
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-center">
-                          Transcription in progress...
-                          {fullTranscriptionProgress.currentStage && ` (${fullTranscriptionProgress.currentStage})`}
+                          {t('aiGenerator.progress.inProgress')}
+                          {fullTranscriptionProgress.currentStage && t('aiGenerator.progress.stage', { stage: fullTranscriptionProgress.currentStage })}
                         </p>
                         <Progress value={fullTranscriptionProgress.percentage} className="w-full" />
                         <p className="text-xs text-muted-foreground text-center">
-                          Chunk {fullTranscriptionProgress.currentChunk} of {fullTranscriptionProgress.totalChunks} ({fullTranscriptionProgress.percentage}%)
+                          {t('aiGenerator.progress.chunkInfo', { currentChunk: fullTranscriptionProgress.currentChunk, totalChunks: fullTranscriptionProgress.totalChunks, percentage: fullTranscriptionProgress.percentage })}
                         </p>
                       </div>
                     ) : (
@@ -723,15 +734,15 @@ export default function SubtitleSyncPage() {
                         onClick={handleGenerateFullTranscription}
                         disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                         className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                        aria-label="Generate Full Subtitles with AI"
+                        aria-label={t('aiGenerator.button.generate')}
                       >
                         {isGeneratingFullTranscription ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            {fullTranscriptionProgress ? `Generating (${fullTranscriptionProgress.percentage}%)` : "Generating..." }
+                            <Loader2 className={dir === 'rtl' ? 'ms-2' : 'me-2'} />
+                            {fullTranscriptionProgress ? t('aiGenerator.button.generating', { percentage: fullTranscriptionProgress.percentage }) : t('aiGenerator.button.generatingSimple') }
                           </>
                         ) : (
-                          "Generate Full Subtitles with AI"
+                          t('aiGenerator.button.generate')
                         )}
                       </Button>
                     )}
@@ -744,11 +755,11 @@ export default function SubtitleSyncPage() {
               <>
                 <Card className="shadow-md">
                   <CardHeader>
-                    <CardTitle className="text-lg">Track & Language Settings</CardTitle>
+                    <CardTitle className="text-lg">{t('editor.trackLanguage.title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="active-track-select">Active Subtitle Track</Label>
+                      <Label htmlFor="active-track-select">{t('editor.trackLanguage.activeTrackLabel')}</Label>
                       <Select
                         value={activeTrackId || ""}
                         onValueChange={(trackId) => {
@@ -757,9 +768,10 @@ export default function SubtitleSyncPage() {
                           addLog(`Active track changed to: ${selectedTrack?.fileName || 'None'}`, 'debug');
                         }}
                         disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                        dir={dir}
                       >
-                        <SelectTrigger id="active-track-select" className="w-full" aria-label="Select active subtitle track">
-                          <SelectValue placeholder="Select a subtitle track to edit" />
+                        <SelectTrigger id="active-track-select" className="w-full" aria-label={t('editor.trackLanguage.activeTrackLabel')}>
+                          <SelectValue placeholder={t('editor.trackLanguage.activeTrackPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           {subtitleTracks.map((track) => (
@@ -769,12 +781,12 @@ export default function SubtitleSyncPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {subtitleTracks.length === 0 && <p className="text-xs text-muted-foreground mt-1">No subtitle tracks loaded. Go back to Upload to add or generate one.</p>}
+                      {subtitleTracks.length === 0 && <p className="text-xs text-muted-foreground mt-1">{t('editor.trackLanguage.noTracks')}</p>}
                     </div>
                     <div>
                       <Label htmlFor="editor-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
                           <Languages className="h-4 w-4" />
-                          Transcription Language (for AI segment regeneration)
+                          {t('editor.trackLanguage.segmentLanguageLabel')}
                       </Label>
                       <Select
                         value={editorTranscriptionLanguage}
@@ -784,14 +796,15 @@ export default function SubtitleSyncPage() {
                           addLog(`Editor transcription language for segment regeneration set to: ${lang}`, 'debug');
                         }}
                         disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
+                        dir={dir}
                       >
-                        <SelectTrigger id="editor-transcription-language-select" className="w-full" aria-label="Select transcription language for segment regeneration">
+                        <SelectTrigger id="editor-transcription-language-select" className="w-full" aria-label={t('editor.trackLanguage.segmentLanguageLabel')}>
                           <SelectValue placeholder="Select transcription language" />
                         </SelectTrigger>
                         <SelectContent>
-                          {LANGUAGE_OPTIONS.map((lang) => (
-                            <SelectItem key={lang.value} value={lang.value}>
-                              {lang.label}
+                          {LANGUAGE_OPTIONS.map((langOpt) => (
+                            <SelectItem key={langOpt.value} value={langOpt.value}>
+                              {langOpt.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -799,7 +812,7 @@ export default function SubtitleSyncPage() {
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 <div className="flex-grow min-h-[300px] lg:min-h-0">
                   <SubtitleEditor
                     activeTrack={activeTrack}
@@ -820,17 +833,17 @@ export default function SubtitleSyncPage() {
                       variant="outline"
                       className="w-full sm:w-auto"
                       disabled={isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                      aria-label="Back to Uploads Step"
+                      aria-label={t('page.button.backToUploads')}
                     >
-                      <ArrowLeft className="mr-2 h-4 w-4" /> Back to Uploads
+                      <LeftArrowIcon className={dir === 'rtl' ? 'ms-2' : 'me-2'} /> {t('page.button.backToUploads')}
                     </Button>
                     <Button
                       onClick={handleProceedToExport}
                       disabled={!activeTrack || !activeTrack.entries.length || isGeneratingFullTranscription || isAnyTranscriptionLoading}
                       className="w-full sm:flex-1"
-                      aria-label="Proceed to Export Step"
+                      aria-label={t('page.button.proceedToExport')}
                     >
-                      Proceed to Export <ArrowRight className="ml-2 h-4 w-4" />
+                      {t('page.button.proceedToExport')} <RightArrowIcon className={dir === 'rtl' ? 'me-2' : 'ms-2'} />
                     </Button>
                   </CardFooter>
                 </Card>
@@ -846,11 +859,11 @@ export default function SubtitleSyncPage() {
                 />
                 <Card>
                   <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
-                    <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label="Go back to Edit Step">
-                      <ArrowLeft className="mr-2 h-4 w-4" /> Edit More
+                    <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label={t('page.button.editMore')}>
+                      <LeftArrowIcon className={dir === 'rtl' ? 'ms-2' : 'me-2'} /> {t('page.button.editMore')}
                     </Button>
-                    <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label="Start Over and Clear All Data">
-                      <RotateCcw className="mr-2 h-4 w-4" /> Start Over (Clear Data)
+                    <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label={t('page.button.startOver')}>
+                      <RotateCcw className={dir === 'rtl' ? 'ms-2' : 'me-2'} /> {t('page.button.startOver')}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -862,11 +875,11 @@ export default function SubtitleSyncPage() {
         {currentStep === 'upload' && (
           <Card>
             <CardHeader>
-                <CardTitle className="text-lg">Next Step</CardTitle>
+                <CardTitle className="text-lg">{t('page.nextStep.title')}</CardTitle>
             </CardHeader>
             <CardContent>
                 <p className="text-sm text-muted-foreground mb-3">
-                    Once your media is loaded and you've either uploaded or generated subtitles, proceed to the editor.
+                    {t('page.nextStep.description')}
                 </p>
             </CardContent>
             <CardFooter className="p-4 pt-0">
@@ -874,18 +887,18 @@ export default function SubtitleSyncPage() {
                 onClick={handleProceedToEdit}
                 disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isReplacingMedia}
                 className="w-full"
-                aria-label="Proceed to Edit Step"
+                aria-label={t('page.button.proceedToEdit')}
               >
-                Proceed to Edit <ArrowRight className="ml-2 h-4 w-4" />
+                {t('page.button.proceedToEdit')} <RightArrowIcon className={dir === 'rtl' ? 'me-2' : 'ms-2'} />
               </Button>
             </CardFooter>
           </Card>
         )}
       </main>
       <footer className="mt-8 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Subtitle Sync. Created by Amin Sharifi (github.com/moaminsharifi). Powered by Next.js & OpenAI.</p>
+        <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
       </footer>
-      
+
       <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
          <Button
           variant="outline"
@@ -895,8 +908,8 @@ export default function SubtitleSyncPage() {
             setIsDebugLogDialogOpen(true);
             addLog("Debug log dialog opened.", "debug");
           }}
-          aria-label="Open Debug Logs"
-          title="Open Debug Logs"
+          aria-label={t('debugLog.title')}
+          title={t('debugLog.title')}
         >
           <ScrollText className="h-5 w-5" />
         </Button>
@@ -908,8 +921,8 @@ export default function SubtitleSyncPage() {
             setIsCheatsheetDialogOpen(true);
             addLog("Cheatsheet dialog opened.", "debug");
           }}
-          aria-label="Open Keyboard Cheatsheet & Tips"
-          title="Open Keyboard Cheatsheet & Tips"
+          aria-label={t('cheatsheet.title')}
+          title={t('cheatsheet.title')}
         >
           <HelpCircle className="h-5 w-5" />
         </Button>
@@ -921,8 +934,8 @@ export default function SubtitleSyncPage() {
             setIsSettingsDialogOpen(true);
             addLog("Settings dialog opened.", "debug");
           }}
-          aria-label="Open Settings"
-          title="Open Settings"
+          aria-label={t('settings.title')}
+          title={t('settings.title')}
         >
           <SettingsIcon className="h-5 w-5" />
         </Button>
@@ -939,11 +952,11 @@ export default function SubtitleSyncPage() {
                     setEditorTranscriptionLanguage(savedDefaultLang);
                     addLog(`Editor transcription language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-                if (fullTranscriptionLanguageOverride !== savedDefaultLang) { 
+                if (fullTranscriptionLanguageOverride !== savedDefaultLang) {
                     setFullTranscriptionLanguageOverride(savedDefaultLang);
                      addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-            } else { 
+            } else {
                 if (editorTranscriptionLanguage !== "auto-detect") {
                     setEditorTranscriptionLanguage("auto-detect");
                     addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");

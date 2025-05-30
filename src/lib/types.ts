@@ -29,20 +29,20 @@ export interface Segment {
   start: number; // Start time of the segment in seconds
   end: number;   // End time of the segment in seconds
   text: string;  // Transcribed text of the segment
-  // OpenAI's verbose response includes other fields like tokens, avg_logprob, etc.,
-  // but we'll only use these for now.
 }
 
 
 export type OpenAIModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe';
 export type Theme = 'light' | 'dark' | 'system';
+export type Language = 'en' | 'fa';
 
 export interface AppSettings {
   openAIToken?: string;
-  groqToken?: string; // Kept for potential future use, not actively used for transcription
+  groqToken?: string;
   openAIModel?: OpenAIModelType;
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
   theme?: Theme;
+  language?: Language;
 }
 
 export const LANGUAGE_OPTIONS = [
@@ -116,3 +116,4 @@ export interface LogEntry {
 }
 
 export const THEME_KEY = 'app-theme';
+export const LANGUAGE_KEY = 'app-language';
