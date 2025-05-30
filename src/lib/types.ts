@@ -117,3 +117,7 @@ export interface LogEntry {
 
 export const THEME_KEY = 'app-theme';
 export const LANGUAGE_KEY = 'app-language';
+export const OPENAI_MODEL_KEY = 'app-settings-openai-model';
+export const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
+export const OPENAI_TOKEN_KEY = 'app-settings-openai-token'; // Added as it's likely used with settings
+export const GROQ_TOKEN_KEY = 'app-settings-groq-token'; // Added as it's likely used with settings
