@@ -1,10 +1,10 @@
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeInitializer } from '@/components/theme-initializer';
-import { LanguageProvider } from '@/contexts/LanguageContext'; // Import the provider
+import { LanguageProvider } from '@/contexts/LanguageContext';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -16,11 +16,83 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-// Metadata can be dynamic if you use generateMetadata with language context later
+const APP_NAME = 'Subtitle Sync';
+const APP_DESCRIPTION = 'Powerful, browser-based subtitle editor. Upload media, import/edit SRT/VTT files, or use AI to generate subtitles. No backend required, 100% private.';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'; // Replace with your actual production URL
+
 export const metadata: Metadata = {
-  title: 'Subtitle Sync', // This could be translated if generateMetadata is used
-  description: 'Synchronize and edit subtitles for your media files.', // Same here
+  metadataBase: new URL(APP_URL),
+  applicationName: APP_NAME,
+  title: {
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`, // For dynamic titles in child pages
+  },
+  description: APP_DESCRIPTION,
+  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle sync'],
+  manifest: '/manifest.json', // Assuming you might add a manifest.json later
+  
+  openGraph: {
+    type: 'website',
+    url: APP_URL,
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    siteName: APP_NAME,
+    images: [
+      {
+        url: `${APP_URL}/og-image.png`, // Replace with your actual Open Graph image URL
+        width: 1200,
+        height: 630,
+        alt: `${APP_NAME} - Subtitle Editor`,
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    images: [`${APP_URL}/twitter-image.png`], // Replace with your actual Twitter card image URL
+    // creator: '@yourtwitterhandle', // Optional: Add your Twitter handle
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  icons: {
+    icon: '/favicon.ico', // Standard favicon
+    shortcut: '/favicon-16x16.png', // Or your preferred shortcut icon
+    apple: '/apple-touch-icon.png', // Apple touch icon
+    // other: [ // Example for other icons
+    //   { rel: 'icon', url: '/favicon-32x32.png', sizes: '32x32' },
+    // ],
+  },
+  // appleWebApp: { // For PWAs
+  //   title: APP_NAME,
+  //   statusBarStyle: 'default',
+  //   capable: true,
+  // },
+  // formatDetection: { // Optional
+  //   telephone: false,
+  // },
 };
+
+export const viewport: Viewport = {
+  themeColor: [ // You can define different theme colors for light and dark mode
+    { media: '(prefers-color-scheme: light)', color: '#f5f5f5' }, // Matches light background
+    { media: '(prefers-color-scheme: dark)', color: '#0d1b2a' },  // Matches dark background (Solarized dark base03)
+  ],
+  // colorScheme: 'light dark', // Inform the browser about supported color schemes
+  // width: 'device-width', // default
+  // initialScale: 1, // default
+  // maximumScale: 1, // Optional: to prevent zooming
+};
+
 
 export default function RootLayout({
   children,
