@@ -26,6 +26,12 @@ Subtitle Sync is packed with features to make your subtitle editing workflow smo
 *   **🧠 AI Transcription (Optional):** Generate subtitles automatically from your media's audio using powerful AI models (requires API keys). Regenerate specific segments as needed.
 *   **⬇️ Subtitle Export:** Save your finished subtitles in .SRT or .VTT format.
 
+### Images showcasing the editor:
+
+![First Page](docs/image/screencapture-first-page.png)
+![Edit Panel](docs/image/screencapture-edit-panel.png)
+![Generate Subtitle with AI](docs/image/screencapture-generate-subtitle-with-ai.png)
+
 ## 🚀 Getting Started 🚀
 
 Getting started is a breeze!
@@ -123,3 +129,8 @@ Here are the currently supported languages:
 Once you have your API keys, you can easily configure them within the application's settings. Look for the settings dialog (usually accessible via a gear or settings icon in the interface), where you'll find dedicated fields to input your OpenAI and Grok API keys.
 
 **Important:** These API keys are stored securely within your browser's local storage. They are **never** sent to any external server other than the respective OpenAI/Grok APIs for transcription purposes. This ensures your privacy and security.
+
+### Modals
+![Settings Modal](docs/image/screencapture-setting-modal.png)
+![Tips Modal](docs/image/screencapture-tips-modal.png)
+![Debug Modal](docs/image/screencapture-debug-modal.png)
