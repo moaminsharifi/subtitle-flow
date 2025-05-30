@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UploadCloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/contexts/LanguageContext'; // Import useTranslation
 
 interface MediaUploaderProps {
   onMediaUpload: (file: File, url: string, type: 'audio' | 'video', duration: number) => void;
@@ -17,6 +18,7 @@ interface MediaUploaderProps {
 }
 
 export function MediaUploader({ onMediaUpload, disabled, className }: MediaUploaderProps) {
+  const { t, dir } = useTranslation(); // Use translation hook
   const [fileName, setFileName] = useState<string | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,17 +41,17 @@ export function MediaUploader({ onMediaUpload, disabled, className }: MediaUploa
   };
 
   return (
-    <Card className={cn("shadow-lg", className)}>
+    <Card className={cn("shadow-lg", className)} dir={dir}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
           <UploadCloud className="h-6 w-6 text-primary" />
-          Upload Media
+          {t('mediaUploader.title')}
         </CardTitle>
-        <CardDescription>Select an audio or video file to get started.</CardDescription>
+        <CardDescription>{t('mediaUploader.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid w-full max-w-sm items-center gap-1.5">
-          <Label htmlFor="media-file-input" className="font-semibold">Media File (Audio/Video)</Label>
+          <Label htmlFor="media-file-input" className="font-semibold">{t('mediaUploader.label')}</Label>
           <Input 
             id="media-file-input" 
             type="file" 
@@ -60,12 +62,14 @@ export function MediaUploader({ onMediaUpload, disabled, className }: MediaUploa
             aria-describedby="media-file-description" 
           />
            <p id="media-file-description" className="text-sm text-muted-foreground sr-only">
-            Select an audio or video file to upload. Press Enter or Space to open file dialog when focused.
+            {t('mediaUploader.description')}
           </p>
         </div>
-        {fileName && <p className="text-sm text-muted-foreground">Selected: {fileName}</p>}
+        {fileName && <p className="text-sm text-muted-foreground">{t('mediaUploader.selected', { fileName })}</p>}
       </CardContent>
     </Card>
   );
 }
 
+
+    
