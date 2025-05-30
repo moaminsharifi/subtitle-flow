@@ -78,8 +78,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       setOpenAIModel(storedOpenAIModel || 'whisper-1');
       setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
       setSelectedTheme(storedTheme || 'system');
-      // Apply theme loaded from storage immediately when dialog opens
-      // applyTheme(storedTheme || 'system'); // No, ThemeInitializer handles initial load. This would be redundant.
       
       addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Default Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${storedTheme || 'system'}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
     }
@@ -96,8 +94,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
     localStorage.setItem(OPENAI_MODEL_KEY, openAIModel);
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
-    // Theme is already applied and saved by handleThemeChange -> applyTheme
-    // but ensure it's consistent if applyTheme wasn't called
     if (localStorage.getItem(THEME_KEY) !== selectedTheme) {
        applyTheme(selectedTheme);
     }
@@ -123,7 +119,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-grow my-1 pr-2"> {/* my-1 for a bit of space, pr-2 for scrollbar */}
+          <ScrollArea className="flex-grow my-1 pr-2">
             <div className="grid gap-6 py-4">
               <div className="space-y-2">
                 <Label className="text-base font-semibold">Theme</Label>
@@ -225,7 +221,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
             
             <Separator className="my-2" />
             
-            <div className="py-2 px-1"> {/* Added px-1 to keep button from edge of scroll area */}
+            <div className="py-2 px-1">
               <Button 
                 variant="outline" 
                 className="w-full" 
@@ -241,7 +237,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
             <Separator className="my-2" />
 
-            <div className="px-1"> {/* Added px-1 */}
+            <div className="px-1">
                 <h3 className="text-lg font-medium mb-2">Credits</h3>
                 <div className="text-sm text-muted-foreground space-y-1">
                     <p>This application is proudly built with:</p>
@@ -254,6 +250,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     </ul>
                     <p className="mt-2">
                         Developed by the Firebase Studio AI.
+                    </p>
+                    <p className="mt-2">
+                        Created by Amin Sharifi - <a href="https://github.com/moaminsharifi" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">github.com/moaminsharifi</a>
                     </p>
                 </div>
             </div>

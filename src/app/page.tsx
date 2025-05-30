@@ -104,13 +104,13 @@ export default function SubtitleSyncPage() {
       playerRef.current.pause();
     }
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
-    setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect"); // Reset language override on new media
+    setFullTranscriptionLanguageOverride(savedDefaultLang || "auto-detect"); 
     addLog(`Full transcription language override reset to settings default: ${savedDefaultLang || "auto-detect"} on new media upload.`, "debug");
     
     const message = `Media Loaded: ${file.name} (Type: ${type}, Duration: ${duration.toFixed(2)}s)`;
     toast({ title: "Media Loaded", description: message, duration: 5000 });
     addLog(message, 'success');
-    setIsReplacingMedia(false); // Hide replacement uploader after new file is selected
+    setIsReplacingMedia(false); 
   };
 
   const handleSubtitleUpload = (entries: SubtitleEntry[], fileName: string, format: SubtitleFormat) => {
@@ -387,7 +387,6 @@ export default function SubtitleSyncPage() {
       return;
     }
     
-    // Use fullTranscriptionLanguageOverride for full transcription
     const langForFullTranscription = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
 
     addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language (override): ${langForFullTranscription || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
@@ -551,7 +550,7 @@ export default function SubtitleSyncPage() {
       addLog(msg, 'info');
     }
     setCurrentStep('upload');
-    setIsReplacingMedia(false); // Ensure replacement uploader is hidden when going to upload
+    setIsReplacingMedia(false); 
     addLog(`Navigated to Upload step. Reset: ${reset}`, 'debug');
   };
 
@@ -584,9 +583,7 @@ export default function SubtitleSyncPage() {
       </header>
 
       <main className="flex-grow flex flex-col gap-6">
-        {/* Main 2-column content area (for Upload & Edit steps mostly) */}
         <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* === Left Column: Media Player / Initial Uploader Section === */}
           <div className="space-y-6 flex flex-col h-full">
             {currentStep === 'upload' && !mediaFile && (
               <MediaUploader
@@ -598,7 +595,6 @@ export default function SubtitleSyncPage() {
             {mediaFile && (
               <Card className={cn(
                 "shadow-lg animate-fade-in",
-                 // flex-grow ensures it takes space in edit/export too
                 (currentStep === 'upload' || currentStep === 'edit') ? "sticky top-6 flex-grow" : "flex-grow"
               )}> 
                 <CardContent className="p-4 h-full flex flex-col">
@@ -652,7 +648,6 @@ export default function SubtitleSyncPage() {
             )}
           </div>
 
-          {/* === Right Column: Dynamic Content (Upload Options / Editor / Exporter) === */}
           <StepContentWrapper>
             {currentStep === 'upload' && (
               <>
@@ -864,7 +859,6 @@ export default function SubtitleSyncPage() {
           </StepContentWrapper>
         </div>
 
-        {/* === Full-width "Next Step" Card (Only for Upload Step) === */}
         {currentStep === 'upload' && (
           <Card>
             <CardHeader>
@@ -889,7 +883,7 @@ export default function SubtitleSyncPage() {
         )}
       </main>
       <footer className="mt-8 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Subtitle Sync. Powered by Next.js & OpenAI.</p>
+        <p>&copy; {new Date().getFullYear()} Subtitle Sync. Created by Amin Sharifi (github.com/moaminsharifi). Powered by Next.js & OpenAI.</p>
       </footer>
       
       <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
@@ -905,6 +899,19 @@ export default function SubtitleSyncPage() {
           title="Open Debug Logs"
         >
           <ScrollText className="h-5 w-5" />
+        </Button>
+         <Button
+          variant="outline"
+          size="icon"
+          className="rounded-full shadow-lg"
+          onClick={() => {
+            setIsCheatsheetDialogOpen(true);
+            addLog("Cheatsheet dialog opened.", "debug");
+          }}
+          aria-label="Open Keyboard Cheatsheet & Tips"
+          title="Open Keyboard Cheatsheet & Tips"
+        >
+          <HelpCircle className="h-5 w-5" />
         </Button>
         <Button
           variant="outline"
@@ -968,5 +975,3 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
-
-    
