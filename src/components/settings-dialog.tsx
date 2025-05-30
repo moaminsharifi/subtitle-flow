@@ -62,7 +62,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         document.documentElement.classList.remove('dark');
       }
     }
-    // addLog(`Theme set to ${themeToApply} and applied.`, "debug"); // Already logged onChange
   };
 
   useEffect(() => {
@@ -81,7 +80,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
       const initialTheme = storedTheme || 'system';
       setSelectedTheme(initialTheme);
-      // applyTheme(initialTheme); // Theme is applied by ThemeInitializer on initial load
 
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
 
@@ -108,7 +106,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
     
     localStorage.setItem(THEME_KEY, selectedTheme);
-    // Theme already applied onChange, so no need to call applyTheme(selectedTheme) here again.
 
     if (currentAppLanguage !== selectedAppLanguage) {
       setAppLanguage(selectedAppLanguage); 
@@ -147,178 +144,180 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
           </DialogHeader>
 
           <div className="my-1 flex-grow overflow-y-auto px-2 pr-3 min-h-0">
-            <div className="space-y-6 py-4">
-              
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">{t('settings.theme.label')}</Label>
-                <RadioGroup
-                  value={selectedTheme}
-                  onValueChange={(value: string) => handleThemeChange(value as Theme)}
-                  className="grid grid-cols-3 gap-2"
-                  dir={dir}
-                >
-                  {[
-                    { value: 'light', label: t('settings.theme.light') as string, icon: Sun },
-                    { value: 'dark', label: t('settings.theme.dark') as string, icon: Moon },
-                    { value: 'system', label: t('settings.theme.system') as string, icon: Laptop },
-                  ].map((item) => (
-                    <Label
-                      key={item.value}
-                      htmlFor={`theme-${item.value}`}
-                      className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer"
-                    >
-                      <RadioGroupItem value={item.value} id={`theme-${item.value}`} className="sr-only" />
-                      <item.icon className="mb-1 h-5 w-5" />
-                      {item.label}
+            <ScrollArea className="h-full pr-2"> {/* Added pr-2 to ScrollArea to prevent content clipping with scrollbar */}
+              <div className="space-y-6 py-4">
+                
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">{t('settings.theme.label')}</Label>
+                  <RadioGroup
+                    value={selectedTheme}
+                    onValueChange={(value: string) => handleThemeChange(value as Theme)}
+                    className="grid grid-cols-3 gap-2"
+                    dir={dir}
+                  >
+                    {[
+                      { value: 'light', label: t('settings.theme.light') as string, icon: Sun },
+                      { value: 'dark', label: t('settings.theme.dark') as string, icon: Moon },
+                      { value: 'system', label: t('settings.theme.system') as string, icon: Laptop },
+                    ].map((item) => (
+                      <Label
+                        key={item.value}
+                        htmlFor={`theme-${item.value}`}
+                        className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer"
+                      >
+                        <RadioGroupItem value={item.value} id={`theme-${item.value}`} className="sr-only" />
+                        <item.icon className="mb-1 h-5 w-5" />
+                        {item.label}
+                      </Label>
+                    ))}
+                  </RadioGroup>
+                </div>
+                
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold flex items-center gap-1">
+                      <Languages className="h-5 w-5"/>
+                      {t('settings.language.label')}
+                  </Label>
+                  <Select
+                      value={selectedAppLanguage}
+                      onValueChange={(value) => handleAppLanguageChange(value as Language)}
+                      dir={dir}
+                  >
+                      <SelectTrigger className="w-full" aria-label={t('settings.language.label') as string}>
+                          <SelectValue placeholder="Select application language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="en">{t('settings.language.english')}</SelectItem>
+                          <SelectItem value="fa">{t('settings.language.persian')}</SelectItem>
+                      </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">{t('settings.apiConfig.label')}</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                    <Label htmlFor="openai-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                      {t('settings.apiConfig.openAIToken')}
                     </Label>
-                  ))}
-                </RadioGroup>
-              </div>
-              
-              <Separator />
-
-               <div className="space-y-2">
-                <Label className="text-base font-semibold flex items-center gap-1">
-                    <Languages className="h-5 w-5"/>
-                    {t('settings.language.label')}
-                </Label>
-                <Select
-                    value={selectedAppLanguage}
-                    onValueChange={(value) => handleAppLanguageChange(value as Language)}
-                    dir={dir}
-                >
-                    <SelectTrigger className="w-full" aria-label={t('settings.language.label') as string}>
-                        <SelectValue placeholder="Select application language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="en">{t('settings.language.english')}</SelectItem>
-                        <SelectItem value="fa">{t('settings.language.persian')}</SelectItem>
-                    </SelectContent>
-                </Select>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">{t('settings.apiConfig.label')}</Label>
-                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                  <Label htmlFor="openai-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                    {t('settings.apiConfig.openAIToken')}
-                  </Label>
-                  <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                    <Input
-                      id="openai-token"
-                      type={showOpenAIToken ? 'text' : 'password'}
-                      value={openAIToken}
-                      onChange={(e) => setOpenAIToken(e.target.value)}
-                      className="flex-grow"
-                      placeholder="sk-..."
-                      aria-label={t('settings.apiConfig.openAIToken') as string}
+                    <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                      <Input
+                        id="openai-token"
+                        type={showOpenAIToken ? 'text' : 'password'}
+                        value={openAIToken}
+                        onChange={(e) => setOpenAIToken(e.target.value)}
+                        className="flex-grow"
+                        placeholder="sk-..."
+                        aria-label={t('settings.apiConfig.openAIToken') as string}
+                        dir={dir}
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)} aria-label={showOpenAIToken ? "Hide OpenAI token" : "Show OpenAI token"}>
+                        {showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                    <Label htmlFor="groq-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                      {t('settings.apiConfig.groqToken')}
+                    </Label>
+                    <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                      <Input
+                        id="groq-token"
+                        type={showGroqToken ? 'text' : 'password'}
+                        value={groqToken}
+                        onChange={(e) => setGroqToken(e.target.value)}
+                        className="flex-grow"
+                        placeholder="gsk_..."
+                        aria-label={t('settings.apiConfig.groqToken') as string}
+                        dir={dir}
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => setShowGroqToken(!showGroqToken)} aria-label={showGroqToken ? "Hide Groq token" : "Show Groq token"}>
+                        {showGroqToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                    <Label htmlFor="openai-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                      {t('settings.apiConfig.openAIModel')}
+                    </Label>
+                    <Select
+                      value={openAIModel}
+                      onValueChange={(value: string) => setOpenAIModel(value as OpenAIModelType)}
                       dir={dir}
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)} aria-label={showOpenAIToken ? "Hide OpenAI token" : "Show OpenAI token"}>
-                      {showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </Button>
+                    >
+                      <SelectTrigger className="col-span-1 md:col-span-3" id="openai-model-select" aria-label={t('settings.apiConfig.openAIModel') as string}>
+                        <SelectValue placeholder="Select OpenAI model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="whisper-1">whisper-1</SelectItem>
+                        <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</SelectItem>
+                        <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                  <Label htmlFor="groq-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                    {t('settings.apiConfig.groqToken')}
-                  </Label>
-                   <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                    <Input
-                      id="groq-token"
-                      type={showGroqToken ? 'text' : 'password'}
-                      value={groqToken}
-                      onChange={(e) => setGroqToken(e.target.value)}
-                      className="flex-grow"
-                      placeholder="gsk_..."
-                      aria-label={t('settings.apiConfig.groqToken') as string}
+                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                    <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                      {t('settings.apiConfig.defaultLanguage')}
+                    </Label>
+                    <Select
+                      value={defaultTranscriptionLanguage}
+                      onValueChange={(value) => setDefaultTranscriptionLanguage(value as LanguageCode | "auto-detect")}
                       dir={dir}
-                    />
-                     <Button variant="ghost" size="icon" onClick={() => setShowGroqToken(!showGroqToken)} aria-label={showGroqToken ? "Hide Groq token" : "Show Groq token"}>
-                      {showGroqToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </Button>
+                    >
+                      <SelectTrigger className="col-span-1 md:col-span-3" id="default-language-select" aria-label={t('settings.apiConfig.defaultLanguage') as string}>
+                        <SelectValue placeholder="Select default transcription language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGE_OPTIONS.map((langOpt) => (
+                          <SelectItem key={langOpt.value} value={langOpt.value}>
+                            {langOpt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                  <Label htmlFor="openai-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                    {t('settings.apiConfig.openAIModel')}
-                  </Label>
-                  <Select
-                    value={openAIModel}
-                    onValueChange={(value: string) => setOpenAIModel(value as OpenAIModelType)}
-                    dir={dir}
+
+                <Separator />
+
+                <div className="py-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setIsCheatsheetDialogOpen(true);
+                      addLog("Cheatsheet dialog opened from settings.", "debug");
+                    }}
                   >
-                    <SelectTrigger className="col-span-1 md:col-span-3" id="openai-model-select" aria-label={t('settings.apiConfig.openAIModel') as string}>
-                      <SelectValue placeholder="Select OpenAI model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="whisper-1">whisper-1</SelectItem>
-                      <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</SelectItem>
-                      <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <HelpCircle className={cn(dir === 'rtl' ? 'ms-2' : 'me-2')} />
+                    {t('settings.cheatsheet.button')}
+                  </Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                  <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                    {t('settings.apiConfig.defaultLanguage')}
-                  </Label>
-                  <Select
-                    value={defaultTranscriptionLanguage}
-                    onValueChange={(value) => setDefaultTranscriptionLanguage(value as LanguageCode | "auto-detect")}
-                    dir={dir}
-                  >
-                    <SelectTrigger className="col-span-1 md:col-span-3" id="default-language-select" aria-label={t('settings.apiConfig.defaultLanguage') as string}>
-                      <SelectValue placeholder="Select default transcription language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LANGUAGE_OPTIONS.map((langOpt) => (
-                        <SelectItem key={langOpt.value} value={langOpt.value}>
-                          {langOpt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+
+                <Separator />
+
+                <div>
+                    <h3 className="text-lg font-medium mb-2">{t('settings.credits.title')}</h3>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                        <p>{t('settings.credits.builtWith')}</p>
+                        <ul className="list-disc list-inside ps-4">
+                            <li>Next.js by Vercel</li>
+                            <li>React</li>
+                            <li>ShadCN UI Components</li>
+                            <li>Tailwind CSS</li>
+                            <li>OpenAI API for transcription</li>
+                        </ul>
+                        <p className="mt-2">
+                            {t('settings.credits.developedByFS')}
+                        </p>
+                        <p className="mt-2">{t('settings.credits.createdByAS')}</p>
+                    </div>
                 </div>
               </div>
-
-              <Separator />
-
-              <div className="py-2">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setIsCheatsheetDialogOpen(true);
-                    addLog("Cheatsheet dialog opened from settings.", "debug");
-                  }}
-                >
-                  <HelpCircle className={cn(dir === 'rtl' ? 'ms-2' : 'me-2')} />
-                  {t('settings.cheatsheet.button')}
-                </Button>
-              </div>
-
-              <Separator />
-
-              <div>
-                  <h3 className="text-lg font-medium mb-2">{t('settings.credits.title')}</h3>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                      <p>{t('settings.credits.builtWith')}</p>
-                      <ul className="list-disc list-inside ps-4">
-                          <li>Next.js by Vercel</li>
-                          <li>React</li>
-                          <li>ShadCN UI Components</li>
-                          <li>Tailwind CSS</li>
-                          <li>OpenAI API for transcription</li>
-                      </ul>
-                      <p className="mt-2">
-                          {t('settings.credits.developedByFS')}
-                      </p>
-                      <p className="mt-2" dangerouslySetInnerHTML={{ __html: t('settings.credits.createdByAS', { '0': '<a href="https://github.com/moaminsharifi/subtitle-translator-webapp" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary">' }) as string }} />
-                  </div>
-              </div>
-            </div>
+            </ScrollArea>
           </div>
 
           <DialogFooter className="mt-auto pt-4 border-t border-border">
@@ -344,3 +343,4 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   );
 }
 
+    

@@ -2,7 +2,7 @@
 {
   "app.title": "همگام‌ساز زیرنویس",
   "app.description": "زیرنویس فایل‌های رسانه‌ای خود را همگام‌سازی و ویرایش کنید.",
-  "footer.copyright": "© {year} همگام‌ساز زیرنویس. ایجاد شده توسط امین شریفی (<0>github.com/moaminsharifi/subtitle-translator-webapp</0>). قدرت گرفته از Next.js و OpenAI.",
+  "footer.copyright": "© {year} همگام‌ساز زیرنویس. ایده از امین شریفی، کد با کمک فایربیس استودیو توسعه داده شده است. <0>ایده اولیه</0>. قدرت گرفته از Next.js و OpenAI.",
   "settings.title": "تنظیمات برنامه",
   "settings.description": "توکن‌های API، پوسته، زبان و سایر تنظیمات خود را اینجا مدیریت کنید.",
   "settings.theme.label": "پوسته",
@@ -18,7 +18,7 @@
   "settings.credits.title": "سازندگان و ابزارها",
   "settings.credits.builtWith": "این برنامه با افتخار با ابزارهای زیر ساخته شده است:",
   "settings.credits.developedByFS": "توسعه یافته توسط Firebase Studio AI.",
-  "settings.credits.createdByAS": "ایجاد شده توسط امین شریفی - <0>github.com/moaminsharifi/subtitle-translator-webapp</0>",
+  "settings.credits.createdByAS": "ایده از امین شریفی. کد با کمک فایربیس استودیو توسعه داده شده است.",
   "settings.language.label": "زبان برنامه",
   "settings.language.english": "English (انگلیسی)",
   "settings.language.persian": "فارسی",
@@ -176,3 +176,5 @@
   "debugLog.buttons.clear": "پاک کردن گزارش‌ها",
   "debugLog.buttons.close": "بستن"
 }
+
+    

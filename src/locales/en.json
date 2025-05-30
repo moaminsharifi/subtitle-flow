@@ -2,7 +2,7 @@
 {
   "app.title": "Subtitle Sync",
   "app.description": "Synchronize and edit subtitles for your media files.",
-  "footer.copyright": "© {year} Subtitle Sync. Created by Amin Sharifi (<0>github.com/moaminsharifi/subtitle-translator-webapp</0>). Powered by Next.js & OpenAI.",
+  "footer.copyright": "© {year} Subtitle Sync. Idea from Amin Sharifi, code developed with Firebase Studio. <0>Original concept</0>. Powered by Next.js & OpenAI.",
   "settings.title": "Application Settings",
   "settings.description": "Manage your API tokens, theme, language, and other preferences here.",
   "settings.theme.label": "Theme",
@@ -18,7 +18,7 @@
   "settings.credits.title": "Credits",
   "settings.credits.builtWith": "This application is proudly built with:",
   "settings.credits.developedByFS": "Developed by the Firebase Studio AI.",
-  "settings.credits.createdByAS": "Created by Amin Sharifi - <0>github.com/moaminsharifi/subtitle-translator-webapp</0>",
+  "settings.credits.createdByAS": "Idea from Amin Sharifi. Code developed with Firebase Studio.",
   "settings.language.label": "Application Language",
   "settings.language.english": "English",
   "settings.language.persian": "فارسی (Persian)",
@@ -176,3 +176,5 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
+
+    
