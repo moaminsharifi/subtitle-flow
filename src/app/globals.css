@@ -55,32 +55,32 @@ body {
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 220 13% 12%; /* Dark desaturated blue */
+    --foreground: 0 0% 98%; /* Almost white text */
 
-    --card: 0 0% 3.9%;
+    --card: 220 13% 12%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 3.9%;
+    --popover: 220 13% 12%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 231 48% 52%; /* Adjusted primary for dark mode */
-    --primary-foreground: 0 0% 9%;
+    --primary-foreground: 0 0% 9%; /* Dark text on primary */
 
-    --secondary: 0 0% 14.9%;
+    --secondary: 220 13% 16%; /* Slightly lighter than background */
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 220 13% 18%; /* Muted version of background */
+    --muted-foreground: 220 10% 70%; /* Lighter muted text */
 
     --accent: 290 62% 50%; /* Adjusted accent for dark mode */
-    --accent-foreground: 0 0% 9%;
+    --accent-foreground: 0 0% 9%; /* Dark text on accent */
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
+    --border: 220 13% 20%; /* Slightly lighter border */
+    --input: 220 13% 20%; /* Input fields match border */
     --ring: 231 48% 52%; /* Using primary color for ring in dark mode */
     
     --chart-1: 220 70% 50%;

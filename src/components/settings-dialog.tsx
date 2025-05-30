@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Added import
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import type { AppSettings, OpenAIModelType, LogEntry, LanguageCode, Theme } from '@/lib/types';
 import { LANGUAGE_OPTIONS, THEME_KEY } from '@/lib/types';
@@ -46,25 +46,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const [isCheatsheetDialogOpen, setIsCheatsheetDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (isOpen) {
-      addLog("Settings dialog opened. Loading saved settings.", "debug");
-      const storedOpenAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
-      const storedGroqToken = localStorage.getItem(GROQ_TOKEN_KEY);
-      const storedOpenAIModel = localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType | null;
-      const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
-      const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
-      
-      if (storedOpenAIToken) setOpenAIToken(storedOpenAIToken);
-      if (storedGroqToken) setGroqToken(storedGroqToken);
-      setOpenAIModel(storedOpenAIModel || 'whisper-1');
-      setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
-      setSelectedTheme(storedTheme || 'system');
-      
-      addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Default Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${storedTheme || 'system'}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
-    }
-  }, [isOpen, addLog]);
-
   const applyTheme = (theme: Theme) => {
     localStorage.setItem(THEME_KEY, theme);
     if (theme === 'dark') {
@@ -83,9 +64,31 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     }
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      addLog("Settings dialog opened. Loading saved settings.", "debug");
+      const storedOpenAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
+      const storedGroqToken = localStorage.getItem(GROQ_TOKEN_KEY);
+      const storedOpenAIModel = localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType | null;
+      const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
+      const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
+      
+      if (storedOpenAIToken) setOpenAIToken(storedOpenAIToken);
+      if (storedGroqToken) setGroqToken(storedGroqToken);
+      setOpenAIModel(storedOpenAIModel || 'whisper-1');
+      setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
+      setSelectedTheme(storedTheme || 'system');
+      // Apply theme loaded from storage immediately when dialog opens
+      // applyTheme(storedTheme || 'system'); // No, ThemeInitializer handles initial load. This would be redundant.
+      
+      addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Default Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${storedTheme || 'system'}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
+    }
+  }, [isOpen, addLog]);
+
+
   const handleThemeChange = (newTheme: Theme) => {
     setSelectedTheme(newTheme);
-    // Immediate application handled by save, or could be done here too if desired
+    applyTheme(newTheme); // Apply theme immediately on selection
   };
   
   const handleSave = () => {
@@ -93,7 +96,11 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
     localStorage.setItem(OPENAI_MODEL_KEY, openAIModel);
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
-    applyTheme(selectedTheme); // Apply and save theme
+    // Theme is already applied and saved by handleThemeChange -> applyTheme
+    // but ensure it's consistent if applyTheme wasn't called
+    if (localStorage.getItem(THEME_KEY) !== selectedTheme) {
+       applyTheme(selectedTheme);
+    }
     
     const message = `Settings Saved. Theme: ${selectedTheme}. OpenAI Model: ${openAIModel}. Default Language: ${defaultTranscriptionLanguage}. OpenAI Token: ${openAIToken ? 'Set' : 'Not Set'}. Groq Token: ${groqToken ? 'Set' : 'Not Set'}.`;
     toast({
