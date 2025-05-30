@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import type { MediaFile, OpenAIModelType, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, Segment } from '@/lib/types';
 import { LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_MODEL_KEY, OPENAI_TOKEN_KEY } from '@/lib/types';
 import { MediaUploader } from '@/components/media-uploader';
@@ -34,6 +34,15 @@ interface FullTranscriptionProgress {
   percentage: number;
   currentStage: string | null;
 }
+
+// Define StepContentWrapper outside the SubtitleSyncPage component
+const StepContentWrapper = React.memo(({ children }: { children: React.ReactNode }) => (
+  <div className="space-y-6 flex flex-col h-full animate-fade-in">
+    {children}
+  </div>
+));
+StepContentWrapper.displayName = 'StepContentWrapper';
+
 
 export default function SubtitleSyncPage() {
   const { t, dir, language } = useTranslation();
@@ -70,8 +79,8 @@ export default function SubtitleSyncPage() {
 
   const clearLogs = useCallback(() => {
     setLogEntries([]);
-    addLog("Logs cleared.", "debug");
-  }, [addLog]);
+    addLog(t('debugLog.logsCleared') as string, "debug");
+  }, [addLog, t]);
 
   useEffect(() => {
     addLog("Application initialized.", "debug");
@@ -229,7 +238,7 @@ export default function SubtitleSyncPage() {
     addLog(successMsg as string, 'success');
   }, [activeTrack, activeTrackId, currentPlayerTime, mediaFile, t, toast, addLog]);
 
-  const handleSubtitleDelete = (entryId: string) => {
+  const handleSubtitleDelete = useCallback((entryId: string) => {
     if (!activeTrackId) return;
     setSubtitleTracks(prevTracks =>
       prevTracks.map(track => {
@@ -243,7 +252,7 @@ export default function SubtitleSyncPage() {
     const message = t('toast.subtitleDeletedDescriptionSimple', {entryId});
     toast({ title: t('toast.subtitleDeleted') as string, description: t('toast.subtitleDeletedDescription') as string, duration: 5000});
     addLog(message as string, 'info');
-  };
+  }, [activeTrackId, t, toast, addLog]);
 
   const handleTimeUpdate = useCallback((time: number) => {
     setCurrentPlayerTime(time);
@@ -490,7 +499,7 @@ export default function SubtitleSyncPage() {
       setFullTranscriptionProgress(null);
       addLog("Full media transcription process finished.", 'debug');
     }
-  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, mediaFile, fullTranscriptionLanguageOverride, t, toast, addLog, setFullTranscriptionProgress, setSubtitleTracks, setActiveTrackId, setCurrentStep]);
+  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, mediaFile, fullTranscriptionLanguageOverride, t, toast, addLog]);
 
   const isEntryTranscribing = (entryId: string): boolean => {
     return !!entryTranscriptionLoading[entryId];
@@ -566,11 +575,6 @@ export default function SubtitleSyncPage() {
     }
   }, [currentStep, t]);
 
-  const StepContentWrapper = ({ children }: { children: React.ReactNode }) => (
-    <div className="space-y-6 flex flex-col h-full animate-fade-in" key={currentStep}>
-      {children}
-    </div>
-  );
 
   const LeftArrowIcon = dir === 'rtl' ? ArrowRight : ArrowLeft;
   const RightArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
@@ -579,7 +583,7 @@ export default function SubtitleSyncPage() {
     const lang = value as LanguageCode | "auto-detect";
     setFullTranscriptionLanguageOverride(lang);
     addLog(`Full transcription language override set to: ${lang}`, 'debug');
-  }, [setFullTranscriptionLanguageOverride, addLog]);
+  }, [addLog]);
 
 
   const memoizedSubtitleUploaderCard = useMemo(() => (
@@ -624,7 +628,7 @@ export default function SubtitleSyncPage() {
             dir={dir}
           >
             <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label={t('aiGenerator.language.label') as string}>
-              <SelectValue placeholder="Select transcription language" />
+              <SelectValue placeholder={t('aiGenerator.language.placeholder') as string} />
             </SelectTrigger>
             <SelectContent>
               {LANGUAGE_OPTIONS.map((langOpt) => (
@@ -659,11 +663,14 @@ export default function SubtitleSyncPage() {
           >
             {isGeneratingFullTranscription ? (
               <>
-                <Loader2 className={dir === 'rtl' ? 'ms-2' : 'me-2'} />
+                <Loader2 className={cn("h-4 w-4 animate-spin", dir === 'rtl' ? 'ms-2' : 'me-2')} />
                 {fullTranscriptionProgress ? t('aiGenerator.button.generating', { percentage: fullTranscriptionProgress.percentage }) : t('aiGenerator.button.generatingSimple') }
               </>
             ) : (
-              t('aiGenerator.button.generate')
+              <>
+                <WandSparkles className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} />
+                {t('aiGenerator.button.generate')}
+              </>
             )}
           </Button>
         )}
@@ -719,7 +726,7 @@ export default function SubtitleSyncPage() {
                           aria-label={t('mediaPlayer.changeMediaButton') as string}
                           disabled={isGeneratingFullTranscription}
                         >
-                          <Pencil className={dir === 'rtl' ? 'ms-2' : 'me-2'} /> {t('mediaPlayer.changeMediaButton')}
+                          <Pencil className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('mediaPlayer.changeMediaButton')}
                         </Button>
                       ) : (
                         <div className="w-full space-y-2">
@@ -747,7 +754,7 @@ export default function SubtitleSyncPage() {
             )}
           </div>
 
-          <StepContentWrapper>
+          <StepContentWrapper key={currentStep}>
             {currentStep === 'upload' && (
               <>
                 {memoizedSubtitleUploaderCard}
@@ -780,7 +787,7 @@ export default function SubtitleSyncPage() {
                         <SelectContent>
                           {subtitleTracks.map((track) => (
                             <SelectItem key={track.id} value={track.id}>
-                              {track.fileName} ({track.format.toUpperCase()}, {track.entries.length} cues)
+                              {track.fileName} ({track.format.toUpperCase()}, {track.entries.length} {t('editor.trackLanguage.cuesLabel')})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -839,7 +846,7 @@ export default function SubtitleSyncPage() {
                       disabled={isGeneratingFullTranscription || isAnyTranscriptionLoading}
                       aria-label={t('page.button.backToUploads') as string}
                     >
-                      <LeftArrowIcon className={dir === 'rtl' ? 'ms-2' : 'me-2'} /> {t('page.button.backToUploads')}
+                      <LeftArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('page.button.backToUploads')}
                     </Button>
                     <Button
                       onClick={handleProceedToExport}
@@ -847,7 +854,7 @@ export default function SubtitleSyncPage() {
                       className="w-full sm:flex-1"
                       aria-label={t('page.button.proceedToExport') as string}
                     >
-                      {t('page.button.proceedToExport')} <RightArrowIcon className={dir === 'rtl' ? 'me-2' : 'ms-2'} />
+                       {t('page.button.proceedToExport')} <RightArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'me-2' : 'ms-2')} />
                     </Button>
                   </CardFooter>
                 </Card>
@@ -864,10 +871,10 @@ export default function SubtitleSyncPage() {
                 <Card>
                   <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
                     <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label={t('page.button.editMore') as string}>
-                      <LeftArrowIcon className={dir === 'rtl' ? 'ms-2' : 'me-2'} /> {t('page.button.editMore')}
+                      <LeftArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('page.button.editMore')}
                     </Button>
                     <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label={t('page.button.startOver') as string}>
-                      <RotateCcw className={dir === 'rtl' ? 'ms-2' : 'me-2'} /> {t('page.button.startOver')}
+                      <RotateCcw className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('page.button.startOver')}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -893,7 +900,7 @@ export default function SubtitleSyncPage() {
                 className="w-full"
                 aria-label={t('page.button.proceedToEdit') as string}
               >
-                {t('page.button.proceedToEdit')} <RightArrowIcon className={dir === 'rtl' ? 'me-2' : 'ms-2'} />
+                {t('page.button.proceedToEdit')} <RightArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'me-2' : 'ms-2')} />
               </Button>
             </CardFooter>
           </Card>
@@ -956,7 +963,7 @@ export default function SubtitleSyncPage() {
                     setEditorTranscriptionLanguage(savedDefaultLang);
                     addLog(`Editor transcription language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
-                if (fullTranscriptionLanguageOverride !== savedDefaultLang) {
+                if (fullTranscriptionLanguageOverride !== savedDefaultLang && currentStep === 'upload') { // Only update override if on upload page
                     setFullTranscriptionLanguageOverride(savedDefaultLang);
                      addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
                 }
@@ -965,7 +972,7 @@ export default function SubtitleSyncPage() {
                     setEditorTranscriptionLanguage("auto-detect");
                     addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");
                 }
-                if (fullTranscriptionLanguageOverride !== "auto-detect") {
+                if (fullTranscriptionLanguageOverride !== "auto-detect" && currentStep === 'upload') {
                     setFullTranscriptionLanguageOverride("auto-detect");
                     addLog("Full transcription override language reset to 'auto-detect' as default was cleared.", "debug");
                 }
@@ -992,6 +999,3 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
-
-
-    
