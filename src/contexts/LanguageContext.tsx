@@ -9,7 +9,7 @@ import { LANGUAGE_KEY } from '@/lib/types';
 interface LanguageContextType {
   language: Language;
   setLanguage: (language: Language) => void;
-  t: (key: string, replacements?: Record<string, string | number | React.ReactNode>) => string | React.ReactNode;
+  t: (key: string, replacements?: Record<string, string | number | React.ReactNode>) => string | React.ReactNode | (string | React.ReactNode)[];
   dir: 'ltr' | 'rtl';
 }
 
@@ -30,6 +30,11 @@ interface LanguageProviderProps {
 function escapeRegExp(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
+
+export const KbdComponentPlaceholder: React.FC<{children: React.ReactNode}> = ({children}) => {
+    return <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">{children}</kbd>;
+}
+KbdComponentPlaceholder.displayName = 'KbdComponentPlaceholder';
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
   const [language, setCurrentLanguage] = useState<Language>('en'); // Default to English initially
@@ -68,8 +73,10 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     }
     
     setCurrentLanguage(initialLanguage);
-    document.documentElement.lang = initialLanguage;
-    document.documentElement.dir = initialLanguage === 'fa' ? 'rtl' : 'ltr';
+    if (typeof document !== 'undefined') {
+        document.documentElement.lang = initialLanguage;
+        document.documentElement.dir = initialLanguage === 'fa' ? 'rtl' : 'ltr';
+    }
     if (!storedLanguage) {
         localStorage.setItem(LANGUAGE_KEY, initialLanguage);
     }
@@ -79,72 +86,88 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   const setLanguage = (lang: Language) => {
     setCurrentLanguage(lang);
     localStorage.setItem(LANGUAGE_KEY, lang);
-    document.documentElement.lang = lang;
-    document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
+    if (typeof document !== 'undefined') {
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
+    }
   };
 
-  const t = useCallback((key: string, replacements?: Record<string, string | number | React.ReactNode>): string | React.ReactNode => {
+  const t = useCallback((key: string, replacements?: Record<string, string | number | React.ReactNode>): string | React.ReactNode | (string | React.ReactNode)[] => {
     let translation = loadedTranslations[language]?.[key] || key;
-    if (typeof translation === 'string' && replacements) {
-      // Simple string/number replacements (e.g., {name} or {count})
-      Object.entries(replacements).forEach(([placeholder, value]) => {
-        if (typeof value === 'string' || typeof value === 'number') {
-          const escapedPlaceholder = escapeRegExp(placeholder);
-          // Construct a regex to match the literal placeholder, e.g., \{name\} or \{year\}
-          const regex = new RegExp(`\\{${escapedPlaceholder}\\}`, 'g');
-          translation = (translation as string).replace(regex, String(value));
-        }
-      });
-       
-      // Component replacements (e.g., <0>text</0> becomes <Kbd>text</Kbd>)
-      const parts: (string | React.ReactNode)[] = [];
-      let lastIndex = 0;
-      // Regex to find <digit>content</digit> tags
-      const componentRegex = /<(\d+)>([^<]*)<\/\1>/g; 
-      let match;
+    const parts: (string | React.ReactNode)[] = [];
+    let lastIndex = 0;
 
+    if (typeof translation === 'string' && replacements) {
+      // Component replacements (e.g., <0>text</0> becomes <Kbd>text</Kbd>)
+      const componentRegex = /<(\d+)>([^<]*)<\/\1>/g;
+      let match;
       let hasComponentReplacements = false;
-      if (replacements) {
-        for (const rKey in replacements) {
-          if (/\d+/.test(rKey) && React.isValidElement(replacements[rKey as keyof typeof replacements])) {
-            hasComponentReplacements = true;
-            break;
-          }
+      for (const rKey in replacements) {
+        if (/\d+/.test(rKey) && React.isValidElement(replacements[rKey as keyof typeof replacements])) {
+          hasComponentReplacements = true;
+          break;
         }
       }
-      
-      if (typeof translation === 'string' && hasComponentReplacements) {
+
+      if (hasComponentReplacements) {
+        let keyCounter = 0; 
         while ((match = componentRegex.exec(translation as string)) !== null) {
-            parts.push((translation as string).substring(lastIndex, match.index));
-            const tagIndex = match[1]; // e.g., "0"
-            const tagContent = match[2]; // e.g., "Tab"
+            const textPart = (translation as string).substring(lastIndex, match.index);
+            if (textPart) {
+              parts.push(textPart);
+            }
+            
+            const tagIndex = match[1]; 
+            const tagContent = match[2]; 
             
             const replacementElement = replacements?.[tagIndex] as React.ReactElement | undefined;
+
             if (replacementElement && React.isValidElement(replacementElement)) {
+                 const generatedKey = `comp-${tagIndex}-${keyCounter++}`;
                  if (replacementElement.type === KbdComponentPlaceholder || (typeof replacementElement.type !== 'string' && (replacementElement.type as React.FC).displayName === 'KbdComponentPlaceholder')) {
-                     parts.push(React.cloneElement(replacementElement, {}, tagContent));
+                     parts.push(React.cloneElement(replacementElement, { key: generatedKey }, tagContent));
                  } else {
-                    parts.push(replacementElement);
+                    parts.push(React.cloneElement(replacementElement, { key: replacementElement.key || generatedKey }));
                  }
             } else {
-                // If no valid React element for placeholder, keep original tag content
                 parts.push(match[0]); 
             }
             lastIndex = componentRegex.lastIndex;
         }
-        parts.push((translation as string).substring(lastIndex));
+        const finalTextPart = (translation as string).substring(lastIndex);
+        if (finalTextPart) {
+          parts.push(finalTextPart);
+        }
         
         const filteredParts = parts.filter(part => part !== "");
+        
         if (filteredParts.length > 1 || (filteredParts.length === 1 && typeof filteredParts[0] !== 'string')) {
-             return filteredParts; 
+             // Ensure all React elements in filteredParts have a key before returning
+             return filteredParts.map((part, idx) => {
+               if (React.isValidElement(part)) {
+                 // If the part already has a key from the cloning process, use it.
+                 // Otherwise (which shouldn't happen with current logic), assign a new one.
+                 return React.cloneElement(part, { key: part.key || `t-part-${idx}` });
+               }
+               return part; // Strings don't need keys
+             });
         } else if (filteredParts.length === 1 && typeof filteredParts[0] === 'string') {
-            translation = filteredParts[0]; // If only string parts remain, proceed as string
-        } else if (filteredParts.length === 0 && key !== translation) { // if parts are empty but translation happened (e.g. only component replacements)
-             return ''; // Or handle as appropriate
+            translation = filteredParts[0]; 
+        } else if (filteredParts.length === 0 && key !== translation) { 
+             return ''; 
         }
-        // If after component replacement, 'translation' is no longer the original key, it means some replacement happened.
-        // If 'filteredParts' resulted in a single string, that's our new 'translation'.
-        // If 'filteredParts' resulted in multiple items or React nodes, we returned 'filteredParts' already.
+      }
+
+      // Simple string/number replacements (e.g., {name} or {count})
+      // This should run after component replacements if 'translation' is still a string
+      if (typeof translation === 'string') {
+        Object.entries(replacements).forEach(([placeholder, value]) => {
+          if (typeof value === 'string' || typeof value === 'number') {
+            const escapedPlaceholder = escapeRegExp(placeholder);
+            const regex = new RegExp(`\\{${escapedPlaceholder}\\}`, 'g');
+            translation = (translation as string).replace(regex, String(value));
+          }
+        });
       }
     }
     return translation;
@@ -164,9 +187,3 @@ export const useTranslation = (): LanguageContextType => {
   }
   return context;
 };
-
-export const KbdComponentPlaceholder: React.FC<{children: React.ReactNode}> = ({children}) => {
-    return <kbd className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">{children}</kbd>;
-}
-KbdComponentPlaceholder.displayName = 'KbdComponentPlaceholder';
-
