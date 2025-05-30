@@ -394,7 +394,9 @@ export default function SubtitleSyncPage() {
       return;
     }
     
+    // Use the language selected in the override dropdown for full transcription
     const langForFullTranscription = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
+
 
     addLog(`Starting full media transcription with model: ${selectedOpenAIModel}, Language (override): ${langForFullTranscription || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
     setIsGeneratingFullTranscription(true);
@@ -906,8 +908,8 @@ export default function SubtitleSyncPage() {
           </Card>
         )}
       </main>
-      <footer className="mt-8 text-center text-sm text-muted-foreground">
-        <p dangerouslySetInnerHTML={{ __html: t('footer.copyright', { year: new Date().getFullYear() }) as string }} />
+      <footer className="mt-8 pt-4 border-t text-center text-sm text-muted-foreground">
+        <p dangerouslySetInnerHTML={{ __html: t('footer.copyright', { year: new Date().getFullYear(), '0': '<a href="https://github.com/moaminsharifi/subtitle-translator-webapp" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary">' }) as string }} />
       </footer>
 
       <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
