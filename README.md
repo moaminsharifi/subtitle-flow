@@ -1,3 +1,5 @@
+# Subtitle Sync
+![Subtitle Sync Logo](icon-512x512.png)
 # 🚀 Subtitle Sync: Rockstar Browser-Based Subtitle Editor 🚀
 
 Welcome to **Subtitle Sync**, a powerful and intuitive subtitle editor that runs entirely in your web browser! That's right – **NO BACKEND REQUIRED!** Experience blazing-fast performance and complete privacy as all your work stays local to your device.
