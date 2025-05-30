@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// ScrollArea removed as we are using direct overflow now for simplicity with flex
 import { useToast } from '@/hooks/use-toast';
 import type { AppSettings, OpenAIModelType, LogEntry, LanguageCode, Theme, Language } from '@/lib/types';
 import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, OPENAI_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY } from '@/lib/types';
@@ -76,7 +76,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
       const initialTheme = storedTheme || 'system';
       setSelectedTheme(initialTheme);
-      // applyTheme(initialTheme); // Theme is applied by ThemeInitializer on load, and by handleThemeChange on interaction
       
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
 
@@ -102,13 +101,12 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
     
     localStorage.setItem(THEME_KEY, selectedTheme);
-    // applyTheme is already called by handleThemeChange, so this re-confirms if system preference changed
     applyTheme(selectedTheme); 
 
     if (currentAppLanguage !== selectedAppLanguage) {
-      setAppLanguage(selectedAppLanguage); // This saves to localStorage and updates document
+      setAppLanguage(selectedAppLanguage); 
     } else {
-       localStorage.setItem(LANGUAGE_KEY, selectedAppLanguage); // Save even if not changed to keep it in sync
+       localStorage.setItem(LANGUAGE_KEY, selectedAppLanguage); 
     }
     
     const savedMessageKey = 'settings.toast.savedDescription'; 
@@ -123,7 +121,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
     toast({
       title: t('settings.toast.saved') as string,
-      description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", // Fallback for complex return types
+      description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
       duration: 5000,
     });
     addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({openAIModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage}) }`, 'success');
@@ -141,8 +139,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-grow my-1">
-            <div className="space-y-6 py-4 px-2 pr-3"> {/* Added pr-3 for scrollbar space */}
+          {/* This div is the primary scrollable content area */}
+          <div className="my-1 flex-grow overflow-y-auto px-2 pr-3 min-h-0"> {/* Added min-h-0 here */}
+            <div className="space-y-6 py-4"> {/* Inner wrapper for padding and spacing */}
               
               <div className="space-y-2">
                 <Label className="text-base font-semibold">{t('settings.theme.label')}</Label>
@@ -304,7 +303,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                   </div>
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter className="mt-auto pt-4 border-t border-border">
             <DialogClose asChild>
