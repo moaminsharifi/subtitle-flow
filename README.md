@@ -8,6 +8,7 @@ Welcome to **Subtitle Sync**, a powerful and intuitive subtitle editor that runs
 *   [Getting Started](#getting-started)
 *   [API Keys for Transcription](#api-keys-for-transcription)
     *   [Supported Transcription Languages](#supported-transcription-languages)
+*   [🎨 Dark/Light Theme](#-darklight-theme)
 *   [🛠️ Development Setup](#️-development-setup-)
 
 
