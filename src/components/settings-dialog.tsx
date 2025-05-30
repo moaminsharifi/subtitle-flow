@@ -18,12 +18,14 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import type { AppSettings, OpenAIModelType, LogEntry, LanguageCode, Theme, Language } from '@/lib/types';
 import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, OPENAI_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY } from '@/lib/types';
 import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
-import { HelpCircle, Sun, Moon, Laptop, Languages } from 'lucide-react';
+import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { cn } from '@/lib/utils';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -41,6 +43,10 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const [selectedTheme, setSelectedTheme] = useState<Theme>('system');
   const [selectedAppLanguage, setSelectedAppLanguage] = useState<Language>(currentAppLanguage);
   const [isCheatsheetDialogOpen, setIsCheatsheetDialogOpen] = useState(false);
+
+  const [showOpenAIToken, setShowOpenAIToken] = useState(false);
+  const [showGroqToken, setShowGroqToken] = useState(false);
+
   const { toast } = useToast();
 
   const applyTheme = (themeToApply: Theme) => {
@@ -56,7 +62,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         document.documentElement.classList.remove('dark');
       }
     }
-    addLog(`Theme set to ${themeToApply} and applied.`, "debug");
+    // addLog(`Theme set to ${themeToApply} and applied.`, "debug"); // Already logged onChange
   };
 
   useEffect(() => {
@@ -75,8 +81,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
       const initialTheme = storedTheme || 'system';
       setSelectedTheme(initialTheme);
-      applyTheme(initialTheme); // Apply the loaded theme immediately
-      
+      // applyTheme(initialTheme); // Theme is applied by ThemeInitializer on initial load
+
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
 
       addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
@@ -86,7 +92,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const handleThemeChange = (newTheme: Theme) => {
     setSelectedTheme(newTheme);
-    applyTheme(newTheme); 
+    applyTheme(newTheme);
+    addLog(`Theme selection changed to ${newTheme} and applied.`, "debug");
   };
 
   const handleAppLanguageChange = (newLang: Language) => {
@@ -131,7 +138,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-[700px] flex flex-col max-h-[85vh]" dir={dir}>
+        <DialogContent className="sm:max-w-[700px] flex flex-col max-h-[85vh] min-h-[70vh]" dir={dir}>
           <DialogHeader>
             <DialogTitle>{t('settings.title')}</DialogTitle>
             <DialogDescription>
@@ -139,8 +146,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
             </DialogDescription>
           </DialogHeader>
 
-          <div className="my-1 flex-grow overflow-y-auto px-2 pr-3 min-h-0"> {/* Added min-h-0 */}
-            <div className="space-y-6 py-4"> {/* Inner wrapper for padding and spacing */}
+          <div className="my-1 flex-grow overflow-y-auto px-2 pr-3 min-h-0">
+            <div className="space-y-6 py-4">
               
               <div className="space-y-2">
                 <Label className="text-base font-semibold">{t('settings.theme.label')}</Label>
@@ -195,37 +202,47 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
               <div className="space-y-2">
                 <Label className="text-base font-semibold">{t('settings.apiConfig.label')}</Label>
                 <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                  <Label htmlFor="openai-token" className={dir === 'rtl' ? "md:text-left" : "md:text-right"} dir={dir}>
+                  <Label htmlFor="openai-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                     {t('settings.apiConfig.openAIToken')}
                   </Label>
-                  <Input
-                    id="openai-token"
-                    type="password"
-                    value={openAIToken}
-                    onChange={(e) => setOpenAIToken(e.target.value)}
-                    className="col-span-1 md:col-span-3"
-                    placeholder="sk-..."
-                    aria-label={t('settings.apiConfig.openAIToken') as string}
-                    dir={dir}
-                  />
+                  <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                    <Input
+                      id="openai-token"
+                      type={showOpenAIToken ? 'text' : 'password'}
+                      value={openAIToken}
+                      onChange={(e) => setOpenAIToken(e.target.value)}
+                      className="flex-grow"
+                      placeholder="sk-..."
+                      aria-label={t('settings.apiConfig.openAIToken') as string}
+                      dir={dir}
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)} aria-label={showOpenAIToken ? "Hide OpenAI token" : "Show OpenAI token"}>
+                      {showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                  <Label htmlFor="groq-token" className={dir === 'rtl' ? "md:text-left" : "md:text-right"} dir={dir}>
+                  <Label htmlFor="groq-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                     {t('settings.apiConfig.groqToken')}
                   </Label>
-                  <Input
-                    id="groq-token"
-                    type="password"
-                    value={groqToken}
-                    onChange={(e) => setGroqToken(e.target.value)}
-                    className="col-span-1 md:col-span-3"
-                    placeholder="gsk_..."
-                    aria-label={t('settings.apiConfig.groqToken') as string}
-                    dir={dir}
-                  />
+                   <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                    <Input
+                      id="groq-token"
+                      type={showGroqToken ? 'text' : 'password'}
+                      value={groqToken}
+                      onChange={(e) => setGroqToken(e.target.value)}
+                      className="flex-grow"
+                      placeholder="gsk_..."
+                      aria-label={t('settings.apiConfig.groqToken') as string}
+                      dir={dir}
+                    />
+                     <Button variant="ghost" size="icon" onClick={() => setShowGroqToken(!showGroqToken)} aria-label={showGroqToken ? "Hide Groq token" : "Show Groq token"}>
+                      {showGroqToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                  <Label htmlFor="openai-model-select" className={dir === 'rtl' ? "md:text-left" : "md:text-right"} dir={dir}>
+                  <Label htmlFor="openai-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                     {t('settings.apiConfig.openAIModel')}
                   </Label>
                   <Select
@@ -244,7 +261,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                   </Select>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                  <Label htmlFor="default-language-select" className={dir === 'rtl' ? "md:text-left" : "md:text-right"} dir={dir}>
+                  <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                     {t('settings.apiConfig.defaultLanguage')}
                   </Label>
                   <Select
@@ -277,7 +294,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     addLog("Cheatsheet dialog opened from settings.", "debug");
                   }}
                 >
-                  <HelpCircle className={dir === 'rtl' ? 'ms-2' : 'me-2'} />
+                  <HelpCircle className={cn(dir === 'rtl' ? 'ms-2' : 'me-2')} />
                   {t('settings.cheatsheet.button')}
                 </Button>
               </div>
@@ -326,3 +343,4 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     </>
   );
 }
+
