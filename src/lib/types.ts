@@ -35,12 +35,14 @@ export interface Segment {
 
 
 export type OpenAIModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe';
+export type Theme = 'light' | 'dark' | 'system';
 
 export interface AppSettings {
   openAIToken?: string;
-  groqToken?: string;
+  groqToken?: string; // Kept for potential future use, not actively used for transcription
   openAIModel?: OpenAIModelType;
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
+  theme?: Theme;
 }
 
 export const LANGUAGE_OPTIONS = [
@@ -112,3 +114,5 @@ export interface LogEntry {
   message: string;
   type: 'info' | 'error' | 'warn' | 'success' | 'debug';
 }
+
+export const THEME_KEY = 'app-theme';
