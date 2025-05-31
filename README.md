@@ -8,7 +8,7 @@
   **A powerful, privacy-focused subtitle editor that runs entirely in your browser**
   
   [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-  [![Browser Based](https://img.shields.io/badge/platform-browser-brightgreen.svg)](https://github.com/yourusername/subtitle-sync)
+  [![Browser Based](https://img.shields.io/badge/platform-browser-brightgreen.svg)](https://github.com/moaminsharifi/subtitle-flow)
   
   [Features](#-features) • [Getting Started](#-getting-started) • [Documentation](#-documentation) • [Development](#-development)
 </div>
@@ -47,7 +47,7 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 ## 🚀 Getting Started
 
 ### Quick Start
-1. Visit [subtitle-flow.app](https://subtitle-sync.app) (or your deployment URL)
+1. Visit [subtitle-flow.moaminsharifi.com](https://subtitle-flow.moaminsharifi.com) (or your deployment URL)
 2. Upload your video or audio file
 3. Start editing or generate subtitles with AI
 4. Export your finished subtitles
