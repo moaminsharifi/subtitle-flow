@@ -314,6 +314,10 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                             {t('settings.credits.developedByFS')}
                         </p>
                         <p className="mt-2">{t('settings.credits.createdByAS')}</p>
+ <p className="mt-2">
+ Project Repository: <a href='https://github.com/moaminsharifi/subtitle-flow'>https://github.com/moaminsharifi/subtitle-flow</a> | Project Website: <a href='https://subtitile-flow.moaminsharifi.com/'>https://subtitile-flow.moaminsharifi.com/</a>
+ </p>
+
                     </div>
                 </div>
               </div>
