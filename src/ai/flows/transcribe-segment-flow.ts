@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Utility for transcribing a segment of audio using OpenAI API.
  *
