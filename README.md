@@ -1,9 +1,9 @@
-# Subtitle Sync
+# Subtitle Flow
 
 <div align="center">
-  <img src="public/icons/icon-512x512.png" alt="Subtitle Sync Logo" width="128">
+  <img src="public/icons/icon-512x512.png" alt="Subtitle Flow Logo" width="128">
   
-  # 🎬 Subtitle Sync
+  # 🎬 Subtitle Flow
   
   **A powerful, privacy-focused subtitle editor that runs entirely in your browser**
   
@@ -17,7 +17,7 @@
 
 ## 🌟 Overview
 
-Subtitle Sync is a professional-grade subtitle editor that operates 100% in your web browser. No backend servers, no data uploads, no privacy concerns – just powerful subtitle editing at your fingertips.
+Subtitle Flow is a professional-grade subtitle editor that operates 100% in your web browser. No backend servers, no data uploads, no privacy concerns – just powerful subtitle editing at your fingertips.
 
 ### Key Benefits
 
@@ -47,7 +47,7 @@ Subtitle Sync is a professional-grade subtitle editor that operates 100% in your
 ## 🚀 Getting Started
 
 ### Quick Start
-1. Visit [subtitle-sync.app](https://subtitle-sync.app) (or your deployment URL)
+1. Visit [subtitle-flow.app](https://subtitle-sync.app) (or your deployment URL)
 2. Upload your video or audio file
 3. Start editing or generate subtitles with AI
 4. Export your finished subtitles
@@ -99,7 +99,7 @@ To use the AI-powered transcription features, you'll need an API key from OpenAI
 2. Create an account or sign in
 3. Navigate to API Keys section
 4. Generate a new API key
-5. Copy and paste it into Subtitle Sync settings
+5. Copy and paste it into Subtitle Flow settings
 
 > **🔒 Privacy Note**: Your API key is stored locally in your browser and is only used to communicate directly with OpenAI's servers. It never passes through our systems.
 
@@ -144,7 +144,7 @@ To use the AI-powered transcription features, you'll need an API key from OpenAI
 ```bash
 # Clone the repository
 git clone https://github.com/moaminsharifi/subtitle-translator-webapp.git
-cd subtitle-sync
+cd subtitle-translator-webapp # Corrected cd command based on cloned repo
 
 # Install dependencies
 npm install

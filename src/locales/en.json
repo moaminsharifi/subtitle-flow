@@ -1,8 +1,8 @@
 
 {
-  "app.title": "Subtitle Sync",
+  "app.title": "Subtitle Flow",
   "app.description": "Synchronize and edit subtitles for your media files.",
-  "footer.copyright": "© {year} Subtitle Sync. Idea from Amin Sharifi, code developed with Firebase Studio. <0>Original concept</0>. Powered by Next.js & OpenAI.",
+  "footer.copyright": "© {year} Subtitle Flow. Idea from Amin Sharifi, code developed with help of Firebase Studio. <0>Original concept</0>. Powered by Next.js & OpenAI.",
   "settings.title": "Application Settings",
   "settings.description": "Manage your API tokens, theme, language, and other preferences here.",
   "settings.theme.label": "Theme",
@@ -17,8 +17,8 @@
   "settings.cheatsheet.button": "View Keyboard Cheatsheet",
   "settings.credits.title": "Credits",
   "settings.credits.builtWith": "This application is proudly built with:",
-  "settings.credits.developedByFS": "Developed by the Firebase Studio AI.",
-  "settings.credits.createdByAS": "Idea from Amin Sharifi. Code developed with Firebase Studio.",
+  "settings.credits.developedByFS": "Code developed with help of Firebase Studio.",
+  "settings.credits.createdByAS": "Idea from Amin Sharifi.",
   "settings.language.label": "Application Language",
   "settings.language.english": "English",
   "settings.language.persian": "فارسی (Persian)",
@@ -136,7 +136,7 @@
   "toast.export.success": "Export Successful",
   "toast.export.successDescription": "Export Successful: {fileName} downloaded. Cues: {count}",
   "cheatsheet.title": "Keyboard Cheatsheet & Tips",
-  "cheatsheet.description": "Quick guide for using Subtitle Sync with your keyboard and other helpful tips.",
+  "cheatsheet.description": "Quick guide for using Subtitle Flow with your keyboard and other helpful tips.",
   "cheatsheet.generalNav.title": "General Navigation",
   "cheatsheet.generalNav.tab": "<0>Tab</0>: Move to the next interactive element.",
   "cheatsheet.generalNav.shiftTab": "<0>Shift</0> + <1>Tab</1>: Move to the previous interactive element.",
@@ -176,5 +176,3 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
-
-    

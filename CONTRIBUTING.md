@@ -1,6 +1,6 @@
-# Contributing to Subtitle Sync
+# Contributing to Subtitle Flow
 
-First off, thank you for considering contributing to Subtitle Sync! 🎉 
+First off, thank you for considering contributing to Subtitle Flow! 🎉 
 
 We love your input! We want to make contributing to this project as easy and transparent as possible, whether it's:
 
@@ -135,7 +135,7 @@ What actually happens
 ## Environment
 - Browser: [e.g., Chrome 120]
 - OS: [e.g., Windows 11]
-- Subtitle Sync Version: [e.g., 1.2.0]
+- Subtitle Flow Version: [e.g., 1.2.0]
 
 ## Additional Context
 Any other relevant information
@@ -391,6 +391,7 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-Thank you for contributing to Subtitle Sync! Your efforts help make subtitle editing accessible to everyone. 🙏
+Thank you for contributing to Subtitle Flow! Your efforts help make subtitle editing accessible to everyone. 🙏
 
 If you have questions, don't hesitate to ask. We're here to help!
+

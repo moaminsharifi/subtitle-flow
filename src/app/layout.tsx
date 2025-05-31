@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const APP_NAME = 'Subtitle Sync';
+const APP_NAME = 'Subtitle Flow';
 const APP_DESCRIPTION = 'Powerful, browser-based subtitle editor. Upload media, import/edit SRT/VTT files, or use AI to generate subtitles. No backend required, 100% private.';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'; // Replace with your actual production URL
 
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`, // For dynamic titles in child pages
   },
   description: APP_DESCRIPTION,
-  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle sync'],
-  manifest: '/manifest.json', // Assuming you might add a manifest.json later
+  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle flow', 'subtitle sync'],
+  manifest: '/manifest.json', 
   
   openGraph: {
     type: 'website',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     siteName: APP_NAME,
     images: [
       {
-        url: `${APP_URL}/og-image.png`, // Replace with your actual Open Graph image URL
+        url: `${APP_URL}/og-image.png`, 
         width: 1200,
         height: 630,
         alt: `${APP_NAME} - Subtitle Editor`,
@@ -50,8 +50,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: [`${APP_URL}/twitter-image.png`], // Replace with your actual Twitter card image URL
-    // creator: '@yourtwitterhandle', // Optional: Add your Twitter handle
+    images: [`${APP_URL}/twitter-image.png`], 
+    // creator: '@yourtwitterhandle', 
   },
   robots: {
     index: true,
@@ -65,10 +65,10 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/favicon.ico', // Standard favicon
-    shortcut: '/favicon-16x16.png', // Or your preferred shortcut icon
-    apple: '/apple-touch-icon.png', // Apple touch icon
-    // other: [ // Example for other icons
+    icon: '/favicon.ico', 
+    shortcut: '/favicon-16x16.png', 
+    apple: '/apple-touch-icon.png', 
+    // other: [ 
     //   { rel: 'icon', url: '/favicon-32x32.png', sizes: '32x32' },
     // ],
   },
@@ -83,14 +83,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [ // You can define different theme colors for light and dark mode
-    { media: '(prefers-color-scheme: light)', color: '#f5f5f5' }, // Matches light background
-    { media: '(prefers-color-scheme: dark)', color: '#0d1b2a' },  // Matches dark background (Solarized dark base03)
+  themeColor: [ 
+    { media: '(prefers-color-scheme: light)', color: '#f5f5f5' }, 
+    { media: '(prefers-color-scheme: dark)', color: '#0d1b2a' },  
   ],
-  // colorScheme: 'light dark', // Inform the browser about supported color schemes
-  // width: 'device-width', // default
-  // initialScale: 1, // default
-  // maximumScale: 1, // Optional: to prevent zooming
+  // colorScheme: 'light dark', 
+  // width: 'device-width', 
+  // initialScale: 1, 
+  // maximumScale: 1, 
 };
 
 
