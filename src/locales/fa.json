@@ -4,6 +4,8 @@
   "app.description": "زیرنویس فایل‌های رسانه‌ای خود را همگام‌سازی و ویرایش کنید.",
   "footer.copyright": "© {year} ساب‌فلو. ایده از امین شریفی، کد با کمک فایربیس استودیو توسعه داده شده است. <0>ایده اولیه</0>. قدرت گرفته از Next.js و OpenAI.",
   "settings.title": "تنظیمات برنامه",
+  "footer.projectRepository": "مخزن پروژه",
+  "footer.projectWebsite": "وبسایت پروژه",
   "settings.description": "توکن‌های API، پوسته، زبان و سایر تنظیمات خود را اینجا مدیریت کنید.",
   "settings.theme.label": "پوسته",
   "settings.theme.light": "روشن",
