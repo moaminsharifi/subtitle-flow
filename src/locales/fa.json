@@ -1,8 +1,8 @@
 
 {
-  "app.title": "جریان زیرنویس",
+  "app.title": "ساب‌فلو",
   "app.description": "زیرنویس فایل‌های رسانه‌ای خود را همگام‌سازی و ویرایش کنید.",
-  "footer.copyright": "© {year} جریان زیرنویس. ایده از امین شریفی، کد با کمک فایربیس استودیو توسعه داده شده است. <0>ایده اولیه</0>. قدرت گرفته از Next.js و OpenAI.",
+  "footer.copyright": "© {year} ساب‌فلو. ایده از امین شریفی، کد با کمک فایربیس استودیو توسعه داده شده است. <0>ایده اولیه</0>. قدرت گرفته از Next.js و OpenAI.",
   "settings.title": "تنظیمات برنامه",
   "settings.description": "توکن‌های API، پوسته، زبان و سایر تنظیمات خود را اینجا مدیریت کنید.",
   "settings.theme.label": "پوسته",
@@ -136,7 +136,7 @@
   "toast.export.success": "خروجی موفقیت‌آمیز بود",
   "toast.export.successDescription": "خروجی موفقیت‌آمیز بود: {fileName} دانلود شد. تعداد خطوط: {count}",
   "cheatsheet.title": "راهنمای میانبرها و نکات",
-  "cheatsheet.description": "راهنمای سریع برای استفاده از جریان زیرنویس با صفحه‌کلید و سایر نکات مفید.",
+  "cheatsheet.description": "راهنمای سریع برای استفاده از ساب‌فلو با صفحه‌کلید و سایر نکات مفید.",
   "cheatsheet.generalNav.title": "ناوبری عمومی",
   "cheatsheet.generalNav.tab": "<0>Tab</0>: انتقال به عنصر تعاملی بعدی.",
   "cheatsheet.generalNav.shiftTab": "<0>Shift</0> + <1>Tab</1>: انتقال به عنصر تعاملی قبلی.",
@@ -176,3 +176,4 @@
   "debugLog.buttons.clear": "پاک کردن گزارش‌ها",
   "debugLog.buttons.close": "بستن"
 }
+
