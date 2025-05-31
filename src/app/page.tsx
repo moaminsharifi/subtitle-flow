@@ -910,6 +910,7 @@ export default function SubtitleSyncPage() {
       <footer className="mt-8 pt-4 border-t text-center text-sm text-muted-foreground">
         <p dangerouslySetInnerHTML={{ __html: t('footer.copyright', { year: new Date().getFullYear(), '0': '<a href="https://github.com/moaminsharifi/subtitle-translator-webapp" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary">Original concept</a>' }) as string }} />
       </footer>
+      <p>Project Repository: <a href='https://github.com/moaminsharifi/subtitle-flow'>https://github.com/moaminsharifi/subtitle-flow</a> | Project Website: <a href='https://subtitile-flow.moaminsharifi.com/'>https://subtitile-flow.moaminsharifi.com/</a></p>
 
       <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
          <Button
