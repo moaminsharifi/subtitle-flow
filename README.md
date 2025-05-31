@@ -135,6 +135,12 @@ To use the AI-powered transcription features, you'll need an API key from OpenAI
 
 ## 🛠️ Development
 
+## Links
+
+- [GitHub Repository](https://github.com/moaminsharifi/subtitle-flow)
+- [Project Website](https://subtitile-flow.moaminsharifi.com/)
+
+
 ### Prerequisites
 - Node.js 18+ and npm/yarn
 - Git
