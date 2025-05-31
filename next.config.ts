@@ -2,8 +2,8 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'export', // Enables static HTML export
-  trailingSlash: true, // Recommended for static exports for consistent URL handling
+  output: 'export',
+  trailingSlash: true,
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true, // Necessary for next/image to work with static exports on GitHub Pages
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
