@@ -4,6 +4,8 @@
   "app.description": "Synchronize and edit subtitles for your media files.",
   "footer.copyright": "© {year} Subtitle Flow. Idea from Amin Sharifi, code developed with help of Firebase Studio. <0>Original concept</0>. Powered by Next.js & OpenAI.",
   "settings.title": "Application Settings",
+  "footer.projectRepository": "Project Repository",
+  "footer.projectWebsite": "Project Website",
   "settings.description": "Manage your API tokens, theme, language, and other preferences here.",
   "settings.theme.label": "Theme",
   "settings.theme.light": "Light",
