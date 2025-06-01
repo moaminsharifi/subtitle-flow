@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 const APP_NAME = 'Subtitle Flow';
 const APP_DESCRIPTION = 'Powerful, browser-based subtitle editor. Upload media, import/edit SRT/VTT files, or use AI to generate subtitles. No backend required, 100% private.';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'; // Replace with your actual production URL
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://subtitile-flow.moaminsharifi.com/';
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     siteName: APP_NAME,
     images: [
       {
-        url: `${APP_URL}/og-image.png`, 
+        url: `${APP_URL}og-image.png`, 
         width: 1200,
         height: 630,
         alt: `${APP_NAME} - Subtitle Editor`,
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: [`${APP_URL}/twitter-image.png`], 
+    images: [`${APP_URL}twitter-image.png`], 
     // creator: '@yourtwitterhandle', 
   },
   robots: {

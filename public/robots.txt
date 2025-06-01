@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sitemap.xml
+Sitemap: https://subtitile-flow.moaminsharifi.com/sitemap.xml
