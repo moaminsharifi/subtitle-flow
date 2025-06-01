@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ScrollText, WandSparkles, Languages, FileText, Pencil, HelpCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ScrollText, WandSparkles, Languages, FileText, Pencil, HelpCircle, Github, Globe } from 'lucide-react';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 import { cn } from '@/lib/utils';
@@ -907,12 +907,35 @@ export default function SubtitleSyncPage() {
           </Card>
         )}
       </main>
-      <footer className="mt-8 pt-4 border-t text-center text-sm text-muted-foreground">
-        <p dangerouslySetInnerHTML={{ __html: t('footer.copyright', { year: new Date().getFullYear(), '0': '<a href="https://github.com/moaminsharifi/subtitle-translator-webapp" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary">Original concept</a>' }) as string }} />
-        <p>
-          {t('footer.projectRepository')}: <a href='https://github.com/moaminsharifi/subtitle-flow'>https://github.com/moaminsharifi/subtitle-flow</a>  | 
-          {t('footer.projectWebsite')}: <a href='https://subtitile-flow.moaminsharifi.com/'>https://subtitile-flow.moaminsharifi.com/</a>
-        </p>
+      <footer className="mt-10 pt-6 border-t border-border/80 text-center">
+        <p 
+          className="text-sm text-muted-foreground mb-4"
+          dangerouslySetInnerHTML={{ __html: t('footer.copyright', { 
+            year: new Date().getFullYear(), 
+            '0': '<a href="https://github.com/moaminsharifi/subtitle-translator-webapp" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary transition-colors">Original concept</a>' 
+          }) as string }} 
+        />
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2 text-sm">
+          <a 
+            href='https://github.com/moaminsharifi/subtitle-translator-webapp'
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline transition-colors"
+          >
+            <Github className="h-4 w-4" />
+            <span>{t('footer.projectRepository')}</span>
+          </a>
+          <span className="hidden sm:inline text-muted-foreground/50">|</span>
+          <a 
+            href='https://subtitile-flow.moaminsharifi.com/'
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline transition-colors"
+          >
+            <Globe className="h-4 w-4" />
+            <span>{t('footer.projectWebsite')}</span>
+          </a>
+        </div>
       </footer>
 
       <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
