@@ -17,8 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 const APP_NAME = 'Subtitle Flow';
-const APP_DESCRIPTION = 'Powerful, browser-based subtitle editor. Upload media, import/edit SRT/VTT files, or use AI to generate subtitles. No backend required, 100% private.';
+const APP_DESCRIPTION = 'Subtitle Flow: Edit & create subtitles effortlessly in your browser. Supports SRT/VTT, AI transcription, and full privacy. Perfect for video creators & professionals.';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://subtitile-flow.moaminsharifi.com/';
+const FAVICON_URL = "https://raw.githubusercontent.com/moaminsharifi/subtitle-flow/master/public/icons/icon-512x512.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`, // For dynamic titles in child pages
   },
   description: APP_DESCRIPTION,
-  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle flow', 'subtitle sync'],
+  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle flow', 'subtitle sync', 'free subtitle editor', 'online subtitle editor', 'local subtitle editor'],
   manifest: '/manifest.json', 
   
   openGraph: {
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
         url: `${APP_URL}og-image.png`, 
         width: 1200,
         height: 630,
-        alt: `${APP_NAME} - Subtitle Editor`,
+        alt: `${APP_NAME} - Edit subtitles with ease`,
       },
     ],
   },
@@ -65,9 +66,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/favicon.ico', 
-    shortcut: '/favicon-16x16.png', 
-    apple: '/apple-touch-icon.png', 
+    icon: FAVICON_URL, 
+    shortcut: FAVICON_URL, 
+    apple: FAVICON_URL, 
     // other: [ 
     //   { rel: 'icon', url: '/favicon-32x32.png', sizes: '32x32' },
     // ],
