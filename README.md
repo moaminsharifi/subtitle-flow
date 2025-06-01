@@ -21,35 +21,37 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 
 ### Key Benefits
 
-- **🔒 Complete Privacy** - All processing happens locally in your browser
-- **⚡ Lightning Fast** - No network latency or server delays
-- **🌐 Works Offline** - Edit subtitles anywhere, anytime
-- **💰 Free Forever** - No subscriptions or hidden costs
+- **🔒 Complete Privacy** - All processing happens locally in your browser.
+- **🔑 Bring Your Own API Key** - You control your API keys (OpenAI, Groq); they are stored locally in your browser and never sent to our servers.
+- **⚡ Lightning Fast** - No network latency or server delays for core editing.
+- **🌐 Works Offline** - Edit subtitles anywhere, anytime (AI features require an internet connection).
+- **💰 Free Forever** - No subscriptions or hidden costs for the editor. AI features depend on your API provider's pricing.
 
 ## ✨ Features
 
 ### Core Editing
 - 📁 **Multi-format Support** - Import/export SRT, VTT, and more
-- ✏️ **Intuitive Timeline Editor** - Precise timing adjustments with visual waveforms
+- ✏️ **Intuitive Timeline Editor** - Precise timing adjustments with visual cues (planned feature: waveform)
 - 🎥 **Integrated Media Player** - Real-time preview and synchronization
-- 🔄 **Undo/Redo** - Never lose your work with comprehensive history
+- 🔄 **Undo/Redo** - Never lose your work with comprehensive history (planned feature)
 
 ### AI-Powered Tools
-- 🤖 **Automatic Transcription** - Generate subtitles using OpenAI Whisper
-- 🌍 **60+ Languages** - Support for major world languages
-- 🔧 **Segment Regeneration** - Fix specific parts without starting over
+- 🤖 **Automatic Transcription** - Generate subtitles using OpenAI Whisper or Groq API models.
+- 🚀 **Groq API Support** - Leverage fast and potentially free transcription tiers with your Groq API key.
+- 🌍 **60+ Languages** - Support for major world languages via OpenAI.
+- 🔧 **Segment Regeneration** - Fix specific parts without starting over.
 
 ### User Experience
 - 🎨 **Dark/Light Themes** - Comfortable editing in any environment
 - 📱 **Responsive Design** - Works on desktop, tablet, and mobile
-- ⌨️ **Keyboard Shortcuts** - Speed up your workflow
+- ⌨️ **Keyboard Shortcuts** - Speed up your workflow (view with `?` or via Settings)
 
 ## 🚀 Getting Started
 
 ### Quick Start
-1. Visit [subtitle-flow.moaminsharifi.com](https://subtitle-flow.moaminsharifi.com) (or your deployment URL)
+1. Visit [subtitle-flow.moaminsharifi.com](https://subtitile-flow.moaminsharifi.com/) (or your deployment URL)
 2. Upload your video or audio file
-3. Start editing or generate subtitles with AI
+3. Start editing or generate subtitles with AI (requires API key in Settings)
 4. Export your finished subtitles
 
 No installation, no sign-up, no hassle!
@@ -57,7 +59,7 @@ No installation, no sign-up, no hassle!
 ### System Requirements
 - Modern web browser (Chrome, Firefox, Safari, Edge)
 - 4GB RAM recommended for smooth video playback
-- Internet connection only required for AI transcription
+- Internet connection required for AI transcription features
 
 ## 📖 Documentation
 
@@ -92,18 +94,24 @@ No installation, no sign-up, no hassle!
 
 ### AI Transcription Setup
 
-To use the AI-powered transcription features, you'll need an API key from OpenAI.
+To use the AI-powered transcription features, you'll need an API key from OpenAI or Groq.
 
 #### Getting Your API Key
-1. Visit [OpenAI Platform](https://platform.openai.com/)
-2. Create an account or sign in
-3. Navigate to API Keys section
-4. Generate a new API key
-5. Copy and paste it into Subtitle Flow settings
+1.  **OpenAI**:
+    *   Visit [OpenAI Platform](https://platform.openai.com/)
+    *   Create an account or sign in
+    *   Navigate to API Keys section
+    *   Generate a new API key
+    *   Copy and paste it into Subtitle Flow settings (OpenAI Token field).
+2.  **Groq**:
+    *   Visit [GroqCloud Console](https://console.groq.com/keys)
+    *   Create an account or sign in
+    *   Create a new API key
+    *   Copy and paste it into Subtitle Flow settings (Groq Token field).
 
-> **🔒 Privacy Note**: Your API key is stored locally in your browser and is only used to communicate directly with OpenAI's servers. It never passes through our systems.
+> **🔒 Privacy Note**: Your API keys are stored locally in your browser's localStorage and are only used to communicate directly with the respective API provider's servers. They never pass through our systems.
 
-#### Supported Languages
+#### Supported Languages (via OpenAI Whisper)
 
 <details>
 <summary>🌍 View all 60+ supported languages</summary>
@@ -128,10 +136,10 @@ To use the AI-powered transcription features, you'll need an API key from OpenAI
 
 ### Tips & Tricks
 
-- **Keyboard Shortcuts**: Press `?` in the editor to view all shortcuts
-- **Frame-Perfect Timing**: Use `←` `→` keys to nudge timings by frames
-- **Batch Operations**: Select multiple subtitles with `Shift+Click`
-- **Quick Export**: `Ctrl/Cmd + S` to save your work
+- **Keyboard Shortcuts**: Press `?` in the editor (or access via Settings) to view all shortcuts
+- **Frame-Perfect Timing**: Use player controls and precise input in the editor for timing.
+- **Batch Operations**: Select multiple subtitles with `Shift+Click` (planned feature for advanced editing)
+- **Quick Export**: `Ctrl/Cmd + S` to save your work (browser-dependent, exporting is manual via Export step)
 
 ## 🛠️ Development
 
@@ -163,11 +171,11 @@ npm run build
 ```
 
 ### Tech Stack
-- **Frontend**: React/Vue/Svelte (specify your framework)
-- **Styling**: Tailwind CSS / Material-UI
-- **Media Processing**: WebCodecs API
-- **AI Integration**: OpenAI API
-- **Storage**: IndexedDB for local persistence
+- **Frontend**: React (Next.js)
+- **Styling**: Tailwind CSS, ShadCN UI
+- **Media Processing**: Web Audio API, WebCodecs API (planned)
+- **AI Integration**: OpenAI API, Groq API
+- **Storage**: Browser localStorage (for settings), IndexedDB (planned for project persistence)
 
 ### Contributing
 
@@ -186,8 +194,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - OpenAI for the Whisper transcription model
+- Groq for providing API access to fast language models
 - The open-source community for inspiration and tools
 - All our contributors and users
 
 ---
-
