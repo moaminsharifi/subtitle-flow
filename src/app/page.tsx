@@ -5,24 +5,19 @@ import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import type { MediaFile, OpenAIModelType, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, Segment } from '@/lib/types';
 import { LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_MODEL_KEY, OPENAI_TOKEN_KEY } from '@/lib/types';
 import { MediaUploader } from '@/components/media-uploader';
-import { SubtitleUploader } from '@/components/subtitle-uploader';
-import { MediaPlayer } from '@/components/media-player';
-import { SubtitleEditor } from '@/components/subtitle-editor';
-import { SubtitleExporter } from '@/components/subtitle-exporter';
-import { SettingsDialog } from '@/components/settings-dialog';
-import { DebugLogDialog } from '@/components/debug-log-dialog';
-import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { ArrowRight, ArrowLeft, RotateCcw, SettingsIcon, Loader2, ScrollText, WandSparkles, Languages, FileText, Pencil, HelpCircle, Github, Globe } from 'lucide-react';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
-import { cn } from '@/lib/utils';
 import { useTranslation } from '@/contexts/LanguageContext';
+
+// New Page Layout Components
+import { PageHeader } from '@/components/page/PageHeader';
+import { MediaDisplay } from '@/components/page/MediaDisplay';
+import { UploadStepControls } from '@/components/page/UploadStepControls';
+import { EditStepControls } from '@/components/page/EditStepControls';
+import { ExportStepControls } from '@/components/page/ExportStepControls';
+import { PageActions } from '@/components/page/PageActions';
+
 
 const CHUNK_DURATION_SECONDS = 5 * 60; // 5 minutes for full transcription chunks
 
@@ -35,7 +30,6 @@ interface FullTranscriptionProgress {
   currentStage: string | null;
 }
 
-// Define StepContentWrapper outside the SubtitleSyncPage component
 const StepContentWrapper = React.memo(({ children }: { children: React.ReactNode }) => (
   <div className="space-y-6 flex flex-col h-full animate-fade-in">
     {children}
@@ -576,116 +570,39 @@ export default function SubtitleSyncPage() {
     }
   }, [currentStep, t]);
 
-
-  const LeftArrowIcon = dir === 'rtl' ? ArrowRight : ArrowLeft;
-  const RightArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
-
   const handleFullTranscriptionLanguageChange = useCallback((value: string) => {
     const lang = value as LanguageCode | "auto-detect";
     setFullTranscriptionLanguageOverride(lang);
     addLog(`Full transcription language override set to: ${lang}`, 'debug');
   }, [addLog]);
-
-
-  const memoizedSubtitleUploaderCard = useMemo(() => (
-    <Card className="shadow-lg flex flex-col flex-grow">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
-          <FileText className="h-6 w-6 text-primary" />
-          {t('subtitleUploader.option1.title')}
-        </CardTitle>
-        <CardDescription>{t('subtitleUploader.option1.description')}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <SubtitleUploader
-          onSubtitleUpload={handleSubtitleUpload}
-          disabled={!mediaFile || isGeneratingFullTranscription || isReplacingMedia}
-        />
-      </CardContent>
-    </Card>
-  ), [t, handleSubtitleUpload, mediaFile, isGeneratingFullTranscription, isReplacingMedia]);
-
-  const memoizedAIGeneratorCard = useMemo(() => (
-    <Card className={cn("shadow-lg", (!mediaFile || isReplacingMedia) && "opacity-60 pointer-events-none")}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
-          <WandSparkles className="h-6 w-6 text-accent" />
-          {t('aiGenerator.option2.title')}
-        </CardTitle>
-        <CardDescription>
-          {(!mediaFile || isReplacingMedia) ? t('aiGenerator.option2.descriptionDisabled') : t('aiGenerator.option2.descriptionEnabled')}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Label htmlFor="full-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
-            <Languages className="h-4 w-4" />
-            {t('aiGenerator.language.label')}
-          </Label>
-          <Select
-            value={fullTranscriptionLanguageOverride}
-            onValueChange={handleFullTranscriptionLanguageChange}
-            disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-            dir={dir}
-          >
-            <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label={t('aiGenerator.language.label') as string}>
-              <SelectValue placeholder={t('aiGenerator.language.placeholder') as string} />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGE_OPTIONS.map((langOpt) => (
-                <SelectItem key={langOpt.value} value={langOpt.value}>
-                  {langOpt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t('aiGenerator.language.description')}
-          </p>
-        </div>
-
-        {isGeneratingFullTranscription && fullTranscriptionProgress ? (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-center">
-              {t('aiGenerator.progress.inProgress')}
-              {fullTranscriptionProgress.currentStage && ` (${fullTranscriptionProgress.currentStage})`}
-            </p>
-            <Progress value={fullTranscriptionProgress.percentage} className="w-full" />
-            <p className="text-xs text-muted-foreground text-center">
-              {t('aiGenerator.progress.chunkInfo', { currentChunk: fullTranscriptionProgress.currentChunk, totalChunks: fullTranscriptionProgress.totalChunks, percentage: fullTranscriptionProgress.percentage })}
-            </p>
-          </div>
-        ) : (
-          <Button
-            onClick={handleGenerateFullTranscription}
-            disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-            aria-label={t('aiGenerator.button.generate') as string}
-          >
-            {isGeneratingFullTranscription ? (
-              <>
-                <Loader2 className={cn("h-4 w-4 animate-spin", dir === 'rtl' ? 'ms-2' : 'me-2')} />
-                {fullTranscriptionProgress ? t('aiGenerator.button.generating', { percentage: fullTranscriptionProgress.percentage }) : t('aiGenerator.button.generatingSimple') }
-              </>
-            ) : (
-              <>
-                <WandSparkles className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} />
-                {t('aiGenerator.button.generate')}
-              </>
-            )}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
-  ), [t, dir, mediaFile, isReplacingMedia, isGeneratingFullTranscription, isAnyTranscriptionLoading, fullTranscriptionLanguageOverride, handleFullTranscriptionLanguageChange, fullTranscriptionProgress, handleGenerateFullTranscription]);
+  
+  const handleSettingsDialogClose = useCallback(() => {
+    const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
+    if (savedDefaultLang) {
+        if (editorTranscriptionLanguage !== savedDefaultLang) {
+            setEditorTranscriptionLanguage(savedDefaultLang);
+            addLog(`Editor transcription language updated from settings change: ${savedDefaultLang}`, "debug");
+        }
+        if (fullTranscriptionLanguageOverride !== savedDefaultLang && currentStep === 'upload') {
+            setFullTranscriptionLanguageOverride(savedDefaultLang);
+            addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
+        }
+    } else {
+        if (editorTranscriptionLanguage !== "auto-detect") {
+            setEditorTranscriptionLanguage("auto-detect");
+            addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");
+        }
+        if (fullTranscriptionLanguageOverride !== "auto-detect" && currentStep === 'upload') {
+            setFullTranscriptionLanguageOverride("auto-detect");
+            addLog("Full transcription override language reset to 'auto-detect' as default was cleared.", "debug");
+        }
+    }
+  }, [editorTranscriptionLanguage, fullTranscriptionLanguageOverride, currentStep, addLog]);
 
 
   return (
     <div className="min-h-screen flex flex-col p-4 md:p-6 bg-background text-foreground relative">
-      <header className="mb-6">
-        <h1 className="text-4xl font-bold text-primary tracking-tight">{t('app.title')}</h1>
-        <p className="text-muted-foreground">{getStepTitle()}</p>
-      </header>
+      <PageHeader appTitle={t('app.title') as string} stepTitle={getStepTitle()} />
 
       <main className="flex-grow flex flex-col gap-6">
         <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -700,332 +617,96 @@ export default function SubtitleSyncPage() {
               </div>
             )}
             {mediaFile && (
-              <Card className={cn(
-                "shadow-lg animate-fade-in",
-                (currentStep === 'upload' || currentStep === 'edit') ? "sticky top-6 flex-grow" : "flex-grow"
-              )}>
-                <CardContent className="p-4 h-full flex flex-col">
-                  <div className="flex-grow">
-                    <MediaPlayer
-                      mediaFile={mediaFile}
-                      activeSubtitlesToDisplay={currentStep === 'edit' && activeTrack ? activeTrack.entries : []}
-                      onTimeUpdate={handleTimeUpdate}
-                      onShiftTime={handleShiftTime}
-                      playerRef={playerRef}
-                    />
-                  </div>
-                   {currentStep === 'upload' && (
-                    <div className="mt-4 pt-4 border-t">
-                      {!isReplacingMedia ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setIsReplacingMedia(true);
-                            addLog("Media replacement uploader shown.", "debug");
-                          }}
-                          className="w-full"
-                          aria-label={t('mediaPlayer.changeMediaButton') as string}
-                          disabled={isGeneratingFullTranscription}
-                        >
-                          <Pencil className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('mediaPlayer.changeMediaButton')}
-                        </Button>
-                      ) : (
-                        <div className="w-full space-y-2">
-                          <MediaUploader
-                            onMediaUpload={handleMediaUpload}
-                            disabled={isGeneratingFullTranscription}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setIsReplacingMedia(false);
-                              addLog("Media replacement uploader hidden.", "debug");
-                            }}
-                            className="w-full"
-                          >
-                            {t('mediaPlayer.cancelChangeMediaButton')}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <MediaDisplay
+                mediaFile={mediaFile}
+                activeSubtitlesToDisplay={activeTrack ? activeTrack.entries : []}
+                onTimeUpdate={handleTimeUpdate}
+                onShiftTime={handleShiftTime}
+                playerRef={playerRef}
+                currentStep={currentStep}
+                isReplacingMedia={isReplacingMedia}
+                setIsReplacingMedia={setIsReplacingMedia}
+                onMediaUpload={handleMediaUpload}
+                isGeneratingFullTranscription={isGeneratingFullTranscription}
+                addLog={addLog}
+                t={t}
+                dir={dir}
+              />
             )}
           </div>
 
           <StepContentWrapper key={currentStep}>
             {currentStep === 'upload' && (
-              <>
-                {memoizedSubtitleUploaderCard}
-                {memoizedAIGeneratorCard}
-              </>
+              <UploadStepControls
+                handleSubtitleUpload={handleSubtitleUpload}
+                mediaFile={mediaFile}
+                isGeneratingFullTranscription={isGeneratingFullTranscription}
+                isAnyTranscriptionLoading={isAnyTranscriptionLoading}
+                isReplacingMedia={isReplacingMedia}
+                fullTranscriptionLanguageOverride={fullTranscriptionLanguageOverride}
+                handleFullTranscriptionLanguageChange={handleFullTranscriptionLanguageChange}
+                fullTranscriptionProgress={fullTranscriptionProgress}
+                handleGenerateFullTranscription={handleGenerateFullTranscription}
+                handleProceedToEdit={handleProceedToEdit}
+                t={t}
+                dir={dir}
+                subtitleTracksLength={subtitleTracks.length}
+              />
             )}
 
             {currentStep === 'edit' && (
-              <>
-                <Card className="shadow-md">
-                  <CardHeader>
-                    <CardTitle className="text-lg">{t('editor.trackLanguage.title')}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="active-track-select">{t('editor.trackLanguage.activeTrackLabel')}</Label>
-                      <Select
-                        value={activeTrackId || ""}
-                        onValueChange={(trackId) => {
-                          setActiveTrackId(trackId);
-                          const selectedTrack = subtitleTracks.find(t => t.id === trackId);
-                          addLog(`Active track changed to: ${selectedTrack?.fileName || 'None'}`, 'debug');
-                        }}
-                        disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                        dir={dir}
-                      >
-                        <SelectTrigger id="active-track-select" className="w-full" aria-label={t('editor.trackLanguage.activeTrackLabel') as string}>
-                          <SelectValue placeholder={t('editor.trackLanguage.activeTrackPlaceholder') as string} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subtitleTracks.map((track) => (
-                            <SelectItem key={track.id} value={track.id}>
-                              {track.fileName} ({track.format.toUpperCase()}, {track.entries.length} {t('editor.trackLanguage.cuesLabel')})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {subtitleTracks.length === 0 && <p className="text-xs text-muted-foreground mt-1">{t('editor.trackLanguage.noTracks')}</p>}
-                    </div>
-                    <div>
-                      <Label htmlFor="editor-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
-                          <Languages className="h-4 w-4" />
-                          {t('editor.trackLanguage.segmentLanguageLabel')}
-                      </Label>
-                      <Select
-                        value={editorTranscriptionLanguage}
-                        onValueChange={(value) => {
-                          const lang = value as LanguageCode | "auto-detect";
-                          setEditorTranscriptionLanguage(lang);
-                          addLog(`Editor transcription language for segment regeneration set to: ${lang}`, 'debug');
-                        }}
-                        disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                        dir={dir}
-                      >
-                        <SelectTrigger id="editor-transcription-language-select" className="w-full" aria-label={t('editor.trackLanguage.segmentLanguageLabel') as string}>
-                          <SelectValue placeholder={t('editor.trackLanguage.segmentLanguagePlaceholder') as string} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LANGUAGE_OPTIONS.map((langOpt) => (
-                            <SelectItem key={langOpt.value} value={langOpt.value}>
-                              {langOpt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="flex-grow min-h-[300px] lg:min-h-0">
-                  <SubtitleEditor
-                    activeTrack={activeTrack}
-                    onSubtitleChange={handleSubtitleChange}
-                    onSubtitleAdd={handleSubtitleAdd}
-                    onSubtitleDelete={handleSubtitleDelete}
-                    onRegenerateTranscription={handleRegenerateTranscription}
-                    isEntryTranscribing={isEntryTranscribing}
-                    currentTime={currentPlayerTime}
-                    disabled={editorDisabled}
-                    isAnyTranscriptionLoading={isAnyTranscriptionLoading || isGeneratingFullTranscription}
-                  />
-                </div>
-                <Card>
-                  <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
-                    <Button
-                      onClick={() => handleGoToUpload(false)}
-                      variant="outline"
-                      className="w-full sm:w-auto"
-                      disabled={isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                      aria-label={t('page.button.backToUploads') as string}
-                    >
-                      <LeftArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('page.button.backToUploads')}
-                    </Button>
-                    <Button
-                      onClick={handleProceedToExport}
-                      disabled={!activeTrack || !activeTrack.entries.length || isGeneratingFullTranscription || isAnyTranscriptionLoading}
-                      className="w-full sm:flex-1"
-                      aria-label={t('page.button.proceedToExport') as string}
-                    >
-                       {t('page.button.proceedToExport')} <RightArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'me-2' : 'ms-2')} />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </>
+              <EditStepControls
+                activeTrackId={activeTrackId}
+                subtitleTracks={subtitleTracks}
+                setActiveTrackId={setActiveTrackId}
+                editorTranscriptionLanguage={editorTranscriptionLanguage}
+                setEditorTranscriptionLanguage={setEditorTranscriptionLanguage}
+                mediaFile={mediaFile}
+                isGeneratingFullTranscription={isGeneratingFullTranscription}
+                isAnyTranscriptionLoading={isAnyTranscriptionLoading}
+                activeTrack={activeTrack}
+                handleSubtitleChange={handleSubtitleChange}
+                handleSubtitleAdd={handleSubtitleAdd}
+                handleSubtitleDelete={handleSubtitleDelete}
+                handleRegenerateTranscription={handleRegenerateTranscription}
+                isEntryTranscribing={isEntryTranscribing}
+                currentPlayerTime={currentPlayerTime}
+                editorDisabled={editorDisabled}
+                handleGoToUpload={handleGoToUpload}
+                handleProceedToExport={handleProceedToExport}
+                addLog={addLog}
+                t={t}
+                dir={dir}
+              />
             )}
 
             {currentStep === 'export' && (
-              <>
-                <SubtitleExporter
-                  activeTrack={activeTrack}
-                  disabled={!activeTrack || !activeTrack.entries.length}
-                  addLog={addLog}
-                />
-                <Card>
-                  <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
-                    <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label={t('page.button.editMore') as string}>
-                      <LeftArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('page.button.editMore')}
-                    </Button>
-                    <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label={t('page.button.startOver') as string}>
-                      <RotateCcw className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('page.button.startOver')}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </>
+              <ExportStepControls
+                activeTrack={activeTrack}
+                handleGoToEdit={handleGoToEdit}
+                handleGoToUpload={handleGoToUpload}
+                addLog={addLog}
+                t={t}
+                dir={dir}
+              />
             )}
           </StepContentWrapper>
         </div>
-
-        {currentStep === 'upload' && (
-          <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">{t('page.nextStep.title')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">
-                    {t('page.nextStep.description')}
-                </p>
-            </CardContent>
-            <CardFooter className="p-4 pt-0">
-              <Button
-                onClick={handleProceedToEdit}
-                disabled={!mediaFile || subtitleTracks.length === 0 || isGeneratingFullTranscription || isReplacingMedia}
-                className="w-full"
-                aria-label={t('page.button.proceedToEdit') as string}
-              >
-                {t('page.button.proceedToEdit')} <RightArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'me-2' : 'ms-2')} />
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
       </main>
-      <footer className="mt-10 pt-6 border-t border-border/80 text-center">
-        <p 
-          className="text-sm text-muted-foreground mb-4"
-          dangerouslySetInnerHTML={{ __html: t('footer.copyright', { 
-            year: new Date().getFullYear(), 
-            '0': '<a href="https://github.com/moaminsharifi/subtitle-translator-webapp" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary transition-colors">Original concept</a>' 
-          }) as string }} 
-        />
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2 text-sm">
-          <a 
-            href='https://github.com/moaminsharifi/subtitle-translator-webapp'
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline transition-colors"
-          >
-            <Github className="h-4 w-4" />
-            <span>{t('footer.projectRepository')}</span>
-          </a>
-          <span className="hidden sm:inline text-muted-foreground/50">|</span>
-          <a 
-            href='https://subtitile-flow.moaminsharifi.com/'
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline transition-colors"
-          >
-            <Globe className="h-4 w-4" />
-            <span>{t('footer.projectWebsite')}</span>
-          </a>
-        </div>
-      </footer>
-
-      <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
-         <Button
-          variant="outline"
-          size="icon"
-          className="rounded-full shadow-lg"
-          onClick={() => {
-            setIsDebugLogDialogOpen(true);
-            addLog("Debug log dialog opened.", "debug");
-          }}
-          aria-label={t('debugLog.title') as string}
-          title={t('debugLog.title') as string}
-        >
-          <ScrollText className="h-5 w-5" />
-        </Button>
-         <Button
-          variant="outline"
-          size="icon"
-          className="rounded-full shadow-lg"
-          onClick={() => {
-            setIsCheatsheetDialogOpen(true);
-            addLog("Cheatsheet dialog opened.", "debug");
-          }}
-          aria-label={t('cheatsheet.title') as string}
-          title={t('cheatsheet.title') as string}
-        >
-          <HelpCircle className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="rounded-full shadow-lg"
-          onClick={() => {
-            setIsSettingsDialogOpen(true);
-            addLog("Settings dialog opened.", "debug");
-          }}
-          aria-label={t('settings.title') as string}
-          title={t('settings.title') as string}
-        >
-          <SettingsIcon className="h-5 w-5" />
-        </Button>
-      </div>
-
-      <SettingsDialog
-        isOpen={isSettingsDialogOpen}
-        onClose={() => {
-          setIsSettingsDialogOpen(false);
-          addLog("Settings dialog closed.", "debug");
-          const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
-            if (savedDefaultLang) {
-                if (editorTranscriptionLanguage !== savedDefaultLang) {
-                    setEditorTranscriptionLanguage(savedDefaultLang);
-                    addLog(`Editor transcription language updated from settings change: ${savedDefaultLang}`, "debug");
-                }
-                if (fullTranscriptionLanguageOverride !== savedDefaultLang && currentStep === 'upload') { // Only update override if on upload page
-                    setFullTranscriptionLanguageOverride(savedDefaultLang);
-                     addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
-                }
-            } else {
-                if (editorTranscriptionLanguage !== "auto-detect") {
-                    setEditorTranscriptionLanguage("auto-detect");
-                    addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");
-                }
-                if (fullTranscriptionLanguageOverride !== "auto-detect" && currentStep === 'upload') {
-                    setFullTranscriptionLanguageOverride("auto-detect");
-                    addLog("Full transcription override language reset to 'auto-detect' as default was cleared.", "debug");
-                }
-            }
-        }}
+      
+      <PageActions
+        isSettingsDialogOpen={isSettingsDialogOpen}
+        setIsSettingsDialogOpen={setIsSettingsDialogOpen}
+        isDebugLogDialogOpen={isDebugLogDialogOpen}
+        setIsDebugLogDialogOpen={setIsDebugLogDialogOpen}
+        isCheatsheetDialogOpen={isCheatsheetDialogOpen}
+        setIsCheatsheetDialogOpen={setIsCheatsheetDialogOpen}
+        logEntries={logEntries}
+        clearLogs={clearLogs}
         addLog={addLog}
+        t={t}
+        onSettingsDialogClose={handleSettingsDialogClose}
       />
-      <DebugLogDialog
-        isOpen={isDebugLogDialogOpen}
-        onClose={() => {
-          setIsDebugLogDialogOpen(false);
-          addLog("Debug log dialog closed.", "debug");
-        }}
-        logs={logEntries}
-        onClearLogs={clearLogs}
-      />
-      <CheatsheetDialog
-        isOpen={isCheatsheetDialogOpen}
-        onClose={() => {
-            setIsCheatsheetDialogOpen(false);
-            addLog("Cheatsheet dialog closed.", "debug");
-        }}
-       />
     </div>
   );
 }
-
-    
