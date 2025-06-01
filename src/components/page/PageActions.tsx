@@ -39,25 +39,24 @@ export function PageActions({
   return (
     <>
       <footer className="mt-10 pt-6 border-t border-border/80 text-center">
-        <p 
+        <p
           className="text-sm text-muted-foreground mb-4"
-          dangerouslySetInnerHTML={{ __html: t('footer.copyright', { 
-            year: new Date().getFullYear(), 
-            '0': '<a href="https://github.com/moaminsharifi/subtitle-translator-webapp" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary transition-colors">Original concept</a>' 
-          }) as string }} 
+          dangerouslySetInnerHTML={{ __html: t('footer.copyright', {
+            '0': '<a href="https://github.com/moaminsharifi/subtitle-flow" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary transition-colors">Original concept</a>'
+          }) as string }}
         />
         <div className="flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2 text-sm">
-          <a 
-            href='https://github.com/moaminsharifi/subtitle-translator-webapp'
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <a
+            href='https://github.com/moaminsharifi/subtitle-flow'
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline transition-colors"
           >
             <Github className="h-4 w-4" />
             <span>{t('footer.projectRepository') as string}</span>
           </a>
           <span className="hidden sm:inline text-muted-foreground/50">|</span>
-          <a 
+          <a
             href='https://subtitile-flow.moaminsharifi.com/'
             target="_blank"
             rel="noopener noreferrer"
@@ -139,3 +138,5 @@ export function PageActions({
     </>
   );
 }
+
+    

@@ -2,7 +2,7 @@
 {
   "app.title": "Subtitle Flow",
   "app.description": "Synchronize and edit subtitles for your media files.",
-  "footer.copyright": "© {year} Subtitle Flow. Idea from Amin Sharifi, code developed with help of Firebase Studio. <0>Original concept</0>. Powered by Next.js & OpenAI.",
+  "footer.copyright": "© 2025 Subtitle Flow. Idea from Amin Sharifi, code developed with help of Firebase Studio. <0>Original concept</0>. Powered by Next.js, OpenAI (using Whisper) & Groq.",
   "settings.title": "Application Settings",
   "footer.projectRepository": "Project Repository",
   "footer.projectWebsite": "Project Website",
@@ -178,3 +178,5 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
+
+    
