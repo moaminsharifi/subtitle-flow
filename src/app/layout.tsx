@@ -17,9 +17,11 @@ const geistMono = Geist_Mono({
 });
 
 const APP_NAME = 'Subtitle Flow';
-const APP_DESCRIPTION = 'Subtitle Flow: Edit & create subtitles effortlessly in your browser. Supports SRT/VTT, AI transcription, and full privacy. Perfect for video creators & professionals.';
+const APP_DESCRIPTION = 'Subtitle Flow: Edit & create subtitles effortlessly in your browser. Supports SRT/VTT, AI transcription (OpenAI Whisper, Groq), and full privacy. Perfect for video creators & professionals. Free, open-source, and offline-capable.';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://subtitile-flow.moaminsharifi.com/';
 const FAVICON_URL = "https://raw.githubusercontent.com/moaminsharifi/subtitle-flow/master/public/icons/icon-512x512.png";
+
+const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION;
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -29,9 +31,9 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`, // For dynamic titles in child pages
   },
   description: APP_DESCRIPTION,
-  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle flow', 'subtitle sync', 'free subtitle editor', 'online subtitle editor', 'local subtitle editor'],
-  manifest: '/manifest.json', 
-  
+  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle flow', 'free subtitle editor', 'online subtitle editor', 'local subtitle editor', 'open source subtitle editor', 'offline subtitle tool', 'openai whisper', 'groq transcription', 'pwa subtitle editor'],
+  manifest: '/manifest.json',
+
   openGraph: {
     type: 'website',
     url: APP_URL,
@@ -40,7 +42,7 @@ export const metadata: Metadata = {
     siteName: APP_NAME,
     images: [
       {
-        url: `${APP_URL}og-image.png`, 
+        url: `${APP_URL}og-image.png`,
         width: 1200,
         height: 630,
         alt: `${APP_NAME} - Edit subtitles with ease`,
@@ -51,8 +53,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: [`${APP_URL}twitter-image.png`], 
-    // creator: '@yourtwitterhandle', 
+    images: [`${APP_URL}twitter-image.png`],
+    // creator: '@yourtwitterhandle',
   },
   robots: {
     index: true,
@@ -66,12 +68,20 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: FAVICON_URL, 
-    shortcut: FAVICON_URL, 
-    apple: FAVICON_URL, 
-    // other: [ 
+    icon: FAVICON_URL,
+    shortcut: FAVICON_URL,
+    apple: FAVICON_URL,
+    // other: [
     //   { rel: 'icon', url: '/favicon-32x32.png', sizes: '32x32' },
     // ],
+  },
+  verification: {
+    ...(googleSiteVerification && { google: googleSiteVerification }),
+    // Add other verification tags here if needed, e.g., Yandex, Yahoo, etc.
+    // yandex: 'yandex-verification-code',
+    // other: {
+    //   me: ['my-email', 'my-link'],
+    // },
   },
   // appleWebApp: { // For PWAs
   //   title: APP_NAME,
@@ -84,14 +94,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [ 
-    { media: '(prefers-color-scheme: light)', color: '#f5f5f5' }, 
-    { media: '(prefers-color-scheme: dark)', color: '#0d1b2a' },  
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f5f5f5' },
+    { media: '(prefers-color-scheme: dark)', color: '#0d1b2a' },
   ],
-  // colorScheme: 'light dark', 
-  // width: 'device-width', 
-  // initialScale: 1, 
-  // maximumScale: 1, 
+  // colorScheme: 'light dark',
+  // width: 'device-width',
+  // initialScale: 1,
+  // maximumScale: 1,
 };
 
 
