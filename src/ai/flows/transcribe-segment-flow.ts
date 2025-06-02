@@ -8,7 +8,7 @@
  */
 
 import OpenAI from 'openai';
-import { z } from 'zod';
+import { z, type ZodType } from 'zod';
 import type { TranscriptionModelType, Segment, AppSettings } from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 
@@ -45,27 +45,27 @@ export async function transcribeAudioSegment(
   let baseUrl: string | undefined;
   let providerName: string = 'OpenAI'; // Default
 
-  if (appSettings.transcriptionProvider === 'avalai') {
+  switch (appSettings.transcriptionProvider) {
+ case 'avalai':
     if (!appSettings.avalaiToken) {
       throw new Error('AvalAI API key is required for transcription.');
     }
     apiKey = appSettings.avalaiToken;
     baseUrl = 'https://api.avalai.ir/v1'; // AvalAI specific endpoint
     providerName = 'AvalAI';
-  } else { // Default to openai
-    if (!appSettings.openAIToken) {
-      throw new Error('OpenAI API key is required for transcription.');
-    }
+ break;
+    case 'openai': // Default case
+ if (!appSettings.openAIToken) {
+ throw new Error('OpenAI API key is required for transcription.');
+ }
     apiKey = appSettings.openAIToken;
-    // OpenAI's default base URL will be used if `baseUrl` is undefined
-    providerName = 'OpenAI';
+ // Temperature and prompt are typically only applicable/explicitly supported by chat-like models,
+ // but we pass them here in case the provider's API handles them.
+ // OpenAI's whisper-1 model does not support 'temperature' or 'prompt' directly in the API.
+ // OpenAI's default base URL will be used if `baseUrl` is undefined
+ providerName = 'OpenAI';
+ break;
   }
-
-  const apiClient = new OpenAI({
-    apiKey: apiKey,
-    baseURL: baseUrl, 
-    dangerouslyAllowBrowser: true, // Required for client-side usage
-  });
 
   try {
     const audioFile = await dataUriToRequestFile(input.audioDataUri, 'audio_segment.wav', 'audio/wav');
@@ -77,19 +77,33 @@ export async function transcribeAudioSegment(
     // This logic might need adjustment if AvalAI behaves differently with these models.
     let isWhisperModelFormat = input.openAIModel === 'whisper-1';
 
+    const apiClient = new OpenAI({
+      apiKey: apiKey,
+      baseURL: baseUrl,
+      dangerouslyAllowBrowser: true, // Required for client-side usage
+    });
+
     if (isWhisperModelFormat) {
       transcriptionParams = {
           file: audioFile,
           model: input.openAIModel,
           response_format: 'verbose_json', 
           timestamp_granularities: ["segment"] 
-      };
+      } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
     } else { 
+      // For gpt-4o-transcribe and gpt-4o-mini-transcribe (and potentially other non-whisper models)
+      // These may support temperature and prompt as they are likely wrappers around chat models.
       transcriptionParams = {
           file: audioFile,
           model: input.openAIModel,
           response_format: 'json', 
-      };
+      } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
+    }
+
+    // Add advanced settings if they exist in appSettings.
+    // The API provider (OpenAI or AvalAI) will determine if these parameters are used/valid for the given model.
+    if (appSettings.temperature !== undefined) {
+        (transcriptionParams as any).temperature = appSettings.temperature; // Use 'any' or extend the type if needed
     }
 
     if (input.language) {

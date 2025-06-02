@@ -20,9 +20,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 import type { AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, TranscriptionProvider } from '@/lib/types';
 import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, TRANSCRIPTION_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
-import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
+
 import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const [showOpenAIToken, setShowOpenAIToken] = useState(false);
   const [showGroqToken, setShowGroqToken] = useState(false);
   const [showAvalAIToken, setShowAvalAIToken] = useState(false);
+
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [temperature, setTemperature] = useState(0.7); // Default temperature
 
   const { toast } = useToast();
 
@@ -87,7 +91,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
       const initialTheme = storedTheme || 'system';
       setSelectedTheme(initialTheme);
-
+      
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
       addLog(`Settings loaded: Provider - ${storedTranscriptionProvider || 'openai (default)'}, Model - ${storedTranscriptionModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}. AvalAI Token: ${storedAvalaiToken ? 'Set' : 'Not Set'}.`, "debug");
     }
@@ -107,24 +111,23 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const handleSave = () => {
     localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
+    localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
+
+    // Clear all tokens first, then set the active one
+    localStorage.removeItem(OPENAI_TOKEN_KEY);
+    localStorage.removeItem(AVALAI_TOKEN_KEY);
+    localStorage.removeItem(GROQ_TOKEN_KEY);
     
-    if (transcriptionProvider === 'openai') {
+    if (transcriptionProvider === 'openai' && openAIToken) {
       localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken);
-      localStorage.removeItem(AVALAI_TOKEN_KEY);
-      localStorage.removeItem(GROQ_TOKEN_KEY);
-    } else if (transcriptionProvider === 'avalai') {
+    } else if (transcriptionProvider === 'avalai' && avalaiToken) {
       localStorage.setItem(AVALAI_TOKEN_KEY, avalaiToken);
-      localStorage.removeItem(OPENAI_TOKEN_KEY);
-      localStorage.removeItem(GROQ_TOKEN_KEY);
-    } else if (transcriptionProvider === 'groq') {
+    } else if (transcriptionProvider === 'groq' && groqToken) {
       localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
-      localStorage.removeItem(OPENAI_TOKEN_KEY);
-      localStorage.removeItem(AVALAI_TOKEN_KEY);
     }
     
-    localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
-    localStorage.setItem(THEME_KEY, selectedTheme);
+    localStorage.setItem(THEME_KEY, selectedTheme);    
 
     if (currentAppLanguage !== selectedAppLanguage) {
       setAppLanguage(selectedAppLanguage); 
@@ -141,14 +144,14 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       defaultLanguage: defaultTranscriptionLanguage,
       openAITokenStatus: transcriptionProvider === 'openai' && openAIToken ? 'Set' : 'Not Set',
       avalaiTokenStatus: transcriptionProvider === 'avalai' && avalaiToken ? 'Set' : 'Not Set',
-      groqTokenStatus: transcriptionProvider === 'groq' && groqToken ? 'Set' : 'Not Set',
+      groqTokenStatus: transcriptionProvider === 'groq' && groqToken ? 'Set' : 'Not Set'
     });
 
     toast({
       title: t('settings.toast.saved') as string,
       description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
       duration: 5000,
-    });
+ });
     addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage}) }`, 'success');
     onClose();
   };
@@ -309,25 +312,62 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                    <Label htmlFor="transcription-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                      {t('settings.apiConfig.modelLabel')}
-                    </Label>
-                    <Select
-                      value={transcriptionModel}
-                      onValueChange={(value: string) => setTranscriptionModel(value as TranscriptionModelType)}
-                      dir={dir}
-                    >
-                      <SelectTrigger className="col-span-1 md:col-span-3" id="transcription-model-select" aria-label={t('settings.apiConfig.modelLabel') as string}>
-                        <SelectValue placeholder="Select transcription model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="whisper-1">whisper-1</SelectItem>
-                        <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</SelectItem>
-                        <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe</SelectItem>
-                      </SelectContent>
-                    </Select>
+                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                      <Label htmlFor="transcription-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                          {t('settings.apiConfig.modelLabel')}
+                      </Label>
+                      <Select
+                          value={transcriptionModel}
+                          onValueChange={(value: string) => setTranscriptionModel(value as TranscriptionModelType)}
+                          dir={dir}
+                      >
+                          <SelectTrigger id="transcription-model-select" className="col-span-1 md:col-span-3" aria-label={t('settings.apiConfig.modelLabel') as string}>
+                              <SelectValue placeholder="Select AI model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="whisper-1">whisper-1 (OpenAI/AvalAI/Groq)</SelectItem>
+                              <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (OpenAI/AvalAI/Groq)</SelectItem>
+                              <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe (OpenAI/AvalAI/Groq)</SelectItem>
+                          </SelectContent>
+                      </Select>
                   </div>
+
+                  {/* Advanced Options Toggle */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                      <Label htmlFor="show-advanced-options" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                          Show Advanced Options
+                      </Label>
+                      <div className="col-span-1 md:col-span-3 flex items-center">
+                          <Switch
+                              id="show-advanced-options"
+                              checked={showAdvancedOptions}
+                              onCheckedChange={setShowAdvancedOptions}
+                              aria-label="Toggle advanced transcription options"
+                          />
+                      </div>
+                  </div>
+
+                  {showAdvancedOptions && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                        <Label htmlFor="temperature" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                          Temperature
+                        </Label>
+                        <Input
+                          id="temperature"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="1"
+                          value={temperature}
+                          onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                          className="col-span-1 md:col-span-3"
+                          aria-label="Transcription temperature setting"
+                          dir={dir}
+                        />
+                      </div>
+                    </>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
                     <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                       {t('settings.apiConfig.defaultLanguage')}
@@ -372,7 +412,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                 <div>
                     <h3 className="text-lg font-medium mb-2">{t('settings.credits.title')}</h3>
                     <div className="text-sm text-muted-foreground space-y-1">
-                        <p>{t('settings.credits.builtWith')}</p>
+                         <p>{t('settings.credits.builtWith')}</p>
                         <ul className="list-disc list-inside ps-4">
                             <li>Next.js by Vercel</li>
                             <li>React</li>
@@ -381,7 +421,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                             <li>OpenAI API for transcription</li>
                             <li>AvalAI API for transcription</li>
                             <li>Groq API</li>
-                        </ul>
+                         </ul>
                         <p className="mt-2">
                             {t('settings.credits.developedByFS')}
                         </p>
@@ -410,13 +450,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <CheatsheetDialog
-        isOpen={isCheatsheetDialogOpen}
-        onClose={() => {
-          setIsCheatsheetDialogOpen(false);
-          addLog("Cheatsheet dialog closed.", "debug");
-        }}
-      />
     </>
   );
 }
