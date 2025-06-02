@@ -17,11 +17,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from '@/hooks/use-toast';
-import type { AppSettings, OpenAIModelType, LogEntry, LanguageCode, Theme, Language } from '@/lib/types';
-import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, OPENAI_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY } from '@/lib/types';
+import type { AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, TranscriptionProvider } from '@/lib/types';
+import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, OPENAI_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
 import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
 import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
@@ -38,7 +38,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const [openAIToken, setOpenAIToken] = useState('');
   const [groqToken, setGroqToken] = useState('');
-  const [openAIModel, setOpenAIModel] = useState<OpenAIModelType>('whisper-1');
+  const [transcriptionProvider, setTranscriptionProvider] = useState<TranscriptionProvider>('openai');
+  const [avalaiToken, setAvalaiToken] = useState('');
+  const [transcriptionModel, setTranscriptionModel] = useState<TranscriptionModelType>('whisper-1');
   const [defaultTranscriptionLanguage, setDefaultTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [selectedTheme, setSelectedTheme] = useState<Theme>('system');
   const [selectedAppLanguage, setSelectedAppLanguage] = useState<Language>(currentAppLanguage);
@@ -69,20 +71,23 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       addLog("Settings dialog opened. Loading saved settings.", "debug");
       const storedOpenAIToken = localStorage.getItem(OPENAI_TOKEN_KEY);
       const storedGroqToken = localStorage.getItem(GROQ_TOKEN_KEY);
-      const storedOpenAIModel = localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType | null;
+      const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
+      const storedAvalaiToken = localStorage.getItem(AVALAI_TOKEN_KEY);
+      const storedTranscriptionModel = localStorage.getItem(OPENAI_MODEL_KEY) as TranscriptionModelType | null;
       const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
       const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
       const storedAppLanguage = localStorage.getItem(LANGUAGE_KEY) as Language | null;
 
       if (storedOpenAIToken) setOpenAIToken(storedOpenAIToken);
       if (storedGroqToken) setGroqToken(storedGroqToken);
-      setOpenAIModel(storedOpenAIModel || 'whisper-1');
-      setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
+      setTranscriptionProvider(storedTranscriptionProvider || 'openai');
+      if (storedAvalaiToken) setAvalaiToken(storedAvalaiToken);
+      setTranscriptionModel(storedTranscriptionModel || 'whisper-1');
+      setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect"); // Use the correct key name
       const initialTheme = storedTheme || 'system';
       setSelectedTheme(initialTheme);
 
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
-
       addLog(`Settings loaded: OpenAI Model - ${storedOpenAIModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
     }
   }, [isOpen, addLog, currentAppLanguage]);
@@ -100,9 +105,11 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   };
 
   const handleSave = () => {
-    localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken);
-    localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
-    localStorage.setItem(OPENAI_MODEL_KEY, openAIModel);
+    localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
+    localStorage.setItem(OPENAI_TOKEN_KEY, transcriptionProvider === 'openai' ? openAIToken : ''); // Only save if OpenAI is selected
+    localStorage.setItem(AVALAI_TOKEN_KEY, transcriptionProvider === 'avalai' ? avalaiToken : ''); // Only save if AvalAI is selected
+    localStorage.setItem(GROQ_TOKEN_KEY, groqToken); // Groq token is independent of transcription provider
+    localStorage.setItem(OPENAI_MODEL_KEY, transcriptionModel);
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
     
     localStorage.setItem(THEME_KEY, selectedTheme);
@@ -117,10 +124,12 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     const toastDesc = t(savedMessageKey, {
       theme: selectedTheme,
       appLanguage: selectedAppLanguage,
-      openAIModel: openAIModel,
+      transcriptionProvider: transcriptionProvider,
+      transcriptionModel: transcriptionModel,
       defaultLanguage: defaultTranscriptionLanguage,
       openAITokenStatus: openAIToken ? 'Set' : 'Not Set',
       groqTokenStatus: groqToken ? 'Set' : 'Not Set',
+      avalaiTokenStatus: avalaiToken ? 'Set' : 'Not Set',
     });
 
     toast({
@@ -128,7 +137,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
       duration: 5000,
     });
-    addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({openAIModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage}) }`, 'success');
+    addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage}) }`, 'success');
     onClose();
   };
 
@@ -199,26 +208,69 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">{t('settings.apiConfig.label')}</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                    <Label htmlFor="openai-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                      {t('settings.apiConfig.openAIToken')}
-                    </Label>
-                    <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                      <Input
-                        id="openai-token"
-                        type={showOpenAIToken ? 'text' : 'password'}
-                        value={openAIToken}
-                        onChange={(e) => setOpenAIToken(e.target.value)}
-                        className="flex-grow"
-                        placeholder="sk-..."
-                        aria-label={t('settings.apiConfig.openAIToken') as string}
-                        dir={dir}
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)} aria-label={showOpenAIToken ? "Hide OpenAI token" : "Show OpenAI token"}>
-                        {showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </Button>
-                    </div>
+                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                      <Label className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                        {t('settings.apiConfig.transcriptionProvider.label')}
+                      </Label>
+                      <Select
+                          value={transcriptionProvider}
+                          onValueChange={(value: string) => setTranscriptionProvider(value as TranscriptionProvider)}
+                          dir={dir}
+                      >
+                          <SelectTrigger className="col-span-1 md:col-span-3" aria-label={t('settings.apiConfig.transcriptionProvider.label') as string}>
+                              <SelectValue placeholder="Select transcription provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="openai">{t('settings.apiConfig.transcriptionProvider.openai')}</SelectItem>
+                              <SelectItem value="avalai">{t('settings.apiConfig.transcriptionProvider.avalai')}</SelectItem>
+                          </SelectContent>
+                      </Select>
                   </div>
+
+                  {transcriptionProvider === 'openai' && (
+                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                          <Label htmlFor="openai-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                              {t('settings.apiConfig.openAIToken')}
+                          </Label>
+                          <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                              <Input
+                                  id="openai-token"
+                                  type={showOpenAIToken ? 'text' : 'password'}
+                                  value={openAIToken}
+                                  onChange={(e) => setOpenAIToken(e.target.value)}
+                                  className="flex-grow"
+                                  placeholder="sk-..."
+                                  aria-label={t('settings.apiConfig.openAIToken') as string}
+                                  dir={dir}
+                              />
+                              <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)} aria-label={showOpenAIToken ? "Hide OpenAI token" : "Show OpenAI token"}>
+                                  {showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                              </Button>
+                          </div>
+                      </div>
+                  )}
+
+                   {transcriptionProvider === 'avalai' && (
+                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4" dir={dir}>
+                          <Label htmlFor="avalai-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                              {t('settings.apiConfig.avalaiToken')}
+                          </Label>
+                          <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                              <Input
+                                  id="avalai-token"
+                                  type="password" // AvalAI token is not typically shown
+                                  value={avalaiToken || ''} // Use empty string if null/undefined
+                                  onChange={(e) => setAvalaiToken(e.target.value)}
+                                  className="flex-grow"
+                                  placeholder="AvalAI API Key"
+                                  aria-label={t('settings.apiConfig.avalaiToken') as string}
+                                  dir={dir}
+                              />
+                              {/* No show/hide button for AvalAI token for now */}
+                          </div>
+                      </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
                     <Label htmlFor="groq-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                       {t('settings.apiConfig.groqToken')}
@@ -240,16 +292,16 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                    <Label htmlFor="openai-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                      {t('settings.apiConfig.openAIModel')}
+                    <Label htmlFor="transcription-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                      {t('settings.apiConfig.transcriptionModel')}
                     </Label>
                     <Select
-                      value={openAIModel}
-                      onValueChange={(value: string) => setOpenAIModel(value as OpenAIModelType)}
+                      value={transcriptionModel}
+                      onValueChange={(value: string) => setTranscriptionModel(value as TranscriptionModelType)}
                       dir={dir}
                     >
-                      <SelectTrigger className="col-span-1 md:col-span-3" id="openai-model-select" aria-label={t('settings.apiConfig.openAIModel') as string}>
-                        <SelectValue placeholder="Select OpenAI model" />
+                      <SelectTrigger className="col-span-1 md:col-span-3" id="transcription-model-select" aria-label={t('settings.apiConfig.transcriptionModel') as string}>
+                        <SelectValue placeholder="Select transcription model" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="whisper-1">whisper-1</SelectItem>

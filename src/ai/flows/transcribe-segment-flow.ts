@@ -9,7 +9,7 @@
 
 import OpenAI from 'openai';
 import { z } from 'zod';
-import type { OpenAIModelType, Segment } from '@/lib/types';
+import type { TranscriptionModelType, Segment, AppSettings } from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 
 const TranscribeAudioSegmentInputSchema = z.object({
@@ -19,9 +19,9 @@ const TranscribeAudioSegmentInputSchema = z.object({
       "A segment of audio, as a data URI that must include a MIME type (e.g., 'audio/wav') and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   openAIModel: z.custom<OpenAIModelType>().describe("The OpenAI transcription model to use (e.g., 'whisper-1', 'gpt-4o-mini-transcribe')."),
-  language: z.string().optional().describe("Optional language code for transcription (e.g., 'en', 'es'). OpenAI expects BCP-47 format."),
-  openAIApiKey: z.string().describe("OpenAI API Key.")
+  language: z.string().optional().describe("Optional language code for transcription (e.g., 'en', 'es'). Expects BCP-47 format."),
 });
+// This input schema needs to be updated to reflect the provider selection in AppSettings.
 export type TranscribeAudioSegmentInput = z.infer<typeof TranscribeAudioSegmentInputSchema>;
 
 const SegmentSchema = z.object({
@@ -38,17 +38,34 @@ const TranscribeAudioSegmentOutputSchema = z.object({
 export type TranscribeAudioSegmentOutput = z.infer<typeof TranscribeAudioSegmentOutputSchema>;
 
 export async function transcribeAudioSegment(
-  input: TranscribeAudioSegmentInput
+  input: Omit<TranscribeAudioSegmentInput, 'openAIApiKey'>, // Remove openAIApiKey from direct input
+  appSettings: AppSettings // Pass AppSettings directly
 ): Promise<TranscribeAudioSegmentOutput> {
 
-  if (!input.openAIApiKey) {
-    throw new Error('OpenAI API key is required for transcription.');
+  let apiKey: string | undefined;
+  let baseUrl: string | undefined;
+  let providerName: string;
+
+  if (appSettings.transcriptionProvider === 'avalai') {
+    if (!appSettings.avalaiToken) {
+      throw new Error('AvalAI API key is required for transcription.');
+    }
+    apiKey = appSettings.avalaiToken;
+    baseUrl = 'https://api.avalai.ir/v1';
+    providerName = 'AvalAI';
+  } else { // Default to openai
+    if (!appSettings.openAIApiKey) {
+      throw new Error('OpenAI API key is required for transcription.');
+    }
+    apiKey = appSettings.openAIApiKey;
+    // Use default OpenAI base URL
+    providerName = 'OpenAI';
   }
 
   const openai = new OpenAI({
-    apiKey: input.openAIApiKey,
+    apiKey: apiKey,
+    baseURL: baseUrl, // This will be undefined for default OpenAI
   });
-
   try {
     const audioFile = await dataUriToRequestFile(input.audioDataUri, 'audio_segment.wav', 'audio/wav');
 
@@ -117,8 +134,8 @@ export async function transcribeAudioSegment(
     return { segments, fullText };
 
   } catch (error: any) {
-    console.error('Error during OpenAI transcription:', error);
+    console.error(`Error during ${providerName} transcription:`, error);
     const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
-    throw new Error(`OpenAI Transcription failed: ${errorResponseMessage}`);
+    throw new Error(`${providerName} Transcription failed: ${errorResponseMessage}`);
   }
 }
