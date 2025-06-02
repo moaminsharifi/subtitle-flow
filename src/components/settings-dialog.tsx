@@ -48,6 +48,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const [showOpenAIToken, setShowOpenAIToken] = useState(false);
   const [showGroqToken, setShowGroqToken] = useState(false);
+  const [showAvalAIToken, setShowAvalAIToken] = useState(false);
 
   const { toast } = useToast();
 
@@ -83,12 +84,12 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       setTranscriptionProvider(storedTranscriptionProvider || 'openai');
       if (storedAvalaiToken) setAvalaiToken(storedAvalaiToken);
       setTranscriptionModel(storedTranscriptionModel || 'whisper-1');
-      setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect"); // Use the correct key name
+      setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
       const initialTheme = storedTheme || 'system';
       setSelectedTheme(initialTheme);
 
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
-      addLog(`Settings loaded: OpenAI Model - ${storedTranscriptionModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}.`, "debug");
+      addLog(`Settings loaded: Provider - ${storedTranscriptionProvider || 'openai (default)'}, OpenAI Model - ${storedTranscriptionModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}. AvalAI Token: ${storedAvalaiToken ? 'Set' : 'Not Set'}.`, "debug");
     }
   }, [isOpen, addLog, currentAppLanguage]);
 
@@ -106,9 +107,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const handleSave = () => {
     localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
-    localStorage.setItem(OPENAI_TOKEN_KEY, transcriptionProvider === 'openai' ? openAIToken : ''); // Only save if OpenAI is selected
-    localStorage.setItem(AVALAI_TOKEN_KEY, transcriptionProvider === 'avalai' ? avalaiToken : ''); // Only save if AvalAI is selected
-    localStorage.setItem(GROQ_TOKEN_KEY, groqToken); // Groq token is independent of transcription provider
+    localStorage.setItem(OPENAI_TOKEN_KEY, transcriptionProvider === 'openai' ? openAIToken : '');
+    localStorage.setItem(AVALAI_TOKEN_KEY, transcriptionProvider === 'avalai' ? avalaiToken : '');
+    localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
     localStorage.setItem(OPENAI_MODEL_KEY, transcriptionModel);
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
     
@@ -127,9 +128,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       transcriptionProvider: transcriptionProvider,
       transcriptionModel: transcriptionModel,
       defaultLanguage: defaultTranscriptionLanguage,
-      openAITokenStatus: openAIToken ? 'Set' : 'Not Set',
+      openAITokenStatus: openAIToken && transcriptionProvider === 'openai' ? 'Set' : 'Not Set',
       groqTokenStatus: groqToken ? 'Set' : 'Not Set',
-      avalaiTokenStatus: avalaiToken ? 'Set' : 'Not Set',
+      avalaiTokenStatus: avalaiToken && transcriptionProvider === 'avalai' ? 'Set' : 'Not Set',
     });
 
     toast({
@@ -153,7 +154,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
           </DialogHeader>
 
           <div className="my-1 flex-grow overflow-y-auto px-2 pr-3 min-h-0">
-            <ScrollArea className="h-full pr-2"> {/* Added pr-2 to ScrollArea to prevent content clipping with scrollbar */}
+            <ScrollArea className="h-full pr-2">
               <div className="space-y-6 py-4">
                 
                 <div className="space-y-2">
@@ -206,18 +207,19 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
                 <Separator />
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label className="text-base font-semibold">{t('settings.apiConfig.label')}</Label>
                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                      <Label className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                      <Label htmlFor="transcription-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                         {t('settings.apiConfig.transcriptionProvider.label')}
                       </Label>
                       <Select
                           value={transcriptionProvider}
                           onValueChange={(value: string) => setTranscriptionProvider(value as TranscriptionProvider)}
                           dir={dir}
+                          
                       >
-                          <SelectTrigger className="col-span-1 md:col-span-3" aria-label={t('settings.apiConfig.transcriptionProvider.label') as string}>
+                          <SelectTrigger id="transcription-provider-select" className="col-span-1 md:col-span-3" aria-label={t('settings.apiConfig.transcriptionProvider.label') as string}>
                               <SelectValue placeholder="Select transcription provider" />
                           </SelectTrigger>
                           <SelectContent>
@@ -258,15 +260,17 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                           <div className="col-span-1 md:col-span-3 flex items-center gap-2">
                               <Input
                                   id="avalai-token"
-                                  type="password" // AvalAI token is not typically shown
-                                  value={avalaiToken || ''} // Use empty string if null/undefined
+                                  type={showAvalAIToken ? 'text' : 'password'}
+                                  value={avalaiToken || ''}
                                   onChange={(e) => setAvalaiToken(e.target.value)}
                                   className="flex-grow"
-                                  placeholder="AvalAI API Key"
+                                  placeholder={t('settings.apiConfig.avalaiTokenPlaceholder')as string}
                                   aria-label={t('settings.apiConfig.avalaiToken') as string}
                                   dir={dir}
                               />
-                              {/* No show/hide button for AvalAI token for now */}
+                               <Button variant="ghost" size="icon" onClick={() => setShowAvalAIToken(!showAvalAIToken)} aria-label={showAvalAIToken ? "Hide AvalAI token" : "Show AvalAI token"}>
+                                  {showAvalAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                              </Button>
                           </div>
                       </div>
                   )}
@@ -344,7 +348,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                       addLog("Cheatsheet dialog opened from settings.", "debug");
                     }}
                   >
-                    <HelpCircle className={cn(dir === 'rtl' ? 'ms-2' : 'me-2')} />
+                    <HelpCircle className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} />
                     {t('settings.cheatsheet.button')}
                   </Button>
                 </div>
@@ -361,15 +365,19 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                             <li>ShadCN UI Components</li>
                             <li>Tailwind CSS</li>
                             <li>OpenAI API for transcription</li>
+                            <li>AvalAI API for transcription</li>
+                            <li>Groq API</li>
                         </ul>
                         <p className="mt-2">
                             {t('settings.credits.developedByFS')}
                         </p>
                         <p className="mt-2">{t('settings.credits.createdByAS')}</p>
- <p className="mt-2">
- Project Repository: <a href='https://github.com/moaminsharifi/subtitle-flow'>https://github.com/moaminsharifi/subtitle-flow</a> | Project Website: <a href='https://subtitile-flow.moaminsharifi.com/'>https://subtitile-flow.moaminsharifi.com/</a>
- </p>
-
+                        <p className="mt-2">
+                          {t('settings.credits.repository') as string} <a href='https://github.com/moaminsharifi/subtitle-flow' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>github.com/moaminsharifi/subtitle-flow</a>
+                        </p>
+                        <p>
+                          {t('settings.credits.website') as string} <a href='https://subtitile-flow.moaminsharifi.com/' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>subtitile-flow.moaminsharifi.com</a>
+                        </p>
                     </div>
                 </div>
               </div>
@@ -398,5 +406,3 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     </>
   );
 }
-
-    

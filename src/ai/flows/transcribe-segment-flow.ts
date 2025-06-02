@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Utility for transcribing a segment of audio using OpenAI API.
+ * @fileOverview Utility for transcribing a segment of audio using OpenAI or AvalAI API.
  *
  * - transcribeAudioSegment - Function to transcribe an audio segment.
  * - TranscribeAudioSegmentInput - Input type for the function.
@@ -18,10 +18,9 @@ const TranscribeAudioSegmentInputSchema = z.object({
     .describe(
       "A segment of audio, as a data URI that must include a MIME type (e.g., 'audio/wav') and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
-  openAIModel: z.custom<OpenAIModelType>().describe("The OpenAI transcription model to use (e.g., 'whisper-1', 'gpt-4o-mini-transcribe')."),
+  openAIModel: z.custom<TranscriptionModelType>().describe("The AI transcription model to use (e.g., 'whisper-1', 'gpt-4o-mini-transcribe'). This model name is used for both OpenAI and AvalAI providers."),
   language: z.string().optional().describe("Optional language code for transcription (e.g., 'en', 'es'). Expects BCP-47 format."),
 });
-// This input schema needs to be updated to reflect the provider selection in AppSettings.
 export type TranscribeAudioSegmentInput = z.infer<typeof TranscribeAudioSegmentInputSchema>;
 
 const SegmentSchema = z.object({
@@ -38,54 +37,58 @@ const TranscribeAudioSegmentOutputSchema = z.object({
 export type TranscribeAudioSegmentOutput = z.infer<typeof TranscribeAudioSegmentOutputSchema>;
 
 export async function transcribeAudioSegment(
-  input: Omit<TranscribeAudioSegmentInput, 'openAIApiKey'>, // Remove openAIApiKey from direct input
-  appSettings: AppSettings // Pass AppSettings directly
+  input: TranscribeAudioSegmentInput,
+  appSettings: AppSettings
 ): Promise<TranscribeAudioSegmentOutput> {
 
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
-  let providerName: string;
+  let providerName: string = 'OpenAI'; // Default
 
   if (appSettings.transcriptionProvider === 'avalai') {
     if (!appSettings.avalaiToken) {
       throw new Error('AvalAI API key is required for transcription.');
     }
     apiKey = appSettings.avalaiToken;
-    baseUrl = 'https://api.avalai.ir/v1';
+    baseUrl = 'https://api.avalai.ir/v1'; // AvalAI specific endpoint
     providerName = 'AvalAI';
   } else { // Default to openai
-    if (!appSettings.openAIApiKey) {
+    if (!appSettings.openAIToken) {
       throw new Error('OpenAI API key is required for transcription.');
     }
-    apiKey = appSettings.openAIApiKey;
-    // Use default OpenAI base URL
+    apiKey = appSettings.openAIToken;
+    // OpenAI's default base URL will be used if `baseUrl` is undefined
     providerName = 'OpenAI';
   }
 
-  const openai = new OpenAI({
+  const apiClient = new OpenAI({
     apiKey: apiKey,
-    baseURL: baseUrl, // This will be undefined for default OpenAI
+    baseURL: baseUrl, 
+    dangerouslyAllowBrowser: true, // Required for client-side usage
   });
+
   try {
     const audioFile = await dataUriToRequestFile(input.audioDataUri, 'audio_segment.wav', 'audio/wav');
 
-    console.log(`Attempting OpenAI transcription with model: ${input.openAIModel}, language: ${input.language || 'auto-detect'}`);
+    console.log(`Attempting ${providerName} transcription with model: ${input.openAIModel}, language: ${input.language || 'auto-detect'}`);
     
     let transcriptionParams: OpenAI.Audio.TranscriptionCreateParams;
-    let isWhisperModel = input.openAIModel === 'whisper-1';
+    // Assuming whisper-1 provides segments and gpt-4o models provide full text JSON.
+    // This logic might need adjustment if AvalAI behaves differently with these models.
+    let isWhisperModelFormat = input.openAIModel === 'whisper-1';
 
-    if (isWhisperModel) {
+    if (isWhisperModelFormat) {
       transcriptionParams = {
           file: audioFile,
           model: input.openAIModel,
           response_format: 'verbose_json', 
           timestamp_granularities: ["segment"] 
       };
-    } else { // For gpt-4o-mini-transcribe, gpt-4o-transcribe
+    } else { 
       transcriptionParams = {
           file: audioFile,
           model: input.openAIModel,
-          response_format: 'json', // These models require 'json' or 'text'
+          response_format: 'json', 
       };
     }
 
@@ -93,12 +96,12 @@ export async function transcribeAudioSegment(
         transcriptionParams.language = input.language;
     }
 
-    const transcription = await openai.audio.transcriptions.create(transcriptionParams);
+    const transcription = await apiClient.audio.transcriptions.create(transcriptionParams);
 
     let segments: Segment[] = [];
     let fullText = "";
 
-    if (isWhisperModel) {
+    if (isWhisperModelFormat && (transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson).segments) {
       const apiResponse = transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson;
       segments = apiResponse.segments?.map(s => ({
         id: s.id,
@@ -108,33 +111,30 @@ export async function transcribeAudioSegment(
       })) || [];
       fullText = apiResponse.text || segments.map(s => s.text).join(' ') || "";
     } else {
-      // For 'json' response from gpt-4o models, expect a structure like { text: "..." }
-      // The 'transcription' object itself might be what we need.
-      const apiResponse = transcription as { text?: string; [key: string]: any }; // Adjust based on actual API response for these models
+      const apiResponse = transcription as { text?: string; [key: string]: any }; 
       if (apiResponse && typeof apiResponse.text === 'string') {
         fullText = apiResponse.text.trim();
       } else {
-        // Fallback or if the structure is different.
-        // For instance, if the transcription object is the text directly.
-        if (typeof transcription === 'string') {
+        if (typeof transcription === 'string') { // Fallback for plain text response
             fullText = (transcription as string).trim();
         } else {
-            console.warn(`Unexpected API response structure for ${input.openAIModel}:`, transcription);
-            fullText = ''; // Or handle as an error more explicitly
+            console.warn(`Unexpected API response structure for ${input.openAIModel} from ${providerName}:`, transcription);
+            fullText = ''; 
         }
       }
-      // Segments are not provided by these models with 'json' format.
-      segments = [];
+      // Segments are not typically provided by non-whisper-1 models or if the format is just 'json'
+      segments = []; 
     }
 
     if (segments.length === 0 && !fullText) {
-      console.warn('OpenAI Transcription result was empty (no segments or text).');
+      console.warn(`${providerName} Transcription result was empty (no segments or text).`);
       return { segments: [], fullText: "" };
     }
     return { segments, fullText };
 
   } catch (error: any) {
     console.error(`Error during ${providerName} transcription:`, error);
+    // Attempt to parse out a more specific message from OpenAI-like error structures
     const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
     throw new Error(`${providerName} Transcription failed: ${errorResponseMessage}`);
   }

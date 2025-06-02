@@ -35,11 +35,12 @@ export interface Segment {
 export type TranscriptionModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe';
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa';
+export type TranscriptionProvider = 'openai' | 'avalai'; // Added 'avalai'
 
 export interface AppSettings {
   openAIToken?: string;
   groqToken?: string;
-  transcriptionProvider?: 'openai' | 'avalai';
+  transcriptionProvider?: TranscriptionProvider;
   avalaiToken?: string;
   openAIModel?: TranscriptionModelType;
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
@@ -125,4 +126,3 @@ export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
 export const TRANSCRIPTION_PROVIDER_KEY = 'app-settings-transcription-provider';
-
