@@ -42,7 +42,7 @@ export interface AppSettings {
   groqToken?: string;
   transcriptionProvider?: TranscriptionProvider;
   avalaiToken?: string;
-  openAIModel?: TranscriptionModelType;
+  openAIModel?: TranscriptionModelType; // This refers to the model name, used by either provider
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
   theme?: Theme;
   language?: Language;
@@ -120,7 +120,7 @@ export interface LogEntry {
 
 export const THEME_KEY = 'app-theme';
 export const LANGUAGE_KEY = 'app-language';
-export const OPENAI_MODEL_KEY = 'app-settings-openai-model';
+export const TRANSCRIPTION_MODEL_KEY = 'app-settings-transcription-model'; // Renamed from OPENAI_MODEL_KEY
 export const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';

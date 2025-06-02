@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from '@/hooks/use-toast';
 import type { AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, TranscriptionProvider } from '@/lib/types';
-import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, OPENAI_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
+import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, TRANSCRIPTION_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
 import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
 import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
@@ -74,7 +74,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       const storedGroqToken = localStorage.getItem(GROQ_TOKEN_KEY);
       const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
       const storedAvalaiToken = localStorage.getItem(AVALAI_TOKEN_KEY);
-      const storedTranscriptionModel = localStorage.getItem(OPENAI_MODEL_KEY) as TranscriptionModelType | null;
+      const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null; // Use new key
       const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
       const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
       const storedAppLanguage = localStorage.getItem(LANGUAGE_KEY) as Language | null;
@@ -89,7 +89,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       setSelectedTheme(initialTheme);
 
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
-      addLog(`Settings loaded: Provider - ${storedTranscriptionProvider || 'openai (default)'}, OpenAI Model - ${storedTranscriptionModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}. AvalAI Token: ${storedAvalaiToken ? 'Set' : 'Not Set'}.`, "debug");
+      addLog(`Settings loaded: Provider - ${storedTranscriptionProvider || 'openai (default)'}, Model - ${storedTranscriptionModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}. AvalAI Token: ${storedAvalaiToken ? 'Set' : 'Not Set'}.`, "debug");
     }
   }, [isOpen, addLog, currentAppLanguage]);
 
@@ -110,7 +110,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(OPENAI_TOKEN_KEY, transcriptionProvider === 'openai' ? openAIToken : '');
     localStorage.setItem(AVALAI_TOKEN_KEY, transcriptionProvider === 'avalai' ? avalaiToken : '');
     localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
-    localStorage.setItem(OPENAI_MODEL_KEY, transcriptionModel);
+    localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel); // Use new key
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
     
     localStorage.setItem(THEME_KEY, selectedTheme);
@@ -297,14 +297,14 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
                     <Label htmlFor="transcription-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                      {t('settings.apiConfig.transcriptionModel')}
+                      {t('settings.apiConfig.openAIModel') /* Label can remain generic as models are same */}
                     </Label>
                     <Select
                       value={transcriptionModel}
                       onValueChange={(value: string) => setTranscriptionModel(value as TranscriptionModelType)}
                       dir={dir}
                     >
-                      <SelectTrigger className="col-span-1 md:col-span-3" id="transcription-model-select" aria-label={t('settings.apiConfig.transcriptionModel') as string}>
+                      <SelectTrigger className="col-span-1 md:col-span-3" id="transcription-model-select" aria-label={t('settings.apiConfig.openAIModel') as string}>
                         <SelectValue placeholder="Select transcription model" />
                       </SelectTrigger>
                       <SelectContent>

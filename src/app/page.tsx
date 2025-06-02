@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import type { MediaFile, OpenAIModelType, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, Segment, AppSettings, TranscriptionProvider } from '@/lib/types';
-import { LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_MODEL_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
+import { LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, TRANSCRIPTION_MODEL_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
 import { MediaUploader } from '@/components/media-uploader';
 import { useToast } from '@/hooks/use-toast';
 import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
@@ -292,7 +292,7 @@ export default function SubtitleSyncPage() {
     const groqToken = localStorage.getItem(GROQ_TOKEN_KEY) || undefined;
     const transcriptionProvider = (localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null) || 'openai';
     const avalaiToken = localStorage.getItem(AVALAI_TOKEN_KEY) || undefined;
-    const openAIModel = (localStorage.getItem(OPENAI_MODEL_KEY) as OpenAIModelType | null) || 'whisper-1';
+    const openAIModel = (localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as OpenAIModelType | null) || 'whisper-1'; // Use new key
     const defaultTranscriptionLanguage = (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect";
     
     return {
