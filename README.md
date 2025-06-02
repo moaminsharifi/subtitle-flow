@@ -20,7 +20,7 @@
   <img src="docs/image/avalai-icon.svg" alt="AvalAI Logo" height="50">
 </a>
 
- Proudly sponsored by AvalAI
+ Proudly sponsored by [AvalAI](https://avalai.ir)
 
 ---
 
