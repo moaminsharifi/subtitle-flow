@@ -15,6 +15,15 @@
 
 ---
 
+## ❤️ Sponsors
+<a href="https://avalai.ir" target="_blank">
+  <img src="docs/image/avalai-icon.svg" alt="AvalAI Logo" height="50">
+</a>
+
+ Proudly sponsored by AvalAI
+
+---
+
 ## 🌟 Overview
 
 Subtitle Flow is a professional-grade subtitle editor that operates 100% in your web browser. No backend servers, no data uploads, no privacy concerns – just powerful subtitle editing at your fingertips.

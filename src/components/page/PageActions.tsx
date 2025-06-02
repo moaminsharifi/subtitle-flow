@@ -38,6 +38,9 @@ export function PageActions({
 }: PageActionsProps) {
   return (
     <>
+      {/* Floating action buttons */}
+
+      {/* Footer */}
       <footer className="mt-10 pt-6 border-t border-border/80 text-center">
         <p
           className="text-sm text-muted-foreground mb-4"
@@ -66,6 +69,13 @@ export function PageActions({
             <span>{t('footer.projectWebsite') as string}</span>
           </a>
         </div>
+        {/* Sponsorship Text */}
+        <p className="text-sm text-muted-foreground mt-4">
+          sponsored by{' '}
+          <a href="https://avalai.ir" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary transition-colors">
+            AvalAI
+          </a>
+        </p>
       </footer>
 
       <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-50">
