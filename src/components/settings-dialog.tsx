@@ -74,7 +74,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       const storedGroqToken = localStorage.getItem(GROQ_TOKEN_KEY);
       const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
       const storedAvalaiToken = localStorage.getItem(AVALAI_TOKEN_KEY);
-      const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null; // Use new key
+      const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
       const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
       const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
       const storedAppLanguage = localStorage.getItem(LANGUAGE_KEY) as Language | null;
@@ -107,12 +107,23 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const handleSave = () => {
     localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
-    localStorage.setItem(OPENAI_TOKEN_KEY, transcriptionProvider === 'openai' ? openAIToken : '');
-    localStorage.setItem(AVALAI_TOKEN_KEY, transcriptionProvider === 'avalai' ? avalaiToken : '');
-    localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
-    localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel); // Use new key
-    localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
     
+    if (transcriptionProvider === 'openai') {
+      localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken);
+      localStorage.removeItem(AVALAI_TOKEN_KEY);
+      localStorage.removeItem(GROQ_TOKEN_KEY);
+    } else if (transcriptionProvider === 'avalai') {
+      localStorage.setItem(AVALAI_TOKEN_KEY, avalaiToken);
+      localStorage.removeItem(OPENAI_TOKEN_KEY);
+      localStorage.removeItem(GROQ_TOKEN_KEY);
+    } else if (transcriptionProvider === 'groq') {
+      localStorage.setItem(GROQ_TOKEN_KEY, groqToken);
+      localStorage.removeItem(OPENAI_TOKEN_KEY);
+      localStorage.removeItem(AVALAI_TOKEN_KEY);
+    }
+    
+    localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
+    localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
     localStorage.setItem(THEME_KEY, selectedTheme);
 
     if (currentAppLanguage !== selectedAppLanguage) {
@@ -128,9 +139,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       transcriptionProvider: transcriptionProvider,
       transcriptionModel: transcriptionModel,
       defaultLanguage: defaultTranscriptionLanguage,
-      openAITokenStatus: openAIToken && transcriptionProvider === 'openai' ? 'Set' : 'Not Set',
-      groqTokenStatus: groqToken ? 'Set' : 'Not Set',
-      avalaiTokenStatus: avalaiToken && transcriptionProvider === 'avalai' ? 'Set' : 'Not Set',
+      openAITokenStatus: transcriptionProvider === 'openai' && openAIToken ? 'Set' : 'Not Set',
+      avalaiTokenStatus: transcriptionProvider === 'avalai' && avalaiToken ? 'Set' : 'Not Set',
+      groqTokenStatus: transcriptionProvider === 'groq' && groqToken ? 'Set' : 'Not Set',
     });
 
     toast({
@@ -217,7 +228,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                           value={transcriptionProvider}
                           onValueChange={(value: string) => setTranscriptionProvider(value as TranscriptionProvider)}
                           dir={dir}
-                          
                       >
                           <SelectTrigger id="transcription-provider-select" className="col-span-1 md:col-span-3" aria-label={t('settings.apiConfig.transcriptionProvider.label') as string}>
                               <SelectValue placeholder="Select transcription provider" />
@@ -225,6 +235,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                           <SelectContent>
                               <SelectItem value="openai">{t('settings.apiConfig.transcriptionProvider.openai')}</SelectItem>
                               <SelectItem value="avalai">{t('settings.apiConfig.transcriptionProvider.avalai')}</SelectItem>
+                              <SelectItem value="groq">{t('settings.apiConfig.transcriptionProvider.groq')}</SelectItem>
                           </SelectContent>
                       </Select>
                   </div>
@@ -275,36 +286,39 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                       </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                    <Label htmlFor="groq-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                      {t('settings.apiConfig.groqToken')}
-                    </Label>
-                    <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                      <Input
-                        id="groq-token"
-                        type={showGroqToken ? 'text' : 'password'}
-                        value={groqToken}
-                        onChange={(e) => setGroqToken(e.target.value)}
-                        className="flex-grow"
-                        placeholder="gsk_..."
-                        aria-label={t('settings.apiConfig.groqToken') as string}
-                        dir={dir}
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => setShowGroqToken(!showGroqToken)} aria-label={showGroqToken ? "Hide Groq token" : "Show Groq token"}>
-                        {showGroqToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </Button>
+                  {transcriptionProvider === 'groq' && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                      <Label htmlFor="groq-token" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                        {t('settings.apiConfig.groqToken')}
+                      </Label>
+                      <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                        <Input
+                          id="groq-token"
+                          type={showGroqToken ? 'text' : 'password'}
+                          value={groqToken}
+                          onChange={(e) => setGroqToken(e.target.value)}
+                          className="flex-grow"
+                          placeholder="gsk_..."
+                          aria-label={t('settings.apiConfig.groqToken') as string}
+                          dir={dir}
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => setShowGroqToken(!showGroqToken)} aria-label={showGroqToken ? "Hide Groq token" : "Show Groq token"}>
+                          {showGroqToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
                     <Label htmlFor="transcription-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                      {t('settings.apiConfig.openAIModel') /* Label can remain generic as models are same */}
+                      {t('settings.apiConfig.modelLabel')}
                     </Label>
                     <Select
                       value={transcriptionModel}
                       onValueChange={(value: string) => setTranscriptionModel(value as TranscriptionModelType)}
                       dir={dir}
                     >
-                      <SelectTrigger className="col-span-1 md:col-span-3" id="transcription-model-select" aria-label={t('settings.apiConfig.openAIModel') as string}>
+                      <SelectTrigger className="col-span-1 md:col-span-3" id="transcription-model-select" aria-label={t('settings.apiConfig.modelLabel') as string}>
                         <SelectValue placeholder="Select transcription model" />
                       </SelectTrigger>
                       <SelectContent>

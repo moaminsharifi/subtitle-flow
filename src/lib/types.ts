@@ -35,14 +35,14 @@ export interface Segment {
 export type TranscriptionModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe';
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa';
-export type TranscriptionProvider = 'openai' | 'avalai'; // Added 'avalai'
+export type TranscriptionProvider = 'openai' | 'avalai' | 'groq'; // Added 'groq'
 
 export interface AppSettings {
   openAIToken?: string;
   groqToken?: string;
   transcriptionProvider?: TranscriptionProvider;
   avalaiToken?: string;
-  openAIModel?: TranscriptionModelType; // This refers to the model name, used by either provider
+  transcriptionModel?: TranscriptionModelType; // This refers to the model name, used by any provider
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
   theme?: Theme;
   language?: Language;
@@ -120,7 +120,7 @@ export interface LogEntry {
 
 export const THEME_KEY = 'app-theme';
 export const LANGUAGE_KEY = 'app-language';
-export const TRANSCRIPTION_MODEL_KEY = 'app-settings-transcription-model'; // Renamed from OPENAI_MODEL_KEY
+export const TRANSCRIPTION_MODEL_KEY = 'app-settings-transcription-model';
 export const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
