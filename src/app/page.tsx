@@ -431,8 +431,8 @@ export default function SubtitleSyncPage() {
 
     try {
       for (let i = 0; i < numChunks; i++) {
-        const chunkStartTime = i * CHUNK_DURATION_SECONDS;
-        const chunkEndTime = Math.min((i + 1) * CHUNK_DURATION_SECONDS, mediaFile.duration);
+        const chunkStartTime = i * maxSegmentDuration;
+        const chunkEndTime = Math.min((i + 1) * maxSegmentDuration, mediaFile.duration);
 
         if (chunkStartTime >= chunkEndTime) continue;
 
