@@ -19,8 +19,6 @@ import { ExportStepControls } from '@/components/page/ExportStepControls';
 import { PageActions } from '@/components/page/PageActions';
 
 
-const CHUNK_DURATION_SECONDS = 5 * 60; // 5 minutes for full transcription chunks
-
 type AppStep = 'upload' | 'edit' | 'export';
 
 interface FullTranscriptionProgress {
@@ -426,7 +424,9 @@ export default function SubtitleSyncPage() {
     setIsGeneratingFullTranscription(true);
 
     const allSubtitleEntries: SubtitleEntry[] = [];
-    const numChunks = Math.ceil(mediaFile.duration / CHUNK_DURATION_SECONDS);
+    // Use the max segment duration from app settings, default to 60 seconds if not set
+    const maxSegmentDuration = appSettings.maxSegmentDuration || 60;
+    const numChunks = Math.ceil(mediaFile.duration / maxSegmentDuration);
     setFullTranscriptionProgress({ currentChunk: 0, totalChunks: numChunks, percentage: 0, currentStage: null });
 
     try {

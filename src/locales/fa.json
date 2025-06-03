@@ -125,6 +125,8 @@
   "toast.transcriptionUpdatedDescription": "رونویسی برای ورودی {entryId} با استفاده از {model} به‌روز شد. متن جدید: \"{text}...\"",
   "toast.transcriptionPotentiallyFailed": "رونویسی احتمالاً ناموفق بود",
   "toast.transcriptionPotentiallyFailedDescription": "رونویسی برای ورودی {entryId} منجر به متن خالی از مدل هوش مصنوعی شد.",
+  "toast.transcriptionError.payloadTooLarge": "رونویسی ناموفق بود: فایل صوتی خیلی بزرگ است. لطفاً یک فایل کوچکتر یا بخش کوچکتر را امتحان کنید.",
+  "toast.transcriptionError.generic": "خطای رونویسی",
   "toast.transcriptionError.generic": "خطای رونویسی",
   "toast.transcriptionError.genericDescription": "خطای رونویسی برای ورودی {entryId}: {errorMessage}",
   "toast.fullTranscriptionError.noMedia": "خطای رونویسی کامل: هیچ فایل رسانه‌ای بارگذاری نشده است.",

@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import type { AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, TranscriptionProvider} from '@/lib/types';
+import type { AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, TranscriptionProvider } from '@/lib/types';
 import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, TRANSCRIPTION_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
 
 import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff } from 'lucide-react';
@@ -51,6 +51,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const [showGroqToken, setShowGroqToken] = useState(false);
   const [showAvalAIToken, setShowAvalAIToken] = useState(false);
 
+  const [maxSegmentDuration, setMaxSegmentDuration] = useState(60); // Default max segment duration
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [temperature, setTemperature] = useState(0.7); // Default temperature
 
@@ -81,6 +82,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
       const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
       const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
+      const storedMaxSegmentDuration = localStorage.getItem('app-settings-max-segment-duration'); // Assuming the key is defined elsewhere or use a literal
       const storedAppLanguage = localStorage.getItem(LANGUAGE_KEY) as Language | null;
 
       if (storedOpenAIToken) setOpenAIToken(storedOpenAIToken);
@@ -89,8 +91,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       if (storedAvalaiToken) setAvalaiToken(storedAvalaiToken);
       setTranscriptionModel(storedTranscriptionModel || 'whisper-1');
       setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
+      setMaxSegmentDuration(storedMaxSegmentDuration ? parseInt(storedMaxSegmentDuration, 10) : 60);
       const initialTheme = storedTheme || 'system';
-      setSelectedTheme(initialTheme);
+      setSelectedTheme(initialTheme); 
       
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
       addLog(`Settings loaded: Provider - ${storedTranscriptionProvider || 'openai (default)'}, Model - ${storedTranscriptionModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}. AvalAI Token: ${storedAvalaiToken ? 'Set' : 'Not Set'}.`, "debug");
@@ -113,7 +116,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
     localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
 
-    // Clear all tokens first, then set the active one
+    localStorage.setItem('app-settings-max-segment-duration', maxSegmentDuration.toString()); // Save max segment duration
+
     localStorage.removeItem(OPENAI_TOKEN_KEY);
     localStorage.removeItem(AVALAI_TOKEN_KEY);
     localStorage.removeItem(GROQ_TOKEN_KEY);
@@ -127,7 +131,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     }
     
     localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
-    localStorage.setItem(THEME_KEY, selectedTheme);    
+    localStorage.setItem(THEME_KEY, selectedTheme);
 
     if (currentAppLanguage !== selectedAppLanguage) {
       setAppLanguage(selectedAppLanguage); 
@@ -365,6 +369,26 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                           aria-label="Transcription temperature setting"
                           dir={dir}
                         />
+                      </div>
+
+                      {/* Max Segment Duration Input */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                        <Label htmlFor="max-segment-duration" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                          Maximum Segment Duration (seconds)
+                        </Label>
+                        <Input
+                          id="max-segment-duration"
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={maxSegmentDuration}
+                          onChange={(e) => setMaxSegmentDuration(parseInt(e.target.value, 10))}
+                          className="col-span-1 md:col-span-3"
+                          aria-label="Maximum transcription segment duration in seconds"
+                          dir={dir}
+                          disabled={false} // Enable this input
+                        />
+
                       </div>
                     </>
                   )}

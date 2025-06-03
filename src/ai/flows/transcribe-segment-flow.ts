@@ -9,7 +9,7 @@
 
 import OpenAI from 'openai';
 import { z, type ZodType } from 'zod';
-import type { TranscriptionModelType, Segment, AppSettings } from '@/lib/types';
+import type { TranscriptionModelType, Segment, AppSettings, ToastFn } from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 
 const TranscribeAudioSegmentInputSchema = z.object({
@@ -38,7 +38,9 @@ export type TranscribeAudioSegmentOutput = z.infer<typeof TranscribeAudioSegment
 
 export async function transcribeAudioSegment(
   input: TranscribeAudioSegmentInput,
-  appSettings: AppSettings
+ appSettings: AppSettings,
+  toast: ToastFn, // Assuming toast function is passed in
+  onProgress?: (progress: number, message: string) => void // Optional callback for progress updates
 ): Promise<TranscribeAudioSegmentOutput> {
 
   let apiKey: string | undefined;
@@ -69,10 +71,17 @@ export async function transcribeAudioSegment(
 
   try {
     const audioFile = await dataUriToRequestFile(input.audioDataUri, 'audio_segment.wav', 'audio/wav');
+    
+    if (onProgress) {
+      // Indicate that the upload is starting (progress 0, message)
+      // Note: Actual upload progress tracking depends on the method used for API calls
+      // and may not be directly supported by the OpenAI client for browser usage.
+      onProgress(0, 'Uploading audio segment...'); 
+    }
 
     console.log(`Attempting ${providerName} transcription with model: ${input.openAIModel}, language: ${input.language || 'auto-detect'}`);
-    
-    let transcriptionParams: OpenAI.Audio.TranscriptionCreateParams;
+
+    let transcriptionParams: OpenAI.Audio.TranscriptionCreateParams; // Or a type compatible with AvalAI if different
     // Assuming whisper-1 provides segments and gpt-4o models provide full text JSON.
     // This logic might need adjustment if AvalAI behaves differently with these models.
     let isWhisperModelFormat = input.openAIModel === 'whisper-1';
@@ -84,22 +93,22 @@ export async function transcribeAudioSegment(
     });
 
     if (isWhisperModelFormat) {
+      // Parameters for whisper-1, focusing on segmented output
       transcriptionParams = {
           file: audioFile,
           model: input.openAIModel,
-          response_format: 'verbose_json', 
-          timestamp_granularities: ["segment"] 
+          response_format: 'verbose_json',
+          timestamp_granularities: ["segment"]
       } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
-    } else { 
+    } else {
       // For gpt-4o-transcribe and gpt-4o-mini-transcribe (and potentially other non-whisper models)
       // These may support temperature and prompt as they are likely wrappers around chat models.
       transcriptionParams = {
           file: audioFile,
           model: input.openAIModel,
-          response_format: 'json', 
+          response_format: 'json', // Request simple JSON format
       } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
     }
-
     // Add advanced settings if they exist in appSettings.
     // The API provider (OpenAI or AvalAI) will determine if these parameters are used/valid for the given model.
     if (appSettings.temperature !== undefined) {
@@ -110,7 +119,12 @@ export async function transcribeAudioSegment(
         transcriptionParams.language = input.language;
     }
 
+    if (onProgress) {
+      // Indicate waiting for response (indeterminate progress)
+      onProgress(-1, 'Waiting for transcription response...'); // Use -1 or a specific value for indeterminate
+    }
     const transcription = await apiClient.audio.transcriptions.create(transcriptionParams);
+
 
     let segments: Segment[] = [];
     let fullText = "";
@@ -133,7 +147,7 @@ export async function transcribeAudioSegment(
             fullText = (transcription as string).trim();
         } else {
             console.warn(`Unexpected API response structure for ${input.openAIModel} from ${providerName}:`, transcription);
-            fullText = ''; 
+            fullText = '';
         }
       }
       // Segments are not typically provided by non-whisper-1 models or if the format is just 'json'
@@ -144,12 +158,36 @@ export async function transcribeAudioSegment(
       console.warn(`${providerName} Transcription result was empty (no segments or text).`);
       return { segments: [], fullText: "" };
     }
+    
+    if (onProgress) {
+      // Indicate completion
+      onProgress(100, 'Transcription complete');
+    }
     return { segments, fullText };
 
   } catch (error: any) {
     console.error(`Error during ${providerName} transcription:`, error);
-    // Attempt to parse out a more specific message from OpenAI-like error structures
-    const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
-    throw new Error(`${providerName} Transcription failed: ${errorResponseMessage}`);
+
+    // Check for 413 Payload Too Large error specifically
+    if (error.response && error.response.status === 413) {
+      // Use the passed toast function to display the translated error message
+      // You might want a translated title as well for the toast
+      toast({
+        description: 'toast.transcriptionError.payloadTooLarge',
+        variant: 'destructive',
+      });
+      // Re-throw the error or return a specific structure indicating the error was handled
+      throw new Error('Transcription failed: Audio file too large.'); // Provide a simple error for the flow to catch
+    } else {
+      // Handle other errors similar to before
+      const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
+       if (onProgress) {
+        // Indicate error state in progress
+        onProgress(0, `Error: ${errorResponseMessage}`); // Or a specific error progress state
+      }
+      throw new Error(`${providerName} Transcription failed: ${errorResponseMessage}`);
+    }
+  } finally {
+    // Optional: Reset progress when the process finishes (success or error)
   }
 }

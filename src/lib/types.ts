@@ -47,6 +47,7 @@ export interface AppSettings {
   temperature?: number;
   prompt?: string;
   theme?: Theme;
+  maxSegmentDuration?: number; // Added for custom segment duration
   language?: Language;
 }
 
@@ -128,3 +129,4 @@ export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
 export const TRANSCRIPTION_PROVIDER_KEY = 'app-settings-transcription-provider';
+export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration'; // Added for custom segment duration

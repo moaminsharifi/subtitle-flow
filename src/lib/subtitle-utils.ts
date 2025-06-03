@@ -296,3 +296,39 @@ export async function sliceAudioToDataURI(
   return audioBufferToWavDataURI(renderedBuffer);
 }
 
+// Function to split a long duration into segments
+// Currently assumes a maximum segment length for transcription APIs
+// This needs to be adjusted based on the specific API limits (e.g., Whisper ~25MB, or time limits)
+// A common strategy is to split by time, e.g., 30 seconds, and then check size if necessary.
+
+/**
+ * Splits a total duration into smaller segments of a maximum length.
+ * @param totalDuration The total duration in seconds.
+ * @param maxSegmentDuration The maximum desired duration for each segment in seconds (obtained from AppSettings).
+ * @returns An array of AudioSegment objects.
+ */
+export async function splitDurationIntoSegments(totalDuration: number, maxSegmentDuration: number): Promise<AudioSegment[]> {
+  const segments: AudioSegment[] = [];
+  let currentStartTime = 0;
+
+  const appSettings = await getAppSettings();
+  // TODO: Pass maxSegmentDuration from AppSettings when calling this function.
+  // const maxSegmentDuration = appSettings.maxSegmentDuration || 60; // Fallback to 60 seconds
+  while (currentStartTime < totalDuration) {
+    const segmentEndTime = Math.min(currentStartTime + MAX_SEGMENT_DURATION_SECONDS, totalDuration);
+    const segmentDuration = segmentEndTime - currentStartTime;
+
+    // Only add a segment if it has a non-zero duration
+    if (segmentDuration > 0) {
+      segments.push({
+        startTime: currentStartTime,
+        endTime: segmentEndTime,
+        duration: segmentDuration,
+      });
+    }
+
+    currentStartTime = segmentEndTime;
+  }
+  return segments;
+}
+

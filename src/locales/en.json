@@ -123,6 +123,7 @@
   "toast.avalaiTokenMissingDescription": "AvalAI Token Missing. Please set your AvalAI API token in Settings.",
   "toast.transcriptionUpdated": "Transcription Updated",
   "toast.transcriptionUpdatedDescription": "Transcription Updated for entry {entryId} using {model}. New text: \"{text}...\"",
+  "toast.transcriptionError.payloadTooLarge": "Transcription failed: The audio file is too large. Please try a smaller file or segment.",
   "toast.transcriptionPotentiallyFailed": "Transcription Potentially Failed",
   "toast.transcriptionPotentiallyFailedDescription": "Transcription for entry {entryId} resulted in empty text from the AI model.",
   "toast.transcriptionError.generic": "Transcription Error",
