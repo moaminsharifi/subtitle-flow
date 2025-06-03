@@ -1,15 +1,14 @@
 
 "use client";
 
-import type React from 'react';
-import { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress'; 
-import { Trash2, PlusCircle, CaptionsIcon, Wand2, Loader2 } from 'lucide-react'; 
+import { Trash2, PlusCircle, CaptionsIcon, Wand2, Loader2, PlayCircle } from 'lucide-react';
 import type { SubtitleEntry, SubtitleTrack } from '@/lib/types';
 
 interface SubtitleEditorProps {
@@ -21,11 +20,15 @@ interface SubtitleEditorProps {
   isEntryTranscribing: (entryId: string) => boolean;
   isAnyTranscriptionLoading?: boolean;
   currentTime: number;
-  disabled?: boolean;
+  disabled?: boolean; // General disable state for editor
+  handleSeekPlayer: (timeInSeconds: number) => void; // Function to seek the player
 }
 
-const EDITOR_WINDOW_SECONDS = 5; // Show 5 seconds before and 5 after current time
+// const EDITOR_WINDOW_SECONDS = 5; // Show 5 seconds before and 5 after current time - No longer needed with full pagination
 
+const ENTRIES_PER_PAGE = 100; // Number of entries to display per page
+
+// SubtitleEditor component definition
 export function SubtitleEditor({
   activeTrack,
   onSubtitleChange,
@@ -35,8 +38,11 @@ export function SubtitleEditor({
   isEntryTranscribing,
   isAnyTranscriptionLoading,
   currentTime,
-  disabled
+ disabled,
+  handleSeekPlayer,
 }: SubtitleEditorProps) {
+
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleFieldChange = (entryId: string, field: keyof Omit<SubtitleEntry, 'id'>, value: string | number) => {
     if (field === 'startTime' || field === 'endTime') {
@@ -49,15 +55,17 @@ export function SubtitleEditor({
     }
   };
 
-  const entriesToDisplay = useMemo(() => {
-    if (!activeTrack) return [];
-    const windowStart = Math.max(0, currentTime - EDITOR_WINDOW_SECONDS);
-    const windowEnd = currentTime + EDITOR_WINDOW_SECONDS;
+  const startIndex = (currentPage - 1) * ENTRIES_PER_PAGE;
+  const endIndex = startIndex + ENTRIES_PER_PAGE;
 
-    return activeTrack.entries
-      .filter(entry => entry.endTime >= windowStart && entry.startTime <= windowEnd)
-      .sort((a, b) => a.startTime - b.startTime);
-  }, [activeTrack, currentTime]);
+  const pagedEntries = useMemo(() => {
+    if (!activeTrack) return [];
+    return activeTrack.entries.slice(startIndex, endIndex);
+  }, [activeTrack, startIndex, endIndex]); // Added startIndex and endIndex to dependencies
+
+  // This was `entriesToDisplay`, changed to `pagedEntries` to reflect the pagination
+  const entriesToDisplay = pagedEntries;
+
 
   return (
     <Card className="shadow-lg h-full flex flex-col">
@@ -74,9 +82,10 @@ export function SubtitleEditor({
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden p-0">
         <ScrollArea className="h-full p-4">
+          <ScrollBar orientation="vertical" /> {/* Ensure vertical scroll bar */}
           {disabled && !activeTrack && (
              <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-center">
                     Upload media and select a subtitle track to begin editing.
                 </p>
             </div>
@@ -84,8 +93,7 @@ export function SubtitleEditor({
           {!disabled && activeTrack && entriesToDisplay.length === 0 && (
             <div className="flex items-center justify-center h-full">
                 <p className="text-muted-foreground">
-                    No subtitles in the current time window ({EDITOR_WINDOW_SECONDS*2}s). <br/>
-                    Try adding a new subtitle or adjust media playback time.
+                    No subtitles found or currently displayed.
                 </p>
             </div>
           )}
@@ -95,13 +103,13 @@ export function SubtitleEditor({
                 const isActiveInPlayer = currentTime >= entry.startTime && currentTime <= entry.endTime;
                 const isTranscribingThisEntry = isEntryTranscribing(entry.id);
                 const disableRegenerate = disabled || isTranscribingThisEntry || isAnyTranscriptionLoading;
-                const entryLabel = `Subtitle entry ${index + 1} from ${entry.startTime.toFixed(3)}s to ${entry.endTime.toFixed(3)}s`;
+                const entryLabel = `Subtitle entry ${index + 1 + startIndex} from ${entry.startTime.toFixed(3)}s to ${entry.endTime.toFixed(3)}s`; // Adjusted index for pagination
                 return (
                   <div 
                     key={entry.id} 
                     className={`p-3 border rounded-lg shadow-sm ${isActiveInPlayer ? 'ring-2 ring-primary bg-primary/5' : 'bg-card'}`}
                     aria-labelledby={`entry-label-${entry.id}`}
-                  >
+ >
                     <span id={`entry-label-${entry.id}`} className="sr-only">{entryLabel}</span>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1">
@@ -131,12 +139,24 @@ export function SubtitleEditor({
                         />
                       </div>
                       <div className="flex self-end space-x-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => onRegenerateTranscription(entry.id)} 
+                        {/* Go to Timestamp Button */}
+ <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleSeekPlayer(entry.startTime)}
+                          aria-label={`Go to start time ${entry.startTime.toFixed(3)}s for ${entryLabel}`}
+                          className="text-green-500 hover:bg-green-500/10"
+                          disabled={disabled || isAnyTranscriptionLoading}
+                          title={`Go to ${entry.startTime.toFixed(3)}s`}
+                        >
+                          <PlayCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onRegenerateTranscription(entry.id)}
                           aria-label={`Regenerate transcription for ${entryLabel}`}
-                          className="text-blue-500 hover:bg-blue-500/10" 
+                          className="text-blue-500 hover:bg-blue-500/10"
                           disabled={disableRegenerate}
                           title="Regenerate transcription for this segment"
                         >
@@ -144,10 +164,10 @@ export function SubtitleEditor({
                         </Button>
                         <Button 
                           variant="ghost" 
-                          size="icon" 
-                          onClick={() => onSubtitleDelete(entry.id)} 
+                          size="icon"
+                          onClick={() => onSubtitleDelete(entry.id)}
                           aria-label={`Delete ${entryLabel}`}
-                          className="text-destructive hover:bg-destructive/10" 
+                          className="text-destructive hover:bg-destructive/10"
                           disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -160,7 +180,7 @@ export function SubtitleEditor({
                         id={`text-${entry.id}`}
                         value={entry.text}
                         onChange={(e) => handleFieldChange(entry.id, 'text', e.target.value)}
-                        rows={2}
+                        rows={entry.text.split('\\n').length > 1 ? entry.text.split('\\n').length : 2} // Adjust rows based on line breaks
                         className="text-sm"
                         disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
                         aria-label={`Text for ${entryLabel}`}
@@ -175,6 +195,32 @@ export function SubtitleEditor({
             </div>
           )}
         </ScrollArea>
+        {/* Pagination Controls */}
+        {!disabled && activeTrack && activeTrack.entries.length > ENTRIES_PER_PAGE && (
+          <div className="flex justify-center items-center gap-4 p-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || disabled || isAnyTranscriptionLoading}
+              aria-label="Go to previous page"
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {Math.ceil(activeTrack.entries.length / ENTRIES_PER_PAGE)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(activeTrack.entries.length / ENTRIES_PER_PAGE), prev + 1))}
+              disabled={currentPage === Math.ceil(activeTrack.entries.length / ENTRIES_PER_PAGE) || disabled || isAnyTranscriptionLoading}
+              aria-label="Go to next page"
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

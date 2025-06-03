@@ -30,6 +30,7 @@ interface EditStepControlsProps {
   currentPlayerTime: number;
   editorDisabled: boolean;
   handleGoToUpload: (reset?: boolean) => void;
+  handleSeekPlayer: (timeInSeconds: number) => void;
   handleProceedToExport: () => void;
   addLog: (message: string, type?: LogEntry['type']) => void;
   t: (key: string, replacements?: Record<string, string | number | React.ReactNode>) => string | React.ReactNode;
@@ -54,6 +55,7 @@ export function EditStepControls({
   currentPlayerTime,
   editorDisabled,
   handleGoToUpload,
+  handleSeekPlayer,
   handleProceedToExport,
   addLog,
   t,
@@ -137,6 +139,7 @@ export function EditStepControls({
           disabled={editorDisabled}
           isAnyTranscriptionLoading={isAnyTranscriptionLoading || isGeneratingFullTranscription}
         />
+
       </div>
       <Card>
         <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
