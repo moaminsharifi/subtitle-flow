@@ -311,8 +311,6 @@ export async function splitDurationIntoSegments(totalDuration: number, maxSegmen
   const segments: AudioSegment[] = [];
   let currentStartTime = 0;
 
-  const appSettings = await getAppSettings();
-  const maxSegmentDuration = appSettings.maxSegmentDuration || 60; // Fallback to 60 seconds
   while (currentStartTime < totalDuration) {
     const segmentEndTime = Math.min(currentStartTime + maxSegmentDuration, totalDuration);
     const segmentDuration = segmentEndTime - currentStartTime;
