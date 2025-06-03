@@ -312,10 +312,9 @@ export async function splitDurationIntoSegments(totalDuration: number, maxSegmen
   let currentStartTime = 0;
 
   const appSettings = await getAppSettings();
-  // TODO: Pass maxSegmentDuration from AppSettings when calling this function.
-  // const maxSegmentDuration = appSettings.maxSegmentDuration || 60; // Fallback to 60 seconds
+  const maxSegmentDuration = appSettings.maxSegmentDuration || 60; // Fallback to 60 seconds
   while (currentStartTime < totalDuration) {
-    const segmentEndTime = Math.min(currentStartTime + MAX_SEGMENT_DURATION_SECONDS, totalDuration);
+    const segmentEndTime = Math.min(currentStartTime + maxSegmentDuration, totalDuration);
     const segmentDuration = segmentEndTime - currentStartTime;
 
     // Only add a segment if it has a non-zero duration
