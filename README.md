@@ -31,7 +31,7 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 ### Key Benefits
 
 - **🔒 Complete Privacy** - All processing happens locally in your browser.
-- **🔑 Bring Your Own API Key** - You control your API keys (OpenAI, Groq); they are stored locally in your browser and never sent to our servers.
+- **🔑 Bring Your Own API Key** - You control your API keys (OpenAI, Groq, AvalAI); they are stored locally in your browser and never sent to our servers.
 - **⚡ Lightning Fast** - No network latency or server delays for core editing.
 - **🌐 Works Offline** - Edit subtitles anywhere, anytime (AI features require an internet connection).
 - **💰 Free Forever** - No subscriptions or hidden costs for the editor. AI features depend on your API provider's pricing.
@@ -45,10 +45,13 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 - 🔄 **Undo/Redo** - Never lose your work with comprehensive history (planned feature)
 
 ### AI-Powered Tools
-- 🤖 **Automatic Transcription** - Generate subtitles using OpenAI Whisper or Groq API models.
+- 🤖 **Automatic Transcription** - Generate subtitles using OpenAI Whisper, Groq, or AvalAI API models.
 - 🚀 **Groq API Support** - Leverage fast and potentially free transcription tiers with your Groq API key.
-- 🌍 **60+ Languages** - Support for major world languages via OpenAI.
+- 💠 **AvalAI Support** - Utilize AvalAI's transcription services with your AvalAI API key.
+- 🌍 **60+ Languages** - Support for major world languages via OpenAI, Groq, and AvalAI.
 - 🔧 **Segment Regeneration** - Fix specific parts without starting over.
+- 🇹 **One-Click Translation (Coming Soon)** - Translate subtitles from their original language to all supported languages with a single click.
+- ⚙️ **Expanded API Support (Coming Soon)** - Support for OpenRouter and Gemini API, expanding your choices for AI-powered features.
 
 ### User Experience
 - 🎨 **Dark/Light Themes** - Comfortable editing in any environment
@@ -103,7 +106,7 @@ No installation, no sign-up, no hassle!
 
 ### AI Transcription Setup
 
-To use the AI-powered transcription features, you'll need an API key from OpenAI or Groq.
+To use the AI-powered transcription features, you'll need an API key from OpenAI, Groq, or AvalAI.
 
 #### Getting Your API Key
 1.  **OpenAI**:
@@ -117,10 +120,16 @@ To use the AI-powered transcription features, you'll need an API key from OpenAI
     *   Create an account or sign in
     *   Create a new API key
     *   Copy and paste it into Subtitle Flow settings (Groq Token field).
+3.  **AvalAI**:
+    *   Visit [AvalAI Dashboard](https://dashboard.avalai.ir/) (or their API key provisioning page)
+    *   Create an account or sign in
+    *   Navigate to your API Keys/Tokens section
+    *   Generate or copy your API key
+    *   Copy and paste it into Subtitle Flow settings (AvalAI Token field).
 
 > **🔒 Privacy Note**: Your API keys are stored locally in your browser's localStorage and are only used to communicate directly with the respective API provider's servers. They never pass through our systems.
 
-#### Supported Languages (via OpenAI Whisper)
+#### Supported Languages (via Whisper-based models)
 
 <details>
 <summary>🌍 View all 60+ supported languages</summary>
@@ -166,8 +175,8 @@ To use the AI-powered transcription features, you'll need an API key from OpenAI
 
 ```bash
 # Clone the repository
-git clone https://github.com/moaminsharifi/subtitle-translator-webapp.git
-cd subtitle-translator-webapp # Corrected cd command based on cloned repo
+git clone https://github.com/moaminsharifi/subtitle-flow.git
+cd subtitle-flow
 
 # Install dependencies
 npm install
@@ -183,7 +192,7 @@ npm run build
 - **Frontend**: React (Next.js)
 - **Styling**: Tailwind CSS, ShadCN UI
 - **Media Processing**: Web Audio API, WebCodecs API (planned)
-- **AI Integration**: OpenAI API, Groq API
+- **AI Integration**: OpenAI API, Groq API, AvalAI API
 - **Storage**: Browser localStorage (for settings), IndexedDB (planned for project persistence)
 
 ### Contributing
@@ -204,7 +213,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - OpenAI for the Whisper transcription model
 - Groq for providing API access to fast language models
+- AvalAI for their transcription services and support
 - The open-source community for inspiration and tools
 - All our contributors and users
 
 ---
+
