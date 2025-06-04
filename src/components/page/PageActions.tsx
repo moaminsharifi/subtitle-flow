@@ -4,7 +4,10 @@
 import type React from 'react';
 import type { LogEntry } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { SettingsIcon, ScrollText, HelpCircle, Github, Globe } from 'lucide-react';
+import {
+  SettingsIcon, ScrollText, HelpCircle, Github, Globe,
+  FileText, WandSparkles, Edit3, ShieldCheck, WifiOff, Languages as LanguagesIcon // Renamed to avoid conflict with a potential variable
+} from 'lucide-react';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { DebugLogDialog } from '@/components/debug-log-dialog';
 import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
@@ -19,9 +22,19 @@ interface PageActionsProps {
   logEntries: LogEntry[];
   clearLogs: () => void;
   addLog: (message: string, type?: LogEntry['type']) => void;
-  t: (key: string, replacements?: Record<string, string | number | React.ReactNode>) => string | React.ReactNode;
+  t: (key: string, replacements?: Record<string, string | number | React.ReactNode>) => string | React.ReactNode | any[]; // Allow 'any[]' for features list
   onSettingsDialogClose: () => void; // Callback for when settings dialog is closed
 }
+
+const iconMap: { [key: string]: React.ElementType } = {
+  FileText,
+  WandSparkles,
+  Edit3,
+  ShieldCheck,
+  WifiOff,
+  Languages: LanguagesIcon,
+};
+
 
 export function PageActions({
   isSettingsDialogOpen,
@@ -36,18 +49,32 @@ export function PageActions({
   t,
   onSettingsDialogClose,
 }: PageActionsProps) {
+  const rawFeatures = t('footer.features.list');
+  const features = Array.isArray(rawFeatures) ? rawFeatures as Array<{ iconName: string; title: string; description: string; }> : [];
+
   return (
     <>
       {/* Floating action buttons */}
 
       {/* Footer */}
       <footer className="mt-10 pt-6 border-t border-border/80 text-center">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-2 text-foreground">{t('footer.features.title') as string}</h2>
-          <p className="text-sm text-muted-foreground max-w-3xl mx-auto">
-            {t('footer.features.description') as string}
-          </p>
-        </div>
+        {features.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 text-foreground text-center">{t('footer.features.title') as string}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              {features.map((feature, index) => {
+                const IconComponent = iconMap[feature.iconName];
+                return (
+                  <div key={index} className="flex flex-col items-center text-center p-4 rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow duration-150">
+                    {IconComponent && <IconComponent className="h-10 w-10 mb-3 text-primary" />}
+                    <h3 className="text-md font-semibold mb-1 text-foreground">{feature.title}</h3>
+                    <p className="text-xs text-muted-foreground">{feature.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <p
           className="text-sm text-muted-foreground mb-4"
