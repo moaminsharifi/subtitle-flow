@@ -46,7 +46,8 @@ export async function transcribeAudioSegment(
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
   let providerName: string = 'OpenAI'; // Default
-
+ let temperature: number | undefined = appSettings.temperature;
+ 
   switch (appSettings.transcriptionProvider) {
  case 'avalai':
     if (!appSettings.avalaiToken) {
@@ -66,6 +67,14 @@ export async function transcribeAudioSegment(
  // OpenAI's whisper-1 model does not support 'temperature' or 'prompt' directly in the API.
  // OpenAI's default base URL will be used if `baseUrl` is undefined
  providerName = 'OpenAI';
+ break;
+ case 'groq':
+ if (!appSettings.groqToken) {
+ throw new Error('Groq API key is required for transcription.');
+ }
+    apiKey = appSettings.groqToken;
+ baseUrl = 'https://api.groq.com/openai/v1'; // Groq specific endpoint
+ providerName = 'Groq';
  break;
   }
 
@@ -104,8 +113,9 @@ export async function transcribeAudioSegment(
       // For gpt-4o-transcribe and gpt-4o-mini-transcribe (and potentially other non-whisper models)
       // These may support temperature and prompt as they are likely wrappers around chat models.
       transcriptionParams = {
-          file: audioFile,
+ file: audioFile,
           model: input.openAIModel,
+ temperature: temperature, // Pass temperature here
           response_format: 'json', // Request simple JSON format
       } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
     }
@@ -113,7 +123,7 @@ export async function transcribeAudioSegment(
     // The API provider (OpenAI or AvalAI) will determine if these parameters are used/valid for the given model.
     if (appSettings.temperature !== undefined) {
         (transcriptionParams as any).temperature = appSettings.temperature; // Use 'any' or extend the type if needed
-    }
+ }
 
     if (input.language) {
         transcriptionParams.language = input.language;
@@ -173,7 +183,7 @@ export async function transcribeAudioSegment(
       // Use the passed toast function to display the translated error message
       // You might want a translated title as well for the toast
       toast({
-        description: 'toast.transcriptionError.payloadTooLarge',
+ description: error.response?.data?.error?.message || `toast.transcriptionError.payloadTooLarge.${providerName}`, // Add provider to toast key if specific messages are needed
         variant: 'destructive',
       });
       // Re-throw the error or return a specific structure indicating the error was handled
