@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import type { AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, TranscriptionProvider } from '@/lib/types';
-import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, TRANSCRIPTION_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
+import { LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, TRANSCRIPTION_MODEL_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY, MAX_SEGMENT_DURATION_KEY } from '@/lib/types';
 
 import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
@@ -51,9 +51,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const [showGroqToken, setShowGroqToken] = useState(false);
   const [showAvalAIToken, setShowAvalAIToken] = useState(false);
 
-  const [maxSegmentDuration, setMaxSegmentDuration] = useState(60); // Default max segment duration
+  const [maxSegmentDuration, setMaxSegmentDuration] = useState(60);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const [temperature, setTemperature] = useState(0.7); // Default temperature
+  const [temperature, setTemperature] = useState(0.7);
 
   const { toast } = useToast();
 
@@ -63,7 +63,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       document.documentElement.classList.add('dark');
     } else if (themeToApply === 'light') {
       document.documentElement.classList.remove('dark');
-    } else { // system
+    } else { 
       if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
         document.documentElement.classList.add('dark');
       } else {
@@ -82,8 +82,10 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
       const storedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
       const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
-      const storedMaxSegmentDuration = localStorage.getItem('app-settings-max-segment-duration'); // Assuming the key is defined elsewhere or use a literal
+      const storedMaxSegmentDuration = localStorage.getItem(MAX_SEGMENT_DURATION_KEY);
       const storedAppLanguage = localStorage.getItem(LANGUAGE_KEY) as Language | null;
+      const storedTemperature = localStorage.getItem('app-settings-temperature');
+
 
       if (storedOpenAIToken) setOpenAIToken(storedOpenAIToken);
       if (storedGroqToken) setGroqToken(storedGroqToken);
@@ -92,13 +94,14 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       setTranscriptionModel(storedTranscriptionModel || 'whisper-1');
       setDefaultTranscriptionLanguage(storedDefaultLang || "auto-detect");
       setMaxSegmentDuration(storedMaxSegmentDuration ? parseInt(storedMaxSegmentDuration, 10) : 60);
+      setTemperature(storedTemperature ? parseFloat(storedTemperature) : 0.7);
       const initialTheme = storedTheme || 'system';
       setSelectedTheme(initialTheme); 
       
       setSelectedAppLanguage(storedAppLanguage || currentAppLanguage);
-      addLog(`Settings loaded: Provider - ${storedTranscriptionProvider || 'openai (default)'}, Model - ${storedTranscriptionModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}. AvalAI Token: ${storedAvalaiToken ? 'Set' : 'Not Set'}.`, "debug");
+      addLog(`Settings loaded: Provider - ${storedTranscriptionProvider || 'openai (default)'}, Model - ${storedTranscriptionModel || 'whisper-1 (default)'}. Default Transcription Language - ${storedDefaultLang || 'auto-detect'}. Theme - ${initialTheme}. App Language - ${storedAppLanguage || currentAppLanguage}. Max Segment Duration - ${maxSegmentDuration}s. Temperature - ${temperature}. OpenAI Token: ${storedOpenAIToken ? 'Set' : 'Not Set'}. Groq Token: ${storedGroqToken ? 'Set' : 'Not Set'}. AvalAI Token: ${storedAvalaiToken ? 'Set' : 'Not Set'}.`, "debug");
     }
-  }, [isOpen, addLog, currentAppLanguage]);
+  }, [isOpen, addLog, currentAppLanguage, maxSegmentDuration, temperature]);
 
 
   const handleThemeChange = (newTheme: Theme) => {
@@ -114,16 +117,14 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const transcriptionModels = useMemo(() => {
     if (transcriptionProvider === 'groq') {
-      return ['whisper-large-v3', 'whisper-large-v3-turbo'] as TranscriptionModelType[];
+      return ['whisper-large-v3'] as TranscriptionModelType[];
     }
-    // Add other providers and their specific models here if needed
     return ['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe'] as TranscriptionModelType[];
   }, [transcriptionProvider]);
 
   useEffect(() => {
     if (!transcriptionModels.includes(transcriptionModel)) {
       setTranscriptionModel(transcriptionModels[0] || 'whisper-1');
-
     }
   }, [transcriptionProvider, transcriptionModel, transcriptionModels]);
 
@@ -131,7 +132,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
     localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
 
-    localStorage.setItem('app-settings-max-segment-duration', maxSegmentDuration.toString()); // Save max segment duration
+    localStorage.setItem(MAX_SEGMENT_DURATION_KEY, maxSegmentDuration.toString());
+    localStorage.setItem('app-settings-temperature', temperature.toString());
+
 
     localStorage.removeItem(OPENAI_TOKEN_KEY);
     localStorage.removeItem(AVALAI_TOKEN_KEY);
@@ -171,7 +174,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
       duration: 5000,
  });
-    addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage}) }`, 'success');
+    addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration, temperature}) }`, 'success');
     onClose();
   };
 
@@ -350,63 +353,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                           </SelectContent>
                       </Select>
                   </div>
-
-                  {/* Advanced Options Toggle */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                      <Label htmlFor="show-advanced-options" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                          Show Advanced Options
-                      </Label>
-                      <div className="col-span-1 md:col-span-3 flex items-center">
-                          <Switch
-                              id="show-advanced-options"
-                              checked={showAdvancedOptions}
-                              onCheckedChange={setShowAdvancedOptions}
-                              aria-label="Toggle advanced transcription options"
-                          />
-                      </div>
-                  </div>
-
-                  {showAdvancedOptions && (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                        <Label htmlFor="temperature" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                          Temperature
-                        </Label>
-                        <Input
-                          id="temperature"
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          max="1"
-                          value={temperature}
-                          onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                          className="col-span-1 md:col-span-3"
-                          aria-label="Transcription temperature setting"
-                          dir={dir}
-                        />
-                      </div>
-
-                      {/* Max Segment Duration Input */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                        <Label htmlFor="max-segment-duration" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                          Maximum Segment Duration (seconds)
-                        </Label>
-                        <Input
-                          id="max-segment-duration"
-                          type="number"
-                          step="1"
-                          min="1"
-                          value={maxSegmentDuration}
-                          onChange={(e) => setMaxSegmentDuration(parseInt(e.target.value, 10))}
-                          className="col-span-1 md:col-span-3"
-                          aria-label="Maximum transcription segment duration in seconds"
-                          dir={dir}
-                          disabled={false} // Enable this input
-                        />
-
-                      </div>
-                    </>
-                  )}
+                  
                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
                     <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                       {t('settings.apiConfig.defaultLanguage')}
@@ -428,6 +375,59 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                      <Label htmlFor="show-advanced-options" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                          {t('settings.apiConfig.advancedOptions.toggleLabel') as string}
+                      </Label>
+                      <div className="col-span-1 md:col-span-3 flex items-center">
+                          <Switch
+                              id="show-advanced-options"
+                              checked={showAdvancedOptions}
+                              onCheckedChange={setShowAdvancedOptions}
+                              aria-label={t('settings.apiConfig.advancedOptions.toggleAriaLabel') as string}
+                          />
+                      </div>
+                  </div>
+
+                  {showAdvancedOptions && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                        <Label htmlFor="temperature" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                          {t('settings.apiConfig.advancedOptions.temperatureLabel') as string}
+                        </Label>
+                        <Input
+                          id="temperature"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="1"
+                          value={temperature}
+                          onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                          className="col-span-1 md:col-span-3"
+                          aria-label={t('settings.apiConfig.advancedOptions.temperatureAriaLabel') as string}
+                          dir={dir}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                        <Label htmlFor="max-segment-duration" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
+                          {t('settings.apiConfig.advancedOptions.maxSegmentDurationLabel') as string}
+                        </Label>
+                        <Input
+                          id="max-segment-duration"
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={maxSegmentDuration}
+                          onChange={(e) => setMaxSegmentDuration(parseInt(e.target.value, 10))}
+                          className="col-span-1 md:col-span-3"
+                          aria-label={t('settings.apiConfig.advancedOptions.maxSegmentDurationAriaLabel') as string}
+                          dir={dir}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <Separator />
@@ -449,23 +449,25 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                 <Separator />
 
                 <div>
-                    <h3 className="text-lg font-medium mb-2">{t('settings.credits.title')}</h3>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                         <p>{t('settings.credits.builtWith')}</p>
-                        <ul className="list-disc list-inside ps-4">
+                    <h3 className="text-lg font-medium mb-3">{t('settings.credits.title')}</h3>
+                    <div className="text-sm text-muted-foreground space-y-2">
+                         <p className="font-medium">{t('settings.credits.builtWith')}</p>
+                        <ul className="list-disc list-inside ps-5 space-y-1">
                             <li>Next.js by Vercel</li>
                             <li>React</li>
                             <li>ShadCN UI Components</li>
                             <li>Tailwind CSS</li>
                             <li>OpenAI API for transcription</li>
                             <li>AvalAI API for transcription</li>
-                            <li>Groq API</li>
+                            <li>Groq API for transcription</li>
                          </ul>
-                        <p className="mt-2">
-                            {t('settings.credits.developedByFS')}
+                        <p className="pt-2">
+                            {t('settings.credits.codeDevelopedWith') as string} <a href="https://firebase.google.com/docs/studio" target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>Firebase Studio</a>.
                         </p>
-                        <p className="mt-2">{t('settings.credits.createdByAS')}</p>
-                        <p className="mt-2">
+                        <p>
+                            {t('settings.credits.originalConceptBy') as string} <a href='https://github.com/moaminsharifi' target='_blank' rel='noopener noreferrer follow' className='underline hover:text-primary'>Amin Sharifi (moaminsharifi)</a>.
+                        </p>
+                        <p className="pt-2">
                           {t('settings.credits.repository') as string} <a href='https://github.com/moaminsharifi/subtitle-flow' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>github.com/moaminsharifi/subtitle-flow</a>
                         </p>
                         <p>
