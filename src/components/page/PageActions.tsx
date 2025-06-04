@@ -42,6 +42,13 @@ export function PageActions({
 
       {/* Footer */}
       <footer className="mt-10 pt-6 border-t border-border/80 text-center">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2 text-foreground">{t('footer.features.title') as string}</h2>
+          <p className="text-sm text-muted-foreground max-w-3xl mx-auto">
+            {t('footer.features.description') as string}
+          </p>
+        </div>
+
         <p
           className="text-sm text-muted-foreground mb-4"
           dangerouslySetInnerHTML={{ __html: t('footer.copyright', {
@@ -148,5 +155,3 @@ export function PageActions({
     </>
   );
 }
-
-    

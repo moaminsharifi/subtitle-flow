@@ -3,6 +3,8 @@
   "app.title": "Subtitle Flow",
   "app.description": "Synchronize and edit subtitles for your media files.",
   "footer.copyright": "© 2025 Subtitle Flow. Idea from Amin Sharifi, code developed with help of Firebase Studio. <0>Original concept</0>. Powered by Next.js, OpenAI (using Whisper), AvalAI & Groq.",
+  "footer.features.title": "Key Features",
+  "footer.features.description": "Subtitle Flow is a powerful, browser-based subtitle editor. Key features include: multi-format support (SRT, VTT), an intuitive timeline editor, real-time media player synchronization, and AI-powered tools like automatic transcription (OpenAI Whisper, Groq, AvalAI) in over 60 languages. Enjoy complete privacy as all processing happens locally. Bring your own API key for AI features. It's fast, works offline for core editing, and is free to use.",
   "settings.title": "Application Settings",
   "footer.projectRepository": "Project Repository",
   "footer.projectWebsite": "Project Website",
