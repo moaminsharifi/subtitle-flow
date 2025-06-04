@@ -1,3 +1,2 @@
-toml
 name = "subtitle-flow"
 pages_build_output_dir = "./out"
