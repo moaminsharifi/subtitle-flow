@@ -112,6 +112,20 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     addLog(`App language selection changed to ${newLang}. Will apply on save.`, "debug");
   };
 
+  const transcriptionModels = useMemo(() => {
+    if (transcriptionProvider === 'groq') {
+      return ['whisper-1'] as TranscriptionModelType[];
+    }
+    // Add other providers and their specific models here if needed
+    return ['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe'] as TranscriptionModelType[];
+  }, [transcriptionProvider]);
+
+  useEffect(() => {
+    if (!transcriptionModels.includes(transcriptionModel)) {
+      setTranscriptionModel(transcriptionModels[0] || 'whisper-1');
+    }
+  }, [transcriptionProvider, transcriptionModel, transcriptionModels]);
+
   const handleSave = () => {
     localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
     localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
@@ -329,9 +343,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                               <SelectValue placeholder="Select AI model" />
                           </SelectTrigger>
                           <SelectContent>
-                              <SelectItem value="whisper-1">whisper-1 (OpenAI/AvalAI/Groq)</SelectItem>
-                              <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (OpenAI/AvalAI/Groq)</SelectItem>
-                              <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe (OpenAI/AvalAI/Groq)</SelectItem>
+                              {transcriptionModels.map(model => (
+                                <SelectItem key={model} value={model}>{model}</SelectItem>
+                              ))}
                           </SelectContent>
                       </Select>
                   </div>
