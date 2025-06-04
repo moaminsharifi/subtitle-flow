@@ -92,9 +92,14 @@ export async function transcribeAudioSegment(
 
     let transcriptionParams: OpenAI.Audio.TranscriptionCreateParams; // Or a type compatible with AvalAI if different
     // Assuming whisper-1 provides segments and gpt-4o models provide full text JSON.
-    // This logic might need adjustment if AvalAI behaves differently with these models.
+    // This logic might need adjustment if AvalAI or Groq behaves differently with these models.
     let isWhisperModelFormat = input.openAIModel === 'whisper-1';
 
+    // Check for Groq specific models
+    const isGroqWhisperModel = appSettings.transcriptionProvider === 'groq' && 
+                               (input.openAIModel === 'whisper-large-v3' || input.openAIModel === 'whisper-large-v3-turbo');
+
+    // Instantiate OpenAI client
     const apiClient = new OpenAI({
       apiKey: apiKey,
       baseURL: baseUrl,
@@ -102,7 +107,7 @@ export async function transcribeAudioSegment(
     });
 
     if (isWhisperModelFormat) {
-      // Parameters for whisper-1, focusing on segmented output
+      // Parameters for OpenAI's whisper-1, focusing on segmented output
       transcriptionParams = {
           file: audioFile,
           model: input.openAIModel,
@@ -110,7 +115,17 @@ export async function transcribeAudioSegment(
           timestamp_granularities: ["segment"]
       } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
     } else {
-      // For gpt-4o-transcribe and gpt-4o-mini-transcribe (and potentially other non-whisper models)
+ if (isGroqWhisperModel) {
+        // Parameters for Groq's whisper models, focusing on segmented output
+ transcriptionParams = {
+ file: audioFile,
+ model: input.openAIModel,
+ response_format: 'verbose_json',
+ timestamp_granularities: ["segment"]
+ } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
+ } else {
+ // For gpt-4o-transcribe and gpt-4o-mini-transcribe (and potentially other non-Groq/non-whisper-1 models)
+ // Assumes these models return full text JSON by default or are chat-like wrappers.
       // These may support temperature and prompt as they are likely wrappers around chat models.
       transcriptionParams = {
  file: audioFile,
@@ -119,6 +134,7 @@ export async function transcribeAudioSegment(
           response_format: 'json', // Request simple JSON format
       } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
     }
+ }
     // Add advanced settings if they exist in appSettings.
     // The API provider (OpenAI or AvalAI) will determine if these parameters are used/valid for the given model.
     if (appSettings.temperature !== undefined) {
@@ -139,7 +155,7 @@ export async function transcribeAudioSegment(
     let segments: Segment[] = [];
     let fullText = "";
 
-    if (isWhisperModelFormat && (transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson).segments) {
+    if ((isWhisperModelFormat || isGroqWhisperModel) && (transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson).segments) {
       const apiResponse = transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson;
       segments = apiResponse.segments?.map(s => ({
         id: s.id,
