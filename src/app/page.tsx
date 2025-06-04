@@ -298,9 +298,9 @@ export default function SubtitleSyncPage() {
       groqToken,
       transcriptionProvider,
       avalaiToken,
-      openAIModel,
+      transcriptionModel: openAIModel,
       defaultTranscriptionLanguage,
-      // theme and language are handled by their respective contexts/initializers
+    
     };
   }, []);
 

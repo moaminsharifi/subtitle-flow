@@ -182,16 +182,16 @@ export async function transcribeAudioSegment(
     if (error.response && error.response.status === 413) {
       // Use the passed toast function to display the translated error message
       // You might want a translated title as well for the toast
-      toast({
- description: error.response?.data?.error?.message || `toast.transcriptionError.payloadTooLarge.${providerName}`, // Add provider to toast key if specific messages are needed
-        variant: 'destructive',
-      });
+      toast(
+    error.response?.data?.error?.message || `toast.transcriptionError.payloadTooLarge.${providerName}`, // Add provider to toast key if specific messages are needed
+         'info',
+      );
       // Re-throw the error or return a specific structure indicating the error was handled
       throw new Error('Transcription failed: Audio file too large.'); // Provide a simple error for the flow to catch
     } else {
       // Handle other errors similar to before
       const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
-       if (onProgress) {
+      if (onProgress) {
         // Indicate error state in progress
         onProgress(0, `Error: ${errorResponseMessage}`); // Or a specific error progress state
       }

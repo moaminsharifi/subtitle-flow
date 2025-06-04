@@ -32,7 +32,10 @@ export interface Segment {
 }
 
 
+export type ToastFn = (message: string, type: 'info' | 'error' | 'warn' | 'success' | 'debug') => void;
+
 export type TranscriptionModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe';
+export type OpenAIModelType = TranscriptionModelType; // Alias for backward compatibility or specific OpenAI usage
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa'; // Consider adding more supported UI languages
 export type TranscriptionProvider = 'openai' | 'avalai' | 'groq';
@@ -42,7 +45,7 @@ export interface AppSettings {
   groqToken?: string; // Added for Groq
   avalaiToken?: string; // Added for AvalAI
   transcriptionProvider?: TranscriptionProvider;
-  transcriptionModel?: TranscriptionModelType; // This refers to the model name, used by any provider
+  transcriptionModel?: OpenAIModelType; // This refers to the model name, used by any provider
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
   temperature?: number;
   prompt?: string;

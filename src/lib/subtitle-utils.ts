@@ -1,4 +1,6 @@
 
+import type { AudioSegment } from './types';
+
 
 import type { SubtitleEntry, SubtitleFormat } from './types';
 
