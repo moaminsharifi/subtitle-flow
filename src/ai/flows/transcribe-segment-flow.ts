@@ -85,6 +85,19 @@ function getProviderConfig(appSettings: AppSettings, inputModel: TranscriptionMo
   return { apiKey, baseUrl, providerName, modelToUse };
 }
 
+// Helper function to determine if segmented output is expected
+function shouldExpectSegmentedOutput(providerName: string, inputModel: TranscriptionModelType): boolean {
+  if (providerName === 'OpenAI' && inputModel === 'whisper-1') {
+    return true;
+  } else if (providerName === 'Groq') { // Groq uses whisper-large-v3 which gives segments
+    return true;
+  } else if (providerName === 'AvalAI' && inputModel === 'whisper-1') {
+    // Assuming AvalAI with whisper-1 also provides segments similar to OpenAI
+    return true; 
+  }
+  return false;
+}
+
 // Helper function to prepare transcription parameters
 function prepareTranscriptionParams(
   audioFile: File,
@@ -93,19 +106,10 @@ function prepareTranscriptionParams(
   providerConfig: ProviderConfig
 ): OpenAI.Audio.Transcriptions.TranscriptionCreateParams {
   
-  let expectSegmentedOutput = false;
-  if (providerConfig.providerName === 'OpenAI' && input.openAIModel === 'whisper-1') {
-    expectSegmentedOutput = true;
-  } else if (providerConfig.providerName === 'Groq') { // Groq uses whisper-large-v3 which gives segments
-    expectSegmentedOutput = true;
-  } else if (providerConfig.providerName === 'AvalAI' && input.openAIModel === 'whisper-1') {
-    // Assuming AvalAI with whisper-1 also provides segments similar to OpenAI
-    expectSegmentedOutput = true; 
-  }
-
+  const expectSegments = shouldExpectSegmentedOutput(providerConfig.providerName, input.openAIModel);
   let transcriptionParams: OpenAI.Audio.Transcriptions.TranscriptionCreateParams;
 
-  if (expectSegmentedOutput) {
+  if (expectSegments) {
     transcriptionParams = {
       file: audioFile,
       model: providerConfig.modelToUse,
@@ -121,7 +125,7 @@ function prepareTranscriptionParams(
   }
 
   // Temperature is typically for non-Whisper models or when not expecting segments.
-  if (appSettings.temperature !== undefined && !expectSegmentedOutput) {
+  if (appSettings.temperature !== undefined && !expectSegments) {
     (transcriptionParams as any).temperature = appSettings.temperature;
   }
   if (input.language && input.language !== "auto-detect") { // "auto-detect" should not be sent
@@ -134,14 +138,14 @@ function prepareTranscriptionParams(
 // Helper function to process the transcription response
 function processTranscriptionResponse(
   transcription: OpenAI.Audio.Transcriptions.Transcription | OpenAI.Audio.Transcriptions.TranscriptionVerboseJson,
-  expectSegmentedOutput: boolean,
+  expectSegmentedOutputFlag: boolean,
   providerName: string,
   originalInputModel: TranscriptionModelType // For logging context
 ): { segments: Segment[]; fullText: string } {
   let segments: Segment[] = [];
   let fullText = "";
 
-  if (expectSegmentedOutput && 'segments' in transcription && (transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson).segments) {
+  if (expectSegmentedOutputFlag && 'segments' in transcription && (transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson).segments) {
     const apiResponse = transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson;
     segments = apiResponse.segments?.map(s => ({
       id: s.id,
@@ -222,19 +226,11 @@ export async function transcribeAudioSegment(
     if (onProgress) onProgress(-1, `Waiting for ${providerConfig.providerName} response...`);
     const transcriptionResponse = await apiClient.audio.transcriptions.create(transcriptionParams);
     
-    // Determine if segmented output was expected for processing
-    let expectSegmentedOutputForResponse = false;
-    if (providerConfig.providerName === 'OpenAI' && input.openAIModel === 'whisper-1') {
-      expectSegmentedOutputForResponse = true;
-    } else if (providerConfig.providerName === 'Groq') {
-      expectSegmentedOutputForResponse = true;
-    } else if (providerConfig.providerName === 'AvalAI' && input.openAIModel === 'whisper-1') {
-      expectSegmentedOutputForResponse = true;
-    }
+    const expectSegmentedOutputFlag = shouldExpectSegmentedOutput(providerConfig.providerName, input.openAIModel);
 
     const { segments, fullText } = processTranscriptionResponse(
         transcriptionResponse, 
-        expectSegmentedOutputForResponse, 
+        expectSegmentedOutputFlag, 
         providerConfig.providerName, 
         input.openAIModel
     );
@@ -258,3 +254,4 @@ export async function transcribeAudioSegment(
     throw new Error("Unhandled error in transcription flow after error handling attempt.");
   }
 }
+
