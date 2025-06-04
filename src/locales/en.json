@@ -34,6 +34,16 @@
       "iconName": "Languages",
       "title": "Multi-Language UI",
       "description": "Switch between supported user interface languages for a native experience."
+    },
+    {
+      "iconName": "Translate",
+      "title": "One-Click Translation (Coming Soon)",
+      "description": "Translate subtitles from their original language to all supported languages with a single click."
+    },
+    {
+      "iconName": "Cpu",
+      "title": "Expanded API Support (Coming Soon)",
+      "description": "Support for OpenRouter and Gemini API, expanding your choices for AI-powered features."
     }
   ],
   "footer.projectRepository": "Project Repository",

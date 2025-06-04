@@ -6,7 +6,8 @@ import type { LogEntry } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   SettingsIcon, ScrollText, HelpCircle, Github, Globe,
-  FileText, WandSparkles, Edit3, ShieldCheck, WifiOff, Languages as LanguagesIcon
+  FileText, WandSparkles, Edit3, ShieldCheck, WifiOff, Languages as LanguagesIcon,
+  Cpu, // Removed Translate
 } from 'lucide-react';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { DebugLogDialog } from '@/components/debug-log-dialog';
@@ -34,6 +35,8 @@ const iconMap: { [key: string]: React.ElementType } = {
   ShieldCheck,
   WifiOff,
   Languages: LanguagesIcon,
+  Translate: LanguagesIcon, // Use LanguagesIcon for the "Translate" feature
+  Cpu,
 };
 
 
@@ -185,5 +188,3 @@ export function PageActions({
     </>
   );
 }
-
-    
