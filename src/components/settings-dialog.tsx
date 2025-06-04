@@ -114,7 +114,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const transcriptionModels = useMemo(() => {
     if (transcriptionProvider === 'groq') {
-      return ['whisper-1'] as TranscriptionModelType[];
+      return ['whisper-large-v3', 'whisper-large-v3-turbo'] as TranscriptionModelType[];
     }
     // Add other providers and their specific models here if needed
     return ['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe'] as TranscriptionModelType[];

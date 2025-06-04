@@ -34,7 +34,7 @@ export interface Segment {
 
 export type ToastFn = (message: string, type: 'info' | 'error' | 'warn' | 'success' | 'debug') => void;
 
-export type TranscriptionModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe';
+export type TranscriptionModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe'| 'whisper-large-v3'| 'whisper-large-v3-turbo';
 export type OpenAIModelType = TranscriptionModelType; // Alias for backward compatibility or specific OpenAI usage
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa'; // Consider adding more supported UI languages
