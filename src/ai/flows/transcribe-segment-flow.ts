@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Utility for transcribing a segment of audio using OpenAI or AvalAI API.
+ * @fileOverview Utility for transcribing a segment of audio using OpenAI, AvalAI, or Groq API.
  *
  * - transcribeAudioSegment - Function to transcribe an audio segment.
  * - TranscribeAudioSegmentInput - Input type for the function.
@@ -8,7 +8,7 @@
  */
 
 import OpenAI from 'openai';
-import { z, type ZodType } from 'zod';
+import { z } from 'zod';
 import type { TranscriptionModelType, Segment, AppSettings, ToastFn } from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 
@@ -18,7 +18,7 @@ const TranscribeAudioSegmentInputSchema = z.object({
     .describe(
       "A segment of audio, as a data URI that must include a MIME type (e.g., 'audio/wav') and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
-  openAIModel: z.custom<TranscriptionModelType>().describe("The AI transcription model to use (e.g., 'whisper-1', 'gpt-4o-mini-transcribe'). This model name is used for both OpenAI and AvalAI providers."),
+  openAIModel: z.custom<TranscriptionModelType>().describe("The AI transcription model to use (e.g., 'whisper-1'). This model name is used across providers, potentially mapped to provider-specific model names internally."),
   language: z.string().optional().describe("Optional language code for transcription (e.g., 'en', 'es'). Expects BCP-47 format."),
 });
 export type TranscribeAudioSegmentInput = z.infer<typeof TranscribeAudioSegmentInputSchema>;
@@ -36,184 +36,225 @@ const TranscribeAudioSegmentOutputSchema = z.object({
 });
 export type TranscribeAudioSegmentOutput = z.infer<typeof TranscribeAudioSegmentOutputSchema>;
 
-export async function transcribeAudioSegment(
-  input: TranscribeAudioSegmentInput,
- appSettings: AppSettings,
-  toast: ToastFn, // Assuming toast function is passed in
-  onProgress?: (progress: number, message: string) => void // Optional callback for progress updates
-): Promise<TranscribeAudioSegmentOutput> {
 
+interface ProviderConfig {
+  apiKey: string;
+  baseUrl?: string;
+  providerName: string;
+  modelToUse: TranscriptionModelType | string; // Can be a provider-specific model string
+}
+
+// Helper function to get provider-specific configuration
+function getProviderConfig(appSettings: AppSettings, inputModel: TranscriptionModelType): ProviderConfig {
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
-  let providerName: string = 'OpenAI'; // Default
- let temperature: number | undefined = appSettings.temperature;
- 
+  let providerName: string;
+  let modelToUse: TranscriptionModelType | string = inputModel;
+
   switch (appSettings.transcriptionProvider) {
- case 'avalai':
-    if (!appSettings.avalaiToken) {
-      throw new Error('AvalAI API key is required for transcription.');
-    }
-    apiKey = appSettings.avalaiToken;
-    baseUrl = 'https://api.avalai.ir/v1'; // AvalAI specific endpoint
-    providerName = 'AvalAI';
- break;
-    case 'openai': // Default case
- if (!appSettings.openAIToken) {
- throw new Error('OpenAI API key is required for transcription.');
- }
-    apiKey = appSettings.openAIToken;
- // Temperature and prompt are typically only applicable/explicitly supported by chat-like models,
- // but we pass them here in case the provider's API handles them.
- // OpenAI's whisper-1 model does not support 'temperature' or 'prompt' directly in the API.
- // OpenAI's default base URL will be used if `baseUrl` is undefined
- providerName = 'OpenAI';
- break;
- case 'groq':
- if (!appSettings.groqToken) {
- throw new Error('Groq API key is required for transcription.');
- }
-    apiKey = appSettings.groqToken;
- baseUrl = 'https://api.groq.com/openai/v1'; // Groq specific endpoint
- providerName = 'Groq';
- break;
+    case 'avalai':
+      if (!appSettings.avalaiToken) {
+        throw new Error('AvalAI API key is required for transcription.');
+      }
+      apiKey = appSettings.avalaiToken;
+      baseUrl = 'https://api.avalai.ir/v1';
+      providerName = 'AvalAI';
+      // AvalAI typically uses OpenAI-compatible model names.
+      break;
+    case 'openai':
+      if (!appSettings.openAIToken) {
+        throw new Error('OpenAI API key is required for transcription.');
+      }
+      apiKey = appSettings.openAIToken;
+      providerName = 'OpenAI';
+      break;
+    case 'groq':
+      if (!appSettings.groqToken || appSettings.groqToken === '') {
+        throw new Error('Groq API key is required for transcription.');
+      }
+      apiKey = appSettings.groqToken;
+      baseUrl = 'https://api.groq.com/openai/v1';
+      providerName = 'Groq';
+      // Groq's primary Whisper model is 'whisper-large-v3'.
+      // If other models are intended for Groq, this mapping might need to be more nuanced.
+      modelToUse = 'whisper-large-v3';
+      break;
+    default:
+      throw new Error(`Unsupported transcription provider: ${appSettings.transcriptionProvider}`);
+  }
+  return { apiKey, baseUrl, providerName, modelToUse };
+}
+
+// Helper function to prepare transcription parameters
+function prepareTranscriptionParams(
+  audioFile: File,
+  input: TranscribeAudioSegmentInput, // Contains original input.openAIModel
+  appSettings: AppSettings,
+  providerConfig: ProviderConfig
+): OpenAI.Audio.Transcriptions.TranscriptionCreateParams {
+  
+  let expectSegmentedOutput = false;
+  if (providerConfig.providerName === 'OpenAI' && input.openAIModel === 'whisper-1') {
+    expectSegmentedOutput = true;
+  } else if (providerConfig.providerName === 'Groq') { // Groq uses whisper-large-v3 which gives segments
+    expectSegmentedOutput = true;
+  } else if (providerConfig.providerName === 'AvalAI' && input.openAIModel === 'whisper-1') {
+    // Assuming AvalAI with whisper-1 also provides segments similar to OpenAI
+    expectSegmentedOutput = true; 
   }
 
+  let transcriptionParams: OpenAI.Audio.Transcriptions.TranscriptionCreateParams;
+
+  if (expectSegmentedOutput) {
+    transcriptionParams = {
+      file: audioFile,
+      model: providerConfig.modelToUse,
+      response_format: 'verbose_json',
+      timestamp_granularities: ["segment"],
+    } as OpenAI.Audio.Transcriptions.TranscriptionCreateParamsVerboseJson;
+  } else {
+    transcriptionParams = {
+      file: audioFile,
+      model: providerConfig.modelToUse,
+      response_format: 'json',
+    } as OpenAI.Audio.Transcriptions.TranscriptionCreateParamsJson;
+  }
+
+  // Temperature is typically for non-Whisper models or when not expecting segments.
+  if (appSettings.temperature !== undefined && !expectSegmentedOutput) {
+    (transcriptionParams as any).temperature = appSettings.temperature;
+  }
+  if (input.language && input.language !== "auto-detect") { // "auto-detect" should not be sent
+    transcriptionParams.language = input.language;
+  }
+
+  return transcriptionParams;
+}
+
+// Helper function to process the transcription response
+function processTranscriptionResponse(
+  transcription: OpenAI.Audio.Transcriptions.Transcription | OpenAI.Audio.Transcriptions.TranscriptionVerboseJson,
+  expectSegmentedOutput: boolean,
+  providerName: string,
+  originalInputModel: TranscriptionModelType // For logging context
+): { segments: Segment[]; fullText: string } {
+  let segments: Segment[] = [];
+  let fullText = "";
+
+  if (expectSegmentedOutput && 'segments' in transcription && (transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson).segments) {
+    const apiResponse = transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson;
+    segments = apiResponse.segments?.map(s => ({
+      id: s.id,
+      start: s.start,
+      end: s.end,
+      text: s.text.trim(),
+    })) || [];
+    fullText = apiResponse.text || segments.map(s => s.text).join(' ') || "";
+  } else {
+    const apiResponse = transcription as { text?: string; [key: string]: any };
+    if (apiResponse && typeof apiResponse.text === 'string') {
+      fullText = apiResponse.text.trim();
+    } else if (typeof transcription === 'string') { // Fallback for plain text response (though less common with current SDK)
+      fullText = (transcription as string).trim();
+    } else {
+      console.warn(`Unexpected API response structure for ${originalInputModel} from ${providerName}:`, transcription);
+      fullText = '';
+    }
+    segments = []; // Segments not expected or not provided
+  }
+
+  if (segments.length === 0 && !fullText) {
+    console.warn(`${providerName} Transcription result was empty (no segments or text) for model ${originalInputModel}.`);
+  }
+  
+  return { segments, fullText };
+}
+
+// Helper function to handle API errors
+function handleTranscriptionError(
+    error: any, 
+    providerName: string, 
+    toast: ToastFn, 
+    onProgress?: (progress: number, message: string) => void
+): never { // This function will always throw an error
+  console.error(`Error during ${providerName} transcription:`, error);
+  const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
+
+  if (error.response && error.response.status === 413) {
+    const toastMessageKey = `toast.transcriptionError.payloadTooLarge.${providerName.toLowerCase()}`; // e.g., toast.transcriptionError.payloadTooLarge.openai
+    // Fallback message if translation key is not found
+    const fallbackMessage = `Payload too large for ${providerName}. Please use a smaller audio segment.`;
+    // Assuming `toast` can handle a key or a direct message. If it only handles keys, a check is needed.
+    toast(toastMessageKey || fallbackMessage, 'error'); // Use 'error' severity
+    if (onProgress) onProgress(0, `Error: Payload too large`);
+    throw new Error('Transcription failed: Audio file too large.');
+  } else {
+    if (onProgress) onProgress(0, `Error: ${errorResponseMessage}`);
+    // Consider toasting this error message as well for non-413 errors.
+    // toast(`${providerName} Transcription failed: ${errorResponseMessage}`, 'error');
+    throw new Error(`${providerName} Transcription failed: ${errorResponseMessage}`);
+  }
+}
+
+export async function transcribeAudioSegment(
+  input: TranscribeAudioSegmentInput,
+  appSettings: AppSettings,
+  toast: ToastFn,
+  onProgress?: (progress: number, message: string) => void
+): Promise<TranscribeAudioSegmentOutput> {
   try {
+    const providerConfig = getProviderConfig(appSettings, input.openAIModel);
+
+    if (onProgress) onProgress(0, 'Preparing audio data...');
     const audioFile = await dataUriToRequestFile(input.audioDataUri, 'audio_segment.wav', 'audio/wav');
     
-    if (onProgress) {
-      // Indicate that the upload is starting (progress 0, message)
-      // Note: Actual upload progress tracking depends on the method used for API calls
-      // and may not be directly supported by the OpenAI client for browser usage.
-      onProgress(0, 'Uploading audio segment...'); 
-    }
+    if (onProgress) onProgress(0, `Uploading to ${providerConfig.providerName}...`);
+    console.log(`Attempting ${providerConfig.providerName} transcription with model: ${providerConfig.modelToUse}, language: ${input.language || 'auto-detect'}`);
 
-    console.log(`Attempting ${providerName} transcription with model: ${input.openAIModel}, language: ${input.language || 'auto-detect'}`);
-
-    let transcriptionParams: OpenAI.Audio.TranscriptionCreateParams; // Or a type compatible with AvalAI if different
-    // Assuming whisper-1 provides segments and gpt-4o models provide full text JSON.
-    // This logic might need adjustment if AvalAI or Groq behaves differently with these models.
-    let isWhisperModelFormat = input.openAIModel === 'whisper-1';
-
-    // Check for Groq specific models
-    const isGroqWhisperModel = appSettings.transcriptionProvider === 'groq' && 
-                               (input.openAIModel === 'whisper-large-v3' || input.openAIModel === 'whisper-large-v3-turbo');
-
-    // Instantiate OpenAI client
+    const transcriptionParams = prepareTranscriptionParams(audioFile, input, appSettings, providerConfig);
+    
     const apiClient = new OpenAI({
-      apiKey: apiKey,
-      baseURL: baseUrl,
-      dangerouslyAllowBrowser: true, // Required for client-side usage
+      apiKey: providerConfig.apiKey,
+      baseURL: providerConfig.baseUrl,
+      dangerouslyAllowBrowser: true,
     });
 
-    if (isWhisperModelFormat) {
-      // Parameters for OpenAI's whisper-1, focusing on segmented output
-      transcriptionParams = {
-          file: audioFile,
-          model: input.openAIModel,
-          response_format: 'verbose_json',
-          timestamp_granularities: ["segment"]
-      } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
-    } else {
- if (isGroqWhisperModel) {
-        // Parameters for Groq's whisper models, focusing on segmented output
- transcriptionParams = {
- file: audioFile,
- model: input.openAIModel,
- response_format: 'verbose_json',
- timestamp_granularities: ["segment"]
- } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
- } else {
- // For gpt-4o-transcribe and gpt-4o-mini-transcribe (and potentially other non-Groq/non-whisper-1 models)
- // Assumes these models return full text JSON by default or are chat-like wrappers.
-      // These may support temperature and prompt as they are likely wrappers around chat models.
-      transcriptionParams = {
- file: audioFile,
-          model: input.openAIModel,
- temperature: temperature, // Pass temperature here
-          response_format: 'json', // Request simple JSON format
-      } as OpenAI.Audio.TranscriptionCreateParams; // Explicitly type for safety
-    }
- }
-    // Add advanced settings if they exist in appSettings.
-    // The API provider (OpenAI or AvalAI) will determine if these parameters are used/valid for the given model.
-    if (appSettings.temperature !== undefined) {
-        (transcriptionParams as any).temperature = appSettings.temperature; // Use 'any' or extend the type if needed
- }
-
-    if (input.language) {
-        transcriptionParams.language = input.language;
-    }
-
-    if (onProgress) {
-      // Indicate waiting for response (indeterminate progress)
-      onProgress(-1, 'Waiting for transcription response...'); // Use -1 or a specific value for indeterminate
-    }
-    const transcription = await apiClient.audio.transcriptions.create(transcriptionParams);
-
-
-    let segments: Segment[] = [];
-    let fullText = "";
-
-    if ((isWhisperModelFormat || isGroqWhisperModel) && (transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson).segments) {
-      const apiResponse = transcription as OpenAI.Audio.Transcriptions.TranscriptionVerboseJson;
-      segments = apiResponse.segments?.map(s => ({
-        id: s.id,
-        start: s.start,
-        end: s.end,
-        text: s.text.trim(),
-      })) || [];
-      fullText = apiResponse.text || segments.map(s => s.text).join(' ') || "";
-    } else {
-      const apiResponse = transcription as { text?: string; [key: string]: any }; 
-      if (apiResponse && typeof apiResponse.text === 'string') {
-        fullText = apiResponse.text.trim();
-      } else {
-        if (typeof transcription === 'string') { // Fallback for plain text response
-            fullText = (transcription as string).trim();
-        } else {
-            console.warn(`Unexpected API response structure for ${input.openAIModel} from ${providerName}:`, transcription);
-            fullText = '';
-        }
-      }
-      // Segments are not typically provided by non-whisper-1 models or if the format is just 'json'
-      segments = []; 
-    }
-
-    if (segments.length === 0 && !fullText) {
-      console.warn(`${providerName} Transcription result was empty (no segments or text).`);
-      return { segments: [], fullText: "" };
-    }
+    if (onProgress) onProgress(-1, `Waiting for ${providerConfig.providerName} response...`);
+    const transcriptionResponse = await apiClient.audio.transcriptions.create(transcriptionParams);
     
-    if (onProgress) {
-      // Indicate completion
-      onProgress(100, 'Transcription complete');
+    // Determine if segmented output was expected for processing
+    let expectSegmentedOutputForResponse = false;
+    if (providerConfig.providerName === 'OpenAI' && input.openAIModel === 'whisper-1') {
+      expectSegmentedOutputForResponse = true;
+    } else if (providerConfig.providerName === 'Groq') {
+      expectSegmentedOutputForResponse = true;
+    } else if (providerConfig.providerName === 'AvalAI' && input.openAIModel === 'whisper-1') {
+      expectSegmentedOutputForResponse = true;
     }
+
+    const { segments, fullText } = processTranscriptionResponse(
+        transcriptionResponse, 
+        expectSegmentedOutputForResponse, 
+        providerConfig.providerName, 
+        input.openAIModel
+    );
+
+    if (onProgress) onProgress(100, 'Transcription complete');
     return { segments, fullText };
 
   } catch (error: any) {
-    console.error(`Error during ${providerName} transcription:`, error);
-
-    // Check for 413 Payload Too Large error specifically
-    if (error.response && error.response.status === 413) {
-      // Use the passed toast function to display the translated error message
-      // You might want a translated title as well for the toast
-      toast(
-    error.response?.data?.error?.message || `toast.transcriptionError.payloadTooLarge.${providerName}`, // Add provider to toast key if specific messages are needed
-         'info',
-      );
-      // Re-throw the error or return a specific structure indicating the error was handled
-      throw new Error('Transcription failed: Audio file too large.'); // Provide a simple error for the flow to catch
-    } else {
-      // Handle other errors similar to before
-      const errorResponseMessage = error.response?.data?.error?.message || error.error?.message || error.message || 'Unknown transcription error';
-      if (onProgress) {
-        // Indicate error state in progress
-        onProgress(0, `Error: ${errorResponseMessage}`); // Or a specific error progress state
-      }
-      throw new Error(`${providerName} Transcription failed: ${errorResponseMessage}`);
+    // Handle errors from getProviderConfig (e.g., API key missing)
+    if (error.message.includes('API key is required') || error.message.includes('Unsupported transcription provider')) {
+        const specificErrorMessage = `Configuration Error: ${error.message}`;
+        if (onProgress) onProgress(0, specificErrorMessage);
+        toast(specificErrorMessage, 'error'); // Toast this specific configuration error
+        throw error; // Rethrow to ensure the caller knows it failed
     }
-  } finally {
-    // Optional: Reset progress when the process finishes (success or error)
+    
+    // For other errors (assumed to be from API calls or subsequent processing)
+    const providerNameForError = appSettings.transcriptionProvider || 'AI Provider';
+    handleTranscriptionError(error, providerNameForError, toast, onProgress); // This will throw, satisfying the return type
+    // Fallback throw if handleTranscriptionError somehow doesn't (shouldn't happen with `never` return type)
+    throw new Error("Unhandled error in transcription flow after error handling attempt.");
   }
 }

@@ -123,6 +123,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   useEffect(() => {
     if (!transcriptionModels.includes(transcriptionModel)) {
       setTranscriptionModel(transcriptionModels[0] || 'whisper-1');
+
     }
   }, [transcriptionProvider, transcriptionModel, transcriptionModels]);
 
