@@ -39,6 +39,7 @@ export type OpenAIModelType = TranscriptionModelType; // Alias for backward comp
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa'; // Consider adding more supported UI languages
 export type TranscriptionProvider = 'openai' | 'avalai' | 'groq';
+export type LLMProviderType = TranscriptionProvider; // For now, LLM providers are the same as transcription providers
 
 export const OpenAIAvalAILLMModels = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'] as const;
 export const GroqLLMModels = ['llama-3.1-8b-instant'] as const;
@@ -49,8 +50,9 @@ export interface AppSettings {
   groqToken?: string; 
   avalaiToken?: string; 
   transcriptionProvider?: TranscriptionProvider;
+  llmProvider?: LLMProviderType; 
   transcriptionModel?: OpenAIModelType; 
-  llmModel?: LLMModelType; // Added for LLM Model
+  llmModel?: LLMModelType; 
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
   temperature?: number;
   prompt?: string;
@@ -132,10 +134,18 @@ export interface LogEntry {
 export const THEME_KEY = 'app-theme';
 export const LANGUAGE_KEY = 'app-language';
 export const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
+export const TRANSCRIPTION_PROVIDER_KEY = 'app-settings-transcription-provider';
+export const LLM_PROVIDER_KEY = 'app-settings-llm-provider'; // New key for LLM Provider
 export const TRANSCRIPTION_MODEL_KEY = 'app-settings-transcription-model';
-export const LLM_MODEL_KEY = 'app-settings-llm-model'; // New key for LLM model
+export const LLM_MODEL_KEY = 'app-settings-llm-model';
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
-export const TRANSCRIPTION_PROVIDER_KEY = 'app-settings-transcription-provider';
 export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';
+
+// AudioSegment interface for splitting audio
+export interface AudioSegment {
+  startTime: number;
+  endTime: number;
+  duration: number;
+}
