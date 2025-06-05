@@ -36,7 +36,7 @@
       "description": "Switch between supported user interface languages for a native experience."
     },
     {
-      "iconName": "Translate",
+      "iconName": "Languages",
       "title": "One-Click Translation (Coming Soon)",
       "description": "Translate subtitles from their original language to all supported languages with a single click."
     },
@@ -64,7 +64,8 @@
   "settings.apiConfig.avalaiToken": "AvalAI Token",
   "settings.apiConfig.avalaiTokenPlaceholder": "Enter your AvalAI API Key",
   "settings.apiConfig.groqToken": "Groq Token",
-  "settings.apiConfig.modelLabel": "AI Model",
+  "settings.apiConfig.timestampModelLabel": "Timestamp/Transcription Model",
+  "settings.apiConfig.llmModelLabel": "LLM Model (for future features)",
   "settings.apiConfig.defaultLanguage": "Default Language for Transcription",
   "settings.apiConfig.advancedOptions.toggleLabel": "Show Advanced Options",
   "settings.apiConfig.advancedOptions.toggleAriaLabel": "Toggle advanced transcription options",
@@ -85,7 +86,7 @@
   "settings.buttons.cancel": "Cancel",
   "settings.buttons.save": "Save Settings",
   "settings.toast.saved": "Settings Saved",
-  "settings.toast.savedDescription": "Your preferences have been saved to browser storage. Provider: {transcriptionProvider}, Model: {transcriptionModel}, Default Lang: {defaultLanguage}, Theme: {theme}, App Lang: {appLanguage}, OpenAI: {openAITokenStatus}, AvalAI: {avalaiTokenStatus}, Groq: {groqTokenStatus}.",
+  "settings.toast.savedDescription": "Preferences saved. Provider: {transcriptionProvider}, Timestamp Model: {timestampModel}, LLM Model: {llmModel}, Default Lang: {defaultLanguage}, Theme: {theme}, App Lang: {appLanguage}, Token: {tokenStatus}.",
   "page.steps.upload": "Step 1 of 3: Prepare Your Media & Subtitles",
   "page.steps.edit": "Step 2 of 3: Edit & Refine Subtitles",
   "page.steps.export": "Step 3 of 3: Export Your Work",
@@ -239,5 +240,3 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
-
-    

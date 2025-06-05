@@ -40,17 +40,22 @@ export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa'; // Consider adding more supported UI languages
 export type TranscriptionProvider = 'openai' | 'avalai' | 'groq';
 
+export const OpenAIAvalAILLMModels = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'] as const;
+export const GroqLLMModels = ['llama-3.1-8b-instant'] as const;
+export type LLMModelType = typeof OpenAIAvalAILLMModels[number] | typeof GroqLLMModels[number];
+
 export interface AppSettings {
   openAIToken?: string;
-  groqToken?: string; // Added for Groq
-  avalaiToken?: string; // Added for AvalAI
+  groqToken?: string; 
+  avalaiToken?: string; 
   transcriptionProvider?: TranscriptionProvider;
-  transcriptionModel?: OpenAIModelType; // This refers to the model name, used by any provider
+  transcriptionModel?: OpenAIModelType; 
+  llmModel?: LLMModelType; // Added for LLM Model
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
   temperature?: number;
   prompt?: string;
   theme?: Theme;
-  maxSegmentDuration?: number; // Added for custom segment duration
+  maxSegmentDuration?: number; 
   language?: Language;
 }
 
@@ -128,8 +133,9 @@ export const THEME_KEY = 'app-theme';
 export const LANGUAGE_KEY = 'app-language';
 export const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
 export const TRANSCRIPTION_MODEL_KEY = 'app-settings-transcription-model';
+export const LLM_MODEL_KEY = 'app-settings-llm-model'; // New key for LLM model
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
 export const TRANSCRIPTION_PROVIDER_KEY = 'app-settings-transcription-provider';
-export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration'; // Added for custom segment duration
+export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';
