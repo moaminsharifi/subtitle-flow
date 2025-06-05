@@ -119,10 +119,12 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     if (transcriptionProvider === 'groq') {
       return ['whisper-large-v3'] as TranscriptionModelType[];
     }
+    // For OpenAI and AvalAI, allow selection between whisper-1 and newer models
     return ['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe'] as TranscriptionModelType[];
   }, [transcriptionProvider]);
 
   useEffect(() => {
+    // If the current model isn't compatible with the selected provider, reset to the first compatible model
     if (!transcriptionModels.includes(transcriptionModel)) {
       setTranscriptionModel(transcriptionModels[0] || 'whisper-1');
     }
@@ -135,11 +137,12 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     localStorage.setItem(MAX_SEGMENT_DURATION_KEY, maxSegmentDuration.toString());
     localStorage.setItem('app-settings-temperature', temperature.toString());
 
-
+    // Clear all provider tokens first
     localStorage.removeItem(OPENAI_TOKEN_KEY);
     localStorage.removeItem(AVALAI_TOKEN_KEY);
     localStorage.removeItem(GROQ_TOKEN_KEY);
     
+    // Set the token for the selected provider if a token is entered
     if (transcriptionProvider === 'openai' && openAIToken) {
       localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken);
     } else if (transcriptionProvider === 'avalai' && avalaiToken) {
@@ -173,7 +176,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       title: t('settings.toast.saved') as string,
       description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
       duration: 5000,
- });
+    });
     addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration, temperature}) }`, 'success');
     onClose();
   };
@@ -245,7 +248,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
                 <div className="space-y-3">
                   <Label className="text-base font-semibold">{t('settings.apiConfig.label')}</Label>
-                   <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
                       <Label htmlFor="transcription-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
                         {t('settings.apiConfig.transcriptionProvider.label')}
                       </Label>
@@ -342,6 +346,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                           value={transcriptionModel}
                           onValueChange={(value: string) => setTranscriptionModel(value as TranscriptionModelType)}
                           dir={dir}
+                          disabled={transcriptionProvider === 'groq'} // Groq typically has one primary Whisper model
                       >
                           <SelectTrigger id="transcription-model-select" className="col-span-1 md:col-span-3" aria-label={t('settings.apiConfig.modelLabel') as string}>
                               <SelectValue placeholder="Select AI model" />
