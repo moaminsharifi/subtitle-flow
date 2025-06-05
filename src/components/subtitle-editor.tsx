@@ -8,10 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress'; 
-import { Trash2, PlusCircle, CaptionsIcon, Wand2, Loader2, PlayCircle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Trash2, PlusCircle, CaptionsIcon, Wand2, Loader2, PlayCircle, Languages } from 'lucide-react';
 import type { SubtitleEntry, SubtitleTrack } from '@/lib/types';
+import { LANGUAGE_OPTIONS } from '@/lib/types'; 
 
 interface SubtitleEditorProps {
+  LLM_PROVIDER_KEY: string | null; // Add LLM provider key
   activeTrack: SubtitleTrack | null;
   onSubtitleChange: (entryId: string, newEntryData: Partial<Omit<SubtitleEntry, 'id'>>) => void;
   onSubtitleAdd: () => void;
@@ -21,6 +24,7 @@ interface SubtitleEditorProps {
   isAnyTranscriptionLoading?: boolean;
   currentTime: number;
   disabled?: boolean; // General disable state for editor
+  onTranslateSubtitles: (targetLanguage: string) => Promise<void>; // Add translation function
   handleSeekPlayer: (timeInSeconds: number) => void; // Function to seek the player
 }
 
@@ -30,6 +34,7 @@ const ENTRIES_PER_PAGE = 100; // Number of entries to display per page
 
 // SubtitleEditor component definition
 export function SubtitleEditor({
+  LLM_PROVIDER_KEY, // Destructure LLM provider key
   activeTrack,
   onSubtitleChange,
   onSubtitleAdd,
@@ -39,6 +44,7 @@ export function SubtitleEditor({
   isAnyTranscriptionLoading,
   currentTime,
  disabled,
+  onTranslateSubtitles, // Destructure translation function
   handleSeekPlayer,
 }: SubtitleEditorProps) {
 
@@ -78,6 +84,24 @@ export function SubtitleEditor({
           <Button onClick={onSubtitleAdd} size="sm" disabled={disabled || isAnyTranscriptionLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground" aria-label="Add new subtitle cue">
             <PlusCircle className="mr-2 h-4 w-4" /> Add New
           </Button>
+          {/* One-Click Translate Button */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" disabled={disabled || isAnyTranscriptionLoading || !activeTrack || !LLM_PROVIDER_KEY} className="bg-blue-500 hover:bg-blue-600 text-white" aria-label="Translate all subtitles">
+                <Languages className="mr-2 h-4 w-4" /> Translate All
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {LANGUAGE_OPTIONS.filter(langOpt => langOpt.value !== "auto-detect").map((langOpt) => (
+                <DropdownMenuItem
+                  key={langOpt.value}
+                  onClick={() => onTranslateSubtitles(langOpt.value)}
+                >
+                  {langOpt.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden p-0">

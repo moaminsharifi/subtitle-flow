@@ -9,7 +9,7 @@
 
 import OpenAI from 'openai';
 import { z } from 'zod';
-import type { TranscriptionModelType, Segment, AppSettings, ToastFn } from '@/lib/types';
+import { TranscriptionModelType, Segment, AppSettings, ToastFn } from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 
 const TranscribeAudioSegmentInputSchema = z.object({
@@ -235,7 +235,7 @@ export async function transcribeAudioSegment(
         input.openAIModel
     );
 
-    if (onProgress) onProgress(100, 'Transcription complete');
+    if (onProgress) onProgress(100, 'Transcription complete. Applying segment rules...');
     return { segments, fullText };
 
   } catch (error: any) {

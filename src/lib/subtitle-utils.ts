@@ -1,8 +1,7 @@
 
 import type { AudioSegment } from './types';
+import type { SubtitleEntry, SubtitleFormat, AppSettings } from './types'; // Import AppSettings
 
-
-import type { SubtitleEntry, SubtitleFormat } from './types';
 
 // Helper to convert HH:MM:SS,mmm or HH:MM:SS.mmm to seconds
 export function formatTimeToSeconds(time: string): number {
@@ -329,5 +328,50 @@ export async function splitDurationIntoSegments(totalDuration: number, maxSegmen
     currentStartTime = segmentEndTime;
   }
   return segments;
+}
+
+/**
+ * Merges subtitle entries based on duration criteria: if an entry is less than 2 seconds,
+ * it's merged with the previous entry, combining their text and time ranges.
+ * @param subtitles The array of subtitle entries to process.
+ * @returns A new array of merged subtitle entries.
+ */
+export function mergeShortSubtitles(subtitles: SubtitleEntry[]): SubtitleEntry[] {
+  if (!subtitles || subtitles.length === 0) {
+    return [];
+  }
+
+  const mergedSubtitles: SubtitleEntry[] = [];
+  // Process a copy to avoid mutating the original array
+  const entriesToProcess = [...subtitles].sort((a, b) => a.startTime - b.startTime);
+
+  let currentEntry = { ...entriesToProcess[0] };
+
+  for (let i = 1; i < entriesToProcess.length; i++) {
+    const nextEntry = { ...entriesToProcess[i] };
+    const currentDuration = currentEntry.endTime - currentEntry.startTime;
+
+    // Check if the current entry's duration is less than 2 seconds
+    if (currentDuration < 2) {
+      // Merge currentEntry with the nextEntry
+      // Extend the previous entry's end time to the next entry's end time
+      // Concatenate text, adding a space or newline for clarity (newline often preferred for subtitles)
+      currentEntry.endTime = nextEntry.endTime;
+      // Decide on the separator. A newline might be better for readability in the editor.
+      // If you prefer just a space, change '\n' to ' '.
+      currentEntry.text = `${currentEntry.text}\n${nextEntry.text}`;
+      // Note: The ID of the merged entry will be the ID of the first entry in the merge.
+      // This might need adjustment depending on how IDs are used elsewhere.
+
+      // Continue loop, the next entry will be considered for merging with the newly extended currentEntry in the next iteration if needed.
+    } else {
+      // Current entry is 2 seconds or longer, so it's fine on its own. Add it to results and start a new current entry.
+      mergedSubtitles.push(currentEntry);
+      currentEntry = nextEntry; // The next entry becomes the start of a potential new merge group
+    }
+  }
+  // Add the last processed entry
+  mergedSubtitles.push(currentEntry);
+  return mergedSubtitles;
 }
 
