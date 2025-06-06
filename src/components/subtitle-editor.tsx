@@ -31,6 +31,9 @@ interface SubtitleEditorProps {
 
 const ENTRIES_PER_PAGE = 100; // Number of entries to display per page
 
+const MIN_SLICE_DURATION = 4; // Minimum duration in seconds
+const MAX_SLICE_DURATION = 360; // Maximum duration in seconds (6 minutes)
+
 // SubtitleEditor component definition
 export function SubtitleEditor({
   LLM_PROVIDER_KEY, // Destructure LLM provider key

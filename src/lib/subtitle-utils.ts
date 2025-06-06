@@ -260,27 +260,55 @@ export async function sliceAudioToDataURI(
 ): Promise<string> {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   const fileBuffer = await rawFile.arrayBuffer();
-  const originalBuffer = await audioContext.decodeAudioData(fileBuffer);
+  let originalBuffer: AudioBuffer;
+  try {
+    originalBuffer = await audioContext.decodeAudioData(fileBuffer);
+  } catch (e) {
+    console.error("[sliceAudioToDataURI] Error decoding audio data:", e);
+    console.error("Error decoding audio data:", e);
+    throw new Error("Could not decode audio file.");
+  }
 
   const startSample = Math.floor(startTime * originalBuffer.sampleRate);
   const endSample = Math.floor(endTime * originalBuffer.sampleRate);
-  const durationSamples = endSample - startSample;
 
-  if (durationSamples <= 0) {
-    throw new Error('End time must be after start time for audio slicing.');
+  // Ensure slice range is valid and within buffer bounds
+  const validStartSample = Math.max(0, Math.min(startSample, originalBuffer.length));
+  const validEndSample = Math.max(0, Math.min(endSample, originalBuffer.length));
+  console.log(`[sliceAudioToDataURI] Calculated startSample: ${startSample}, endSample: ${endSample}`);
+  let adjustedStartSample = startSample;
+  let adjustedEndSample = endSample;
+  
+
+  // If the slice is less than 2 seconds, extend the start time backward
+  if ((endTime - startTime) < 2) {
+    const twoSecondsInSamples = Math.floor(2 * originalBuffer.sampleRate);
+    // Ensure the adjusted start time is not less than 0
+    adjustedStartSample = Math.max(0, adjustedStartSample - twoSecondsInSamples);
+    console.log(`[sliceAudioToDataURI] Adjusted startSample: ${adjustedStartSample}, adjusted endSample: ${adjustedEndSample}`);    
   }
+  console.log(`[sliceAudioToDataURI] Slicing audio from sample ${adjustedStartSample} to ${adjustedEndSample} (approx ${adjustedStartSample / originalBuffer.sampleRate}s to ${adjustedEndSample / originalBuffer.sampleRate}s)`);
+
+
 
   const slicedBuffer = audioContext.createBuffer(
     originalBuffer.numberOfChannels,
-    durationSamples,
+    adjustedEndSample - adjustedStartSample, // Use valid range for buffer length
     originalBuffer.sampleRate
   );
 
   for (let i = 0; i < originalBuffer.numberOfChannels; i++) {
     const channelData = originalBuffer.getChannelData(i);
     const slicedChannelData = slicedBuffer.getChannelData(i);
-    slicedChannelData.set(channelData.subarray(startSample, endSample));
+
+    // Use the valid range for the subarray to avoid out of bounds errors
+    const safeStart = adjustedStartSample;
+    const safeEnd = adjustedEndSample;
+    const subarray = channelData.subarray(safeStart, safeEnd);
+
+    slicedChannelData.set(subarray);
   }
+
 
   // Use OfflineAudioContext to render the sliced buffer to ensure it's in a processable state
   const offlineContext = new OfflineAudioContext(

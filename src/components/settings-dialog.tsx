@@ -159,7 +159,14 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   };
 
   const handleSave = () => {
-    localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
+    // Validate maxSegmentDuration
+    const validatedMaxSegmentDuration = Math.max(4, Math.min(360, maxSegmentDuration));
+    if (maxSegmentDuration !== validatedMaxSegmentDuration) {
+      toast({
+        title: t('settings.toast.validationError') as string,
+        description: t('settings.toast.maxSegmentDurationValidation', { min: 4, max: 360 }) as string,
+        variant: 'destructive',
+      });
     localStorage.setItem(LLM_PROVIDER_KEY, llmProvider);
     localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
     localStorage.setItem(LLM_MODEL_KEY, llmModel);
@@ -194,7 +201,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
       duration: 5000,
     });
-    addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration, temperature}) }`, 'success');
+    addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature}) }`, 'success');
     onClose();
   };
   
@@ -484,8 +491,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                             id="max-segment-duration"
                             type="number"
                             step="1"
-                            min="1"
-                            value={maxSegmentDuration}
+                            min={4} // Set minimum to 4
+                            max={360} // Set maximum to 360
+                            value={Math.max(4, Math.min(360, maxSegmentDuration))} // Display validated value
                             onChange={(e) => setMaxSegmentDuration(parseInt(e.target.value, 10))}
                             className="col-span-1 md:col-span-3"
                             aria-label={t('settings.apiConfig.advancedOptions.maxSegmentDurationAriaLabel') as string}
