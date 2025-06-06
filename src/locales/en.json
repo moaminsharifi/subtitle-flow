@@ -46,7 +46,7 @@
       "description": "Support for OpenRouter and Gemini API, expanding your choices for AI-powered features."
     },
     {
-          "iconName": "MessageSquare",
+    "iconName": "FileText",
     "title": "Ask a Feature",
     "description": "Have an idea for a new feature? Let us know on GitHub!"
         }
