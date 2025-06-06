@@ -138,6 +138,7 @@ export function EditStepControls({
           currentTime={currentPlayerTime}
           disabled={editorDisabled}
           isAnyTranscriptionLoading={isAnyTranscriptionLoading || isGeneratingFullTranscription}
+          handleSeekPlayer={handleSeekPlayer}
         />
 
       </div>

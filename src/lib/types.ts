@@ -149,3 +149,7 @@ export interface AudioSegment {
   endTime: number;
   duration: number;
 }
+
+export interface SubtitleEditorProps {
+  handleSeekPlayer: (timeInSeconds: number) => void;
+}

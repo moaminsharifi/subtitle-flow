@@ -25,7 +25,6 @@ interface SubtitleEditorProps {
   currentTime: number;
   disabled?: boolean; // General disable state for editor
   onTranslateSubtitles: (targetLanguage: string) => Promise<void>; // Add translation function
-  handleSeekPlayer: (timeInSeconds: number) => void; // Function to seek the player
 }
 
 // const EDITOR_WINDOW_SECONDS = 5; // Show 5 seconds before and 5 after current time - No longer needed with full pagination

@@ -565,6 +565,16 @@ export default function SubtitleSyncPage() {
     addLog("Navigated to Export step.", 'debug');
   }, [activeTrack, t, toast, addLog]);
 
+  const handleSeekPlayer = useCallback((timeInSeconds: number) => {
+    if (playerRef.current) {
+      playerRef.current.currentTime = timeInSeconds;
+      if (playerRef.current.paused) {
+        playerRef.current.play();
+      }
+    }
+    addLog(`Seeked player to ${timeInSeconds.toFixed(3)} seconds.`, 'debug');
+  }, [addLog]);
+
   const handleGoToUpload = useCallback((reset: boolean = false) => {
     if (reset) {
       setMediaFile(null);
@@ -704,6 +714,7 @@ export default function SubtitleSyncPage() {
                 currentPlayerTime={currentPlayerTime}
                 editorDisabled={editorDisabled}
                 handleGoToUpload={handleGoToUpload}
+ handleSeekPlayer={handleSeekPlayer}
                 handleProceedToExport={handleProceedToExport}
                 addLog={addLog}
                 t={t}
