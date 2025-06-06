@@ -115,7 +115,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       const currentTranscriptionModels = currentTProvider === 'groq' ? ['whisper-large-v3'] : ['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe'];
       setTranscriptionModel(storedTranscriptionModel && currentTranscriptionModels.includes(storedTranscriptionModel) ? storedTranscriptionModel : currentTranscriptionModels[0] as TranscriptionModelType);
       
-      const storedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
+      const  storedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
       const currentLlmModels = currentLProvider === 'groq' ? GroqLLMModels : OpenAIAvalAILLMModels;
       setLlmModel(storedLlmModel && currentLlmModels.includes(storedLlmModel) ? storedLlmModel : currentLlmModels[0]);
 
@@ -167,6 +167,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         description: t('settings.toast.maxSegmentDurationValidation', { min: 4, max: 360 }) as string,
         variant: 'destructive',
       });
+    }
     localStorage.setItem(LLM_PROVIDER_KEY, llmProvider);
     localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
     localStorage.setItem(LLM_MODEL_KEY, llmModel);
