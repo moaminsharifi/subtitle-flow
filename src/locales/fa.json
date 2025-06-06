@@ -44,6 +44,11 @@
       "iconName": "Cpu",
       "title": "پشتیبانی از APIهای گسترش‌یافته (به زودی)",
       "description": "پشتیبانی از OpenRouter و Gemini API، گسترش گزینه‌های شما برای ویژگی‌های مبتنی بر هوش مصنوعی."
+    },
+    {
+      "iconName": "MessageSquare",
+      "title": "درخواست یک ویژگی",
+      "description": "آیا ایده‌ای برای یک ویژگی جدید دارید؟ در گیت‌هاب به ما اطلاع دهید!"
     }
   ],
   "footer.projectRepository": "مخزن پروژه",

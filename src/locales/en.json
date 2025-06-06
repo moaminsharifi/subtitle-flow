@@ -44,7 +44,12 @@
       "iconName": "Cpu",
       "title": "Expanded API Support (Coming Soon)",
       "description": "Support for OpenRouter and Gemini API, expanding your choices for AI-powered features."
-    }
+    },
+    {
+          "iconName": "MessageSquare",
+    "title": "Ask a Feature",
+    "description": "Have an idea for a new feature? Let us know on GitHub!"
+        }
   ],
   "footer.projectRepository": "Project Repository",
   "footer.projectWebsite": "Project Website",

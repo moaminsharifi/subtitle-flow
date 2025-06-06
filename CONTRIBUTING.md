@@ -18,6 +18,7 @@ We love your input! We want to make contributing to this project as easy and tra
 - [How to Contribute](#how-to-contribute)
 - [Reporting Bugs](#reporting-bugs)
 - [Suggesting Features](#suggesting-features)
+- [Ask a Feature](https://github.com/moaminsharifi/subtitle-sync/issues)
 - [Pull Request Process](#pull-request-process)
 - [Style Guidelines](#style-guidelines)
 - [Community](#community)
