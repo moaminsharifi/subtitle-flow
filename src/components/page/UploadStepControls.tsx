@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { MediaFile, SubtitleEntry, SubtitleFormat, LanguageCode, FullTranscriptionProgress } from '@/lib/types';
 import { SubtitleUploader } from '@/components/subtitle-uploader';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
@@ -47,15 +47,20 @@ export function UploadStepControls({
 
   const RightArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
 
-  const areRelevantApiKeysMissing = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      const openAITokenSet = !!localStorage.getItem(OPENAI_TOKEN_KEY);
-      const avalaiTokenSet = !!localStorage.getItem(AVALAI_TOKEN_KEY);
-      const groqTokenSet = !!localStorage.getItem(GROQ_TOKEN_KEY);
-      return !openAITokenSet && !avalaiTokenSet && !groqTokenSet;
-    }
-    return true; // Assume missing if localStorage is not available (SSR or early client)
+  const [showApiKeyWarning, setShowApiKeyWarning] = useState(false);
+  const [disableGenerateButtonDueToApiKeys, setDisableGenerateButtonDueToApiKeys] = useState(true);
+
+  useEffect(() => {
+    // This effect runs only on the client after hydration
+    const openAITokenSet = !!localStorage.getItem(OPENAI_TOKEN_KEY);
+    const avalaiTokenSet = !!localStorage.getItem(AVALAI_TOKEN_KEY);
+    const groqTokenSet = !!localStorage.getItem(GROQ_TOKEN_KEY);
+    const keysMissing = !openAITokenSet && !avalaiTokenSet && !groqTokenSet;
+
+    setShowApiKeyWarning(keysMissing);
+    setDisableGenerateButtonDueToApiKeys(keysMissing);
   }, []);
+
 
   const memoizedSubtitleUploaderCard = useMemo(() => (
     <Card className="shadow-lg flex flex-col flex-grow">
@@ -84,14 +89,14 @@ export function UploadStepControls({
         </CardTitle>
         <CardDescription>
           {(!mediaFile || isReplacingMedia) ? t('aiGenerator.option2.descriptionDisabled') as string : t('aiGenerator.option2.descriptionEnabled') as string}
-          {areRelevantApiKeysMissing && (
-            <p className="text-destructive mt-1 text-xs">
-              {t('aiGenerator.option2.apiKeyNeededMessage') as string}
-            </p>
-          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {showApiKeyWarning && (
+          <p className="text-destructive mt-1 text-xs">
+            {t('aiGenerator.option2.apiKeyNeededMessage') as string}
+          </p>
+        )}
         <div>
           <Label htmlFor="full-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
             <Languages className="h-4 w-4" />
@@ -100,7 +105,7 @@ export function UploadStepControls({
           <Select
             value={fullTranscriptionLanguageOverride}
             onValueChange={handleFullTranscriptionLanguageChange}
-            disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading || areRelevantApiKeysMissing}
+            disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading || disableGenerateButtonDueToApiKeys}
             dir={dir}
           >
             <SelectTrigger id="full-transcription-language-select" className="w-full" aria-label={t('aiGenerator.language.label') as string}>
@@ -133,7 +138,7 @@ export function UploadStepControls({
         ) : (
           <Button
             onClick={handleGenerateFullTranscription}
-            disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading || areRelevantApiKeysMissing}
+            disabled={!mediaFile || isReplacingMedia || isGeneratingFullTranscription || isAnyTranscriptionLoading || disableGenerateButtonDueToApiKeys}
             className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
             aria-label={t('aiGenerator.button.generate') as string}
           >
@@ -153,7 +158,7 @@ export function UploadStepControls({
       </CardContent>
     </Card>
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [t, dir, mediaFile, isReplacingMedia, isGeneratingFullTranscription, isAnyTranscriptionLoading, fullTranscriptionLanguageOverride, handleFullTranscriptionLanguageChange, fullTranscriptionProgress, handleGenerateFullTranscription, areRelevantApiKeysMissing]);
+  ), [t, dir, mediaFile, isReplacingMedia, isGeneratingFullTranscription, isAnyTranscriptionLoading, fullTranscriptionLanguageOverride, handleFullTranscriptionLanguageChange, fullTranscriptionProgress, handleGenerateFullTranscription, showApiKeyWarning, disableGenerateButtonDueToApiKeys]);
 
   return (
     <>
@@ -182,4 +187,3 @@ export function UploadStepControls({
     </>
   );
 }
-
