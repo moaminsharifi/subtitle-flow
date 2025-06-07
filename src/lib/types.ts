@@ -38,41 +38,43 @@ export const OpenAIWhisperModels = ['whisper-1'] as const;
 export const AvalAIOpenAIBasedWhisperModels = ['whisper-1'] as const; // Used with AvalAI's OpenAI-compatible endpoint
 export const GroqWhisperModels = ['whisper-large-v3', 'whisper-large-v3-turbo'] as const;
 
-export type WhisperModelType = 
+export type WhisperModelType =
   | typeof OpenAIWhisperModels[number]
   | typeof AvalAIOpenAIBasedWhisperModels[number]
   | typeof GroqWhisperModels[number];
 
 // LLM Models for Cue/Slice Transcription (Gemini, GPTs, etc.)
 export const GoogleGeminiLLModels = [
-  'gemini-1.5-pro-latest', 
+  'gemini-1.5-pro-latest',
   'gemini-1.5-flash-latest',
-  'gemini-2.5-pro-preview-06-05', 
-  'gemini-2.5-flash-preview-05-20',
-] as const;
-
-export const AvalAIGeminiBasedModels = [ 
   'gemini-2.5-pro-preview-06-05',
   'gemini-2.5-flash-preview-05-20',
 ] as const;
 
-export const OpenAIGPTModels = [ 
-  'gpt-4o', 
-  'gpt-4o-mini', 
-  'gpt-3.5-turbo',
-  'gpt-4.1', 
-  'gpt-4.1-mini', 
-  'gpt-4.1-nano', 
-  'o1-pro', 
-  'o3', 
-  'gpt-4o-transcribe', 
-  'gpt-4o-mini-transcribe', 
+export const AvalAIGeminiBasedModels = [
+  'gemini-2.5-pro-preview-06-05',
+  'gemini-2.5-flash-preview-05-20',
 ] as const;
 
-export const AvalAIOpenAIBasedGPTModels = [ 
-  'gpt-4o', 
+export const OpenAIGPTModels = [
+  'gpt-4o',
   'gpt-4o-mini',
-  'o1-pro', 
+  'gpt-3.5-turbo',
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'o1-pro',
+  'o3',
+  'gpt-4o-transcribe', // Added for specific transcription tasks via chat-like interface
+  'gpt-4o-mini-transcribe', // Added for specific transcription tasks
+] as const;
+
+export const AvalAIOpenAIBasedGPTModels = [
+  'gpt-4o',
+  'gpt-4o-mini',
+  'o1-pro',
+  'gpt-4o-transcribe',
+  'gpt-4o-mini-transcribe',
 ] as const;
 
 export const GroqLLModels = [
@@ -80,18 +82,19 @@ export const GroqLLModels = [
     'llama3-70b-8192',
     'mixtral-8x7b-32768',
     'gemma-7b-it',
-    'whisper-large-v3-turbo', 
+    'whisper-large-v3', // Allow Whisper models for text-only output via Cue/Slice
+    'whisper-large-v3-turbo',
 ] as const;
 
 
 // Union types for overall model categories
 export type TranscriptionModelType = WhisperModelType; // For models used in 'timestamp' task (Whisper variants)
-export type LLMModelType = 
+export type LLMModelType =
   | typeof GoogleGeminiLLModels[number]
   | typeof AvalAIGeminiBasedModels[number]
   | typeof OpenAIGPTModels[number]
   | typeof AvalAIOpenAIBasedGPTModels[number]
-  | typeof GroqLLModels[number]; 
+  | typeof GroqLLModels[number];
 
 // --- Provider Types ---
 export type TranscriptionProvider = 'openai' | 'avalai_openai' | 'groq';
@@ -103,8 +106,7 @@ export type Language = 'en' | 'fa';
 export interface AppSettings {
   openAIToken?: string;
   avalaiToken?: string;
-  // avalaiBaseUrl?: string; // Removed
-  groqToken?: string; 
+  groqToken?: string;
   googleApiKey?: string;
 
   transcriptionProvider?: TranscriptionProvider;
@@ -203,8 +205,7 @@ export const LLM_MODEL_KEY = 'app-settings-llm-model';
 
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
-// export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url'; // Removed
-export const GROQ_TOKEN_KEY = 'app-settings-groq-token'; 
+export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
 export const GOOGLE_API_KEY_KEY = 'app-settings-google-api-key';
 
 export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';
@@ -228,4 +229,9 @@ export const DEFAULT_AVALAI_BASE_URL = 'https://api.avalai.ir/v1';
 // Helper type to check if a model is a Whisper model from Groq
 export const isGroqWhisperModel = (modelName: string): modelName is typeof GroqWhisperModels[number] => {
   return (GroqWhisperModels as readonly string[]).includes(modelName);
+};
+
+// Helper to identify OpenAI models that should use the audio.transcriptions endpoint even for cue/slice
+export const isOpenAISpecificTranscriptionModel = (modelName: string): boolean => {
+  return ['whisper-1', 'gpt-4o-transcribe', 'gpt-4o-mini-transcribe'].includes(modelName);
 };
