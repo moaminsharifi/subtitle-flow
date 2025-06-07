@@ -136,8 +136,8 @@ export function EditStepControls({
           onRegenerateTranscription={handleRegenerateTranscription}
           isEntryTranscribing={isEntryTranscribing}
           currentTime={currentPlayerTime}
-          disabled={editorDisabled}
-          isAnyTranscriptionLoading={isAnyTranscriptionLoading || isGeneratingFullTranscription}
+          disabled={editorDisabled} // Only when no media/track OR full transcription running
+          isAnyTranscriptionLoading={isAnyTranscriptionLoading} // For disabling individual controls if any AI task is busy
           handleSeekPlayer={handleSeekPlayer}
           LLM_PROVIDER_KEY={null} // This prop is not used in SubtitleEditor based on current files, can be removed if not needed
           onTranslateSubtitles={async (targetLang) => { console.warn("Translate subtitles feature not implemented yet.", targetLang)}} // Placeholder
@@ -145,7 +145,7 @@ export function EditStepControls({
 
       </div>
       <Card>
-        <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
+        <CardFooter className="p-4 flex flex-col sm:flex-row gap-3">
           <Button
             onClick={() => handleGoToUpload(false)}
             variant="outline"

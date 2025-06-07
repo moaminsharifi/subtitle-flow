@@ -95,7 +95,7 @@ export function SubtitleEditor({
                 size="sm" 
                 disabled={disabled || isAnyTranscriptionLoading || !activeTrack || !LLM_PROVIDER_KEY} 
                 className="bg-blue-500 hover:bg-blue-600 text-white" 
-                aria-label="Translate all subtitles"
+                aria-label={t('subtitleEditor.button.translateAll') as string}
               >
                 <Languages className="mr-2 h-4 w-4" /> {t('subtitleEditor.button.translateAll') as string || "Translate All"}
               </Button>
@@ -147,10 +147,10 @@ export function SubtitleEditor({
                 const isActiveInPlayer = currentTime >= entry.startTime && currentTime <= entry.endTime;
                 const isThisEntryTranscribing = isEntryTranscribing(entry.id);
                 // Controls for this entry are disabled if:
-                // 1. Editor is globally disabled (prop `disabled`)
+                // 1. Editor is globally disabled (prop `disabled`) - this is handled by the outer conditions
                 // 2. Any AI transcription (full or other segment) is loading (`isAnyTranscriptionLoading`)
                 // 3. This specific entry is being transcribed (`isThisEntryTranscribing`)
-                const controlsDisabledForThisEntry = disabled || isAnyTranscriptionLoading || isThisEntryTranscribing;
+                const controlsDisabledForThisEntry = isAnyTranscriptionLoading || isThisEntryTranscribing;
                 
                 const entryLabel = `${t('subtitleEditor.entry.ariaBaseLabel') as string} ${index + 1 + startIndex} ${t('subtitleEditor.entry.ariaTimeLabel', {startTime: entry.startTime.toFixed(3), endTime: entry.endTime.toFixed(3)}) as string}`;
                 return (
@@ -171,7 +171,7 @@ export function SubtitleEditor({
                           step="0.001"
                           className="h-8 text-sm"
                           disabled={controlsDisabledForThisEntry}
-                          aria-label={`${t('subtitleEditor.entry.startTimeLabel') as string} ${t('subtitleEditor.entry.ariaForEntry') as string} ${index + 1 + startIndex}`}
+                          aria-label={t('subtitleEditor.entry.startTimeAriaLabel', { entryIndex: index + 1 + startIndex }) as string}
                         />
                       </div>
                       <div className="flex-1">
@@ -184,17 +184,17 @@ export function SubtitleEditor({
                           step="0.001"
                           className="h-8 text-sm"
                           disabled={controlsDisabledForThisEntry}
-                          aria-label={`${t('subtitleEditor.entry.endTimeLabel') as string} ${t('subtitleEditor.entry.ariaForEntry') as string} ${index + 1 + startIndex}`}
+                          aria-label={t('subtitleEditor.entry.endTimeAriaLabel', { entryIndex: index + 1 + startIndex }) as string}
                         />
                       </div>
-                      <div className="flex self-end space-x-1">
+                      <div className="flex self-end space-x-2">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleSeekPlayer(entry.startTime)}
                           aria-label={t('subtitleEditor.entry.seekPlayerAriaLabel', {startTime: entry.startTime.toFixed(3)}) as string}
                           className="text-green-500 hover:bg-green-500/10"
-                          disabled={disabled || isAnyTranscriptionLoading} // Go to time should be possible even if this entry is transcribing
+                          disabled={isAnyTranscriptionLoading && !isThisEntryTranscribing} // Go to time should be possible if only THIS entry is transcribing
                           title={t('subtitleEditor.entry.seekPlayerTitle', {startTime: entry.startTime.toFixed(3)}) as string}
                         >
                           <PlayCircle className="h-4 w-4" />
@@ -231,7 +231,7 @@ export function SubtitleEditor({
                         rows={entry.text.split('\\n').length > 1 ? entry.text.split('\\n').length : 2} 
                         className="text-sm"
                         disabled={controlsDisabledForThisEntry}
-                        aria-label={`${t('subtitleEditor.entry.textLabel') as string} ${t('subtitleEditor.entry.ariaForEntry') as string} ${index + 1 + startIndex}`}
+                        aria-label={t('subtitleEditor.entry.textAriaLabel', { entryIndex: index + 1 + startIndex }) as string}
                       />
                     </div>
                     {isThisEntryTranscribing && (
@@ -272,4 +272,3 @@ export function SubtitleEditor({
     </Card>
   );
 }
-
