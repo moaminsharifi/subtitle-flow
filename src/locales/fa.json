@@ -2,7 +2,7 @@
 {
   "app.title": "ساب‌فلو",
   "app.description": "زیرنویس فایل‌های رسانه‌ای خود را همگام‌سازی و ویرایش کنید.",
-  "footer.copyright": "© 2025 <0>پروژه ساب‌فلو</0>. ایده اولیه از <1>امین شریفی (moaminsharifi)</1>، کد با کمک فایربیس استودیو توسعه داده شده است. قدرت گرفته از Next.js، Google AI، OpenAI، AvalAI و Groq.",
+  "footer.copyright": "<p>© ۲۰۲۵ <0>پروژه ساب‌فلو</0>. ساب‌فلو یک ویرایشگر زیرنویس مبتکرانه و مبتنی بر مرورگر است که برای تولیدکنندگان محتوا و حرفه‌ای‌ها طراحی شده و تجربه‌ای یکپارچه برای ایجاد، ویرایش و همگام‌سازی زیرنویس‌ها با سهولت و کارایی بی‌نظیر، مستقیماً در مرورگر وب شما ارائه می‌دهد.</p><p>ایده اولیه این ابزار قدرتمند زیرنویس توسط <1>امین شریفی (moaminsharifi)</1> شکل گرفت. توسعه این برنامه با کمک Firebase Studio، یک همکار کدنویسی هوش مصنوعی، به طور قابل توجهی تسریع و بهبود یافته و امکان نمونه‌سازی سریع و پیاده‌سازی ویژگی‌ها را فراهم کرده است.</p><p>ساب‌فلو بر پایه یک پشته فناوری قوی و مدرن ساخته شده و از Next.js برای معماری فرانت‌اند خود بهره می‌برد. قابلیت‌های پیشرفته تولید و ترجمه زیرنویس با هوش مصنوعی آن توسط مدل‌های پیشرو از Google AI، OpenAI، AvalAI و Groq پشتیبانی می‌شود و ابزارهای پیشرفته‌ای برای تولید و اصلاح زیرنویس در اختیار کاربران قرار می‌دهد.</p><p>این برنامه با تمرکز بر حریم خصوصی تضمین می‌کند که تمام داده‌ها و کلیدهای API شما در مرورگرتان محلی باقی بمانند. ساب‌فلو گواهی بر نوآوری مشارکتی است که با قدرت Next.js، Google AI، OpenAI، AvalAI و Groq، یک راه حل جامع و رایگان برای ویرایش زیرنویس ارائه می‌دهد.</p>",
   "footer.features.title": "ویژگی‌های کلیدی",
   "footer.features.list": [
     {
@@ -172,11 +172,11 @@
   "subtitleEditor.entry.endTimeLabel": "پایان (ثانیه)",
   "subtitleEditor.entry.textLabel": "متن",
   "subtitleEditor.entry.newSubtitleTextPlaceholder": "متن زیرنویس جدید...",
-  "subtitleEditor.entry.regenerateAriaLabel": "بازسازی زیرنویس برای ورودی زیرنویس {entryIndex} (متن: {text})",
+  "subtitleEditor.entry.regenerateAriaLabel": "بازسازی زیرنویس برای ورودی زیرنویس {entryIndex}",
   "subtitleEditor.entry.regenerateTitle": "بازسازی زیرنویس برای این بخش",
-  "subtitleEditor.entry.deleteAriaLabel": "حذف ورودی زیرنویس {entryIndex} (متن: {text})",
+  "subtitleEditor.entry.deleteAriaLabel": "حذف ورودی زیرنویس {entryIndex}",
   "subtitleEditor.entry.progressLabel": "ایجاد زیرنویس در حال انجام است",
-  "subtitleEditor.entry.seekPlayerAriaLabel": "انتقال پخش‌کننده به زمان شروع {startTime} ثانیه برای ورودی زیرنویس {entryIndex}",
+  "subtitleEditor.entry.seekPlayerAriaLabel": "انتقال پخش‌کننده به زمان شروع {startTime} ثانیه",
   "subtitleEditor.entry.seekPlayerTitle": "رفتن به {startTime} ثانیه",
   "subtitleEditor.entry.startTimeAriaLabel": "زمان شروع برای ورودی زیرنویس {entryIndex}",
   "subtitleEditor.entry.endTimeAriaLabel": "زمان پایان برای ورودی زیرنویس {entryIndex}",
@@ -294,5 +294,3 @@
   "debugLog.buttons.clear": "پاک کردن گزارش‌ها",
   "debugLog.buttons.close": "بستن"
 }
-
-    
