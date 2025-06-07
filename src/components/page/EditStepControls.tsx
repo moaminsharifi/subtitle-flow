@@ -16,8 +16,8 @@ interface EditStepControlsProps {
   activeTrackId: string | null;
   subtitleTracks: SubtitleTrack[];
   setActiveTrackId: (trackId: string) => void;
-  editorTranscriptionLanguage: LanguageCode | "auto-detect";
-  setEditorTranscriptionLanguage: (lang: LanguageCode | "auto-detect") => void;
+  editorLLMLanguage: LanguageCode | "auto-detect"; // Changed from editorTranscriptionLanguage
+  setEditorLLMLanguage: (lang: LanguageCode | "auto-detect") => void; // Changed setter name
   mediaFile: MediaFile | null;
   isGeneratingFullTranscription: boolean;
   isAnyTranscriptionLoading: boolean;
@@ -41,8 +41,8 @@ export function EditStepControls({
   activeTrackId,
   subtitleTracks,
   setActiveTrackId,
-  editorTranscriptionLanguage,
-  setEditorTranscriptionLanguage,
+  editorLLMLanguage, // Use new prop name
+  setEditorLLMLanguage, // Use new setter name
   mediaFile,
   isGeneratingFullTranscription,
   isAnyTranscriptionLoading,
@@ -98,21 +98,21 @@ export function EditStepControls({
             {subtitleTracks.length === 0 && <p className="text-xs text-muted-foreground mt-1">{t('editor.trackLanguage.noTracks') as string}</p>}
           </div>
           <div>
-            <Label htmlFor="editor-transcription-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
+            <Label htmlFor="editor-llm-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
                 <Languages className="h-4 w-4" />
-                {t('editor.trackLanguage.segmentLanguageLabel') as string}
+                {t('editor.trackLanguage.cueSliceLanguageLabel') as string} {/* Updated Label */}
             </Label>
             <Select
-              value={editorTranscriptionLanguage}
+              value={editorLLMLanguage}
               onValueChange={(value) => {
                 const lang = value as LanguageCode | "auto-detect";
-                setEditorTranscriptionLanguage(lang);
-                addLog(`Editor transcription language for segment regeneration set to: ${lang}`, 'debug');
+                setEditorLLMLanguage(lang); // Use new setter
+                addLog(`Editor LLM language for cue/slice regeneration set to: ${lang}`, 'debug');
               }}
               disabled={!mediaFile || isGeneratingFullTranscription || isAnyTranscriptionLoading}
               dir={dir}
             >
-              <SelectTrigger id="editor-transcription-language-select" className="w-full" aria-label={t('editor.trackLanguage.segmentLanguageLabel') as string}>
+              <SelectTrigger id="editor-llm-language-select" className="w-full" aria-label={t('editor.trackLanguage.cueSliceLanguageLabel') as string}>
                 <SelectValue placeholder={t('editor.trackLanguage.segmentLanguagePlaceholder') as string} />
               </SelectTrigger>
               <SelectContent>
@@ -139,6 +139,8 @@ export function EditStepControls({
           disabled={editorDisabled}
           isAnyTranscriptionLoading={isAnyTranscriptionLoading || isGeneratingFullTranscription}
           handleSeekPlayer={handleSeekPlayer}
+          LLM_PROVIDER_KEY={null} // This prop is not used in SubtitleEditor based on current files, can be removed if not needed
+          onTranslateSubtitles={async (targetLang) => { console.warn("Translate subtitles feature not implemented yet.", targetLang)}} // Placeholder
         />
 
       </div>

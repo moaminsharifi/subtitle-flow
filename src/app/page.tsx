@@ -2,11 +2,16 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import type { MediaFile, OpenAIModelType, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, Segment, AppSettings, TranscriptionProvider } from '@/lib/types';
-import { LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, TRANSCRIPTION_MODEL_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY } from '@/lib/types';
+import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, AppSettings, TranscriptionProvider, LLMProviderType, TranscriptionModelType, LLMModelType } from '@/lib/types';
+import { 
+  LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
+  TRANSCRIPTION_MODEL_KEY, TRANSCRIPTION_PROVIDER_KEY, 
+  LLM_MODEL_KEY, LLM_PROVIDER_KEY,
+  OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, AVALAI_BASE_URL_KEY
+} from '@/lib/types';
 import { MediaUploader } from '@/components/media-uploader';
 import { useToast } from '@/hooks/use-toast';
-import { transcribeAudioSegment } from '@/ai/flows/transcribe-segment-flow';
+import { runTranscriptionTask } from '@/ai/tasks/run-transcription-task'; // Updated import
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 import { useTranslation } from '@/contexts/LanguageContext';
 
@@ -26,6 +31,8 @@ interface FullTranscriptionProgress {
   totalChunks: number;
   percentage: number;
   currentStage: string | null;
+  chunkProgress?: number; // Progress within the current chunk
+  chunkMessage?: string; // Message for current chunk progress
 }
 
 const StepContentWrapper = React.memo(({ children }: { children: React.ReactNode }) => (
@@ -51,8 +58,12 @@ export default function SubtitleSyncPage() {
   const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
   const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
   const [fullTranscriptionProgress, setFullTranscriptionProgress] = useState<FullTranscriptionProgress | null>(null);
-  const [editorTranscriptionLanguage, setEditorTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
+  
+  // This state is for language selection in the Editor for cue/slice regeneration (LLM task)
+  const [editorLLMLanguage, setEditorLLMLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
+  // This state is for language selection on Upload page for full transcription (Timestamp task)
   const [fullTranscriptionLanguageOverride, setFullTranscriptionLanguageOverride] = useState<LanguageCode | "auto-detect">("auto-detect");
+  
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [isReplacingMedia, setIsReplacingMedia] = useState<boolean>(false);
 
@@ -78,13 +89,13 @@ export default function SubtitleSyncPage() {
     addLog("Application initialized.", "debug");
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     if (savedDefaultLang) {
-      setEditorTranscriptionLanguage(savedDefaultLang);
-      setFullTranscriptionLanguageOverride(savedDefaultLang);
-      addLog(`Editor and Full Transcription language override initialized from settings: ${savedDefaultLang}`, "debug");
+      setEditorLLMLanguage(savedDefaultLang); // For cue/slice task in editor
+      setFullTranscriptionLanguageOverride(savedDefaultLang); // For full transcription task on upload page
+      addLog(`Default transcription language initialized from settings: ${savedDefaultLang}`, "debug");
     } else {
-      setEditorTranscriptionLanguage("auto-detect");
+      setEditorLLMLanguage("auto-detect");
       setFullTranscriptionLanguageOverride("auto-detect");
-      addLog("No default transcription language in settings, using 'auto-detect' for both.", "debug");
+      addLog("No default transcription language in settings, using 'auto-detect'.", "debug");
     }
     document.title = t('app.title') as string;
   }, [addLog, t, language]);
@@ -286,24 +297,24 @@ export default function SubtitleSyncPage() {
   }, [activeTrackId, activeTrack, mediaFile, t, toast, addLog]);
 
   const getAppSettings = useCallback((): AppSettings => {
-    const openAIToken = localStorage.getItem(OPENAI_TOKEN_KEY) || undefined;
-    const groqToken = localStorage.getItem(GROQ_TOKEN_KEY) || undefined;
-    const transcriptionProvider = (localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null) || 'openai';
-    const avalaiToken = localStorage.getItem(AVALAI_TOKEN_KEY) || undefined;
-    const openAIModel = (localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as OpenAIModelType | null) || 'whisper-1'; // Use new key
-    const defaultTranscriptionLanguage = (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect";
-    
     return {
-      openAIToken,
-      groqToken,
-      transcriptionProvider,
-      avalaiToken,
-      transcriptionModel: openAIModel,
-      defaultTranscriptionLanguage,
-    
+      openAIToken: localStorage.getItem(OPENAI_TOKEN_KEY) || undefined,
+      avalaiToken: localStorage.getItem(AVALAI_TOKEN_KEY) || undefined,
+      avalaiBaseUrl: localStorage.getItem(AVALAI_BASE_URL_KEY) || 'https://api.avalai.ir/v1',
+      groqToken: localStorage.getItem(GROQ_TOKEN_KEY) || undefined,
+      googleApiKey: localStorage.getItem(GOOGLE_API_KEY_KEY) || undefined,
+      
+      transcriptionProvider: (localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null) || 'openai',
+      transcriptionModel: (localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null) || 'whisper-1',
+      
+      llmProvider: (localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null) || 'openai',
+      llmModel: (localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null) || 'gpt-4o-mini',
+      
+      defaultTranscriptionLanguage: (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect",
+      temperature: parseFloat(localStorage.getItem('app-settings-temperature') || '0.7'),
+      maxSegmentDuration: parseInt(localStorage.getItem(MAX_SEGMENT_DURATION_KEY) || '60', 10),
     };
   }, []);
-
 
   const handleRegenerateTranscription = useCallback(async (entryId: string) => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
@@ -313,7 +324,7 @@ export default function SubtitleSyncPage() {
       return;
     }
 
-    addLog(`Transcription regeneration started for entry ID: ${entryId}.`, 'debug');
+    addLog(`Cue/slice transcription started for entry ID: ${entryId}.`, 'debug');
     if (!mediaFile || !activeTrack) {
       const msg = t('toast.transcriptionError.mediaOrTrackMissing');
       toast({ title: t('toast.transcriptionError.generic') as string, description: msg as string, variant: "destructive", duration: 5000 });
@@ -330,101 +341,101 @@ export default function SubtitleSyncPage() {
     }
 
     const appSettings = getAppSettings();
-    const selectedOpenAIModel = appSettings.openAIModel || 'whisper-1';
+    const providerForCueSlice = appSettings.llmProvider || 'openai'; // Default to openai if not set
+    const modelForCueSlice = appSettings.llmModel || 'gpt-4o-mini'; // Default model
 
-
-    if (appSettings.transcriptionProvider === 'openai' && !appSettings.openAIToken) {
-      const msg = t('toast.openAITokenMissingDescription');
-      toast({ title: t('toast.openAITokenMissing') as string, description: msg as string, variant: "destructive", duration: 5000 });
-      addLog(msg as string, 'error');
-      return;
+    // API Key Checks
+    if (providerForCueSlice === 'openai' && !appSettings.openAIToken) {
+      toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
+      addLog(t('toast.openAITokenMissingDescription') as string, 'error'); return;
     }
-    if (appSettings.transcriptionProvider === 'avalai' && !appSettings.avalaiToken) {
-      const msg = t('toast.avalaiTokenMissingDescription');
-      toast({ title: t('toast.avalaiTokenMissing') as string, description: msg as string, variant: "destructive", duration: 5000 });
-      addLog(msg as string, 'error');
-      return;
+    if (providerForCueSlice === 'avalai' && !appSettings.avalaiToken) {
+      toast({ title: t('toast.avalaiTokenMissing') as string, description: t('toast.avalaiTokenMissingDescription') as string, variant: "destructive" });
+      addLog(t('toast.avalaiTokenMissingDescription') as string, 'error'); return;
     }
-
-    const langForSegment = editorTranscriptionLanguage === "auto-detect" ? undefined : editorTranscriptionLanguage;
-    addLog(`Using Provider: ${appSettings.transcriptionProvider}, Model: ${selectedOpenAIModel}, Language (for segment): ${langForSegment || 'auto-detect'}. Segment: ${entry.startTime.toFixed(3)}s - ${entry.endTime.toFixed(3)}s.`, 'debug');
+    if (providerForCueSlice === 'googleai' && !appSettings.googleApiKey) {
+      toast({ title: t('toast.googleApiKeyMissing') as string, description: t('toast.googleApiKeyMissingDescription') as string, variant: "destructive" });
+      addLog(t('toast.googleApiKeyMissingDescription') as string, 'error'); return;
+    }
+    
+    const langForSegment = editorLLMLanguage === "auto-detect" ? undefined : editorLLMLanguage;
+    addLog(`Using Provider (for cue/slice): ${providerForCueSlice}, Model: ${modelForCueSlice}, Language: ${langForSegment || 'auto-detect'}. Segment: ${entry.startTime.toFixed(3)}s - ${entry.endTime.toFixed(3)}s.`, 'debug');
 
     setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: true }));
     setIsAnyTranscriptionLoading(true);
 
     try {
       const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, entry.startTime, entry.endTime);
-      addLog(`Audio segment sliced for transcription (entry ID: ${entryId}). Data URI length: ${audioDataUri.length}`, 'debug');
+      addLog(`Audio segment sliced for cue/slice transcription (entry ID: ${entryId}).`, 'debug');
 
-      const result = await transcribeAudioSegment({
+      const result = await runTranscriptionTask({
         audioDataUri,
-        openAIModel: selectedOpenAIModel,
+        provider: providerForCueSlice,
+        modelName: modelForCueSlice,
         language: langForSegment,
-      }, appSettings);
+        task: 'cue_slice',
+        appSettings,
+      });
 
-      const regeneratedText = result.segments.map(s => s.text).join(' ').trim() || result.fullText;
+      const regeneratedText = result.fullText.trim();
 
       if (regeneratedText) {
         handleSubtitleChange(entryId, { text: regeneratedText });
-        const successMsg = t('toast.transcriptionUpdatedDescription', { entryId, model: selectedOpenAIModel, text: regeneratedText.substring(0, 30) });
+        const successMsg = t('toast.transcriptionUpdatedDescription', { entryId, model: modelForCueSlice, text: regeneratedText.substring(0, 30) });
         toast({ title: t('toast.transcriptionUpdated') as string, description: successMsg as string, duration: 5000 });
         addLog(successMsg as string, 'success');
       } else {
         const warnMsg = t('toast.transcriptionPotentiallyFailedDescription', { entryId });
         toast({ title: t('toast.transcriptionPotentiallyFailed') as string, description: warnMsg as string, variant: "destructive", duration: 5000 });
         addLog(warnMsg as string, 'warn');
-         handleSubtitleChange(entryId, { text: "" });
+        handleSubtitleChange(entryId, { text: "" });
       }
     } catch (error: any) {
-      console.error("Transcription regeneration error:", error);
+      console.error("Cue/slice transcription error:", error);
       const errorMsgKey = 'toast.transcriptionError.genericDescription';
-      const errorMsg = t(errorMsgKey, { entryId, errorMessage: error.message || "Failed to regenerate transcription."});
+      const errorMsg = t(errorMsgKey, { entryId, errorMessage: error.message || "Failed to regenerate transcription for cue."});
       toast({ title: t('toast.transcriptionError.generic') as string, description: errorMsg as string, variant: "destructive", duration: 5000 });
       addLog(errorMsg as string, 'error');
     } finally {
       setEntryTranscriptionLoading(prev => ({ ...prev, [entryId]: false }));
       setIsAnyTranscriptionLoading(false);
-      addLog(`Transcription regeneration finished for entry ID: ${entryId}.`, 'debug');
+      addLog(`Cue/slice transcription finished for entry ID: ${entryId}.`, 'debug');
     }
-  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, mediaFile, activeTrack, editorTranscriptionLanguage, getAppSettings, t, toast, addLog, handleSubtitleChange]);
+  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, mediaFile, activeTrack, editorLLMLanguage, getAppSettings, t, toast, addLog, handleSubtitleChange]);
 
   const handleGenerateFullTranscription = useCallback(async () => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
-      const msg = t('toast.transcriptionBusyDescription');
-      toast({ title: t('toast.transcriptionBusy') as string, description: msg as string, variant: "destructive", duration: 5000 });
-      addLog(msg as string, 'warn');
-      return;
+      toast({ title: t('toast.transcriptionBusy') as string, description: t('toast.transcriptionBusyDescription') as string, variant: "destructive" });
+      addLog(t('toast.transcriptionBusyDescription') as string, 'warn'); return;
     }
     if (!mediaFile) {
-      const msg = t('toast.fullTranscriptionError.noMedia');
-      toast({ title: t('toast.fullTranscriptionError.generic') as string, description: msg as string, variant: "destructive", duration: 5000 });
-      addLog(msg as string, 'error');
-      return;
+      toast({ title: t('toast.fullTranscriptionError.generic') as string, description: t('toast.fullTranscriptionError.noMedia') as string, variant: "destructive" });
+      addLog(t('toast.fullTranscriptionError.noMedia') as string, 'error'); return;
     }
 
     const appSettings = getAppSettings();
-    const selectedOpenAIModel = appSettings.openAIModel || 'whisper-1';
+    const providerForFull = appSettings.transcriptionProvider || 'openai';
+    const modelForFull = appSettings.transcriptionModel || 'whisper-1';
 
-    if (appSettings.transcriptionProvider === 'openai' && !appSettings.openAIToken) {
-      const msg = t('toast.openAITokenMissingDescription');
-      toast({ title: t('toast.openAITokenMissing') as string, description: msg as string, variant: "destructive", duration: 5000 });
-      addLog(msg as string, 'error');
-      return;
+    // API Key Checks
+    if (providerForFull === 'openai' && !appSettings.openAIToken) {
+      toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
+      addLog(t('toast.openAITokenMissingDescription') as string, 'error'); return;
     }
-    if (appSettings.transcriptionProvider === 'avalai' && !appSettings.avalaiToken) {
-      const msg = t('toast.avalaiTokenMissingDescription');
-      toast({ title: t('toast.avalaiTokenMissing') as string, description: msg as string, variant: "destructive", duration: 5000 });
-      addLog(msg as string, 'error');
-      return;
+    if (providerForFull === 'avalai' && !appSettings.avalaiToken) {
+      toast({ title: t('toast.avalaiTokenMissing') as string, description: t('toast.avalaiTokenMissingDescription') as string, variant: "destructive" });
+      addLog(t('toast.avalaiTokenMissingDescription') as string, 'error'); return;
+    }
+    if (providerForFull === 'groq' && !appSettings.groqToken) {
+      toast({ title: t('toast.groqTokenMissing') as string, description: t('toast.groqTokenMissingDescription') as string, variant: "destructive" });
+      addLog(t('toast.groqTokenMissingDescription') as string, 'error'); return;
     }
     
-    const langForFullTranscription = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
-
-    addLog(`Starting full media transcription with provider: ${appSettings.transcriptionProvider}, model: ${selectedOpenAIModel}, Language (override): ${langForFullTranscription || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
+    const langForFull = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
+    addLog(`Starting full media timestamp transcription with provider: ${providerForFull}, model: ${modelForFull}, Language: ${langForFull || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
     setIsGeneratingFullTranscription(true);
 
     const allSubtitleEntries: SubtitleEntry[] = [];
-    // Use the max segment duration from app settings, default to 60 seconds if not set
     const maxSegmentDuration = appSettings.maxSegmentDuration || 60;
     const numChunks = Math.ceil(mediaFile.duration / maxSegmentDuration);
     setFullTranscriptionProgress({ currentChunk: 0, totalChunks: numChunks, percentage: 0, currentStage: null });
@@ -436,38 +447,53 @@ export default function SubtitleSyncPage() {
 
         if (chunkStartTime >= chunkEndTime) continue;
 
-        const baseProgress = {
-          currentChunk: i + 1,
-          totalChunks: numChunks,
-          percentage: Math.round(((i) / numChunks) * 100),
+        const chunkProgressCallback = (progress: number, message: string) => {
+          setFullTranscriptionProgress(prev => ({
+            ...prev!,
+            percentage: Math.round(((i + progress / 100) / numChunks) * 100),
+            chunkProgress: progress,
+            chunkMessage: message,
+          }));
         };
-
-        setFullTranscriptionProgress({ ...baseProgress, currentStage: t('aiGenerator.progress.stage.slicing') as string });
+        
+        setFullTranscriptionProgress(prev => ({ 
+            ...prev!, 
+            currentChunk: i + 1,
+            totalChunks: numChunks,
+            percentage: Math.round(((i) / numChunks) * 100),
+            currentStage: t('aiGenerator.progress.stage.slicing') as string,
+            chunkProgress: 0,
+            chunkMessage: '',
+        }));
+        
         const slicingMsg = t('toast.fullTranscriptionProgress.slicing', { currentChunk: i + 1, totalChunks: numChunks, startTime: chunkStartTime.toFixed(1), endTime: chunkEndTime.toFixed(1) });
         addLog(slicingMsg as string, 'debug');
-        toast({ title: t('aiGenerator.progress.inProgress') as string, description: slicingMsg as string, duration: 2000});
+        // toast({ title: t('aiGenerator.progress.inProgress') as string, description: slicingMsg as string, duration: 2000});
 
         const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, chunkStartTime, chunkEndTime);
-        addLog(`Audio chunk ${i+1} sliced. Data URI length: ${audioDataUri.length}`, 'debug');
+        addLog(`Audio chunk ${i+1} sliced.`, 'debug');
 
-        setFullTranscriptionProgress({ ...baseProgress, currentStage: t('aiGenerator.progress.stage.transcribing') as string });
-        const transcribingMsg = t('toast.fullTranscriptionProgress.transcribing', { currentChunk: i + 1, totalChunks: numChunks, model: selectedOpenAIModel });
+        setFullTranscriptionProgress(prev => ({ ...prev!, currentStage: t('aiGenerator.progress.stage.transcribing') as string }));
+        const transcribingMsg = t('toast.fullTranscriptionProgress.transcribing', { currentChunk: i + 1, totalChunks: numChunks, model: modelForFull });
         addLog(transcribingMsg as string, 'debug');
-        toast({ title: t('aiGenerator.progress.inProgress') as string, description: transcribingMsg as string, duration: 2000 });
+        // toast({ title: t('aiGenerator.progress.inProgress') as string, description: transcribingMsg as string, duration: 2000 });
 
-        const result = await transcribeAudioSegment({
+        const result = await runTranscriptionTask({
           audioDataUri,
-          openAIModel: selectedOpenAIModel,
-          language: langForFullTranscription,
-        }, appSettings);
-
-        setFullTranscriptionProgress({ ...baseProgress, currentStage: t('aiGenerator.progress.stage.processing') as string });
+          provider: providerForFull,
+          modelName: modelForFull,
+          language: langForFull,
+          task: 'timestamp',
+          appSettings,
+        }, chunkProgressCallback);
+        
+        setFullTranscriptionProgress(prev => ({ ...prev!, currentStage: t('aiGenerator.progress.stage.processing') as string, chunkProgress: 0, chunkMessage: '' }));
         const processingMsg = t('toast.fullTranscriptionProgress.processing', { currentChunk: i + 1 });
         addLog(processingMsg as string, 'debug');
-        toast({ title: t('aiGenerator.progress.inProgress') as string, description: processingMsg as string, duration: 2000 });
-        addLog(`Chunk ${i+1} transcribed. Segments received: ${result.segments.length}. Full text from chunk: "${result.fullText.substring(0,50)}..."`, 'debug');
+        // toast({ title: t('aiGenerator.progress.inProgress') as string, description: processingMsg as string, duration: 2000 });
+        addLog(`Chunk ${i+1} transcribed. Segments: ${result.segments?.length || 0}. Full text: "${result.fullText.substring(0,50)}..."`, 'debug');
 
-        if (result.segments.length > 0) {
+        if (result.segments && result.segments.length > 0) {
           result.segments.forEach(segment => {
             allSubtitleEntries.push({
               id: `gen-${chunkStartTime + segment.start}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
@@ -476,32 +502,33 @@ export default function SubtitleSyncPage() {
               text: segment.text,
             });
           });
-        } else if (result.fullText) {
+        } else if (result.fullText) { // Fallback if no segments but full text exists
           allSubtitleEntries.push({
             id: `gen-chunk-${chunkStartTime}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
             startTime: parseFloat(chunkStartTime.toFixed(3)),
             endTime: parseFloat(chunkEndTime.toFixed(3)),
             text: result.fullText,
           });
-           addLog(`Chunk ${i+1} (GPT-4o like model or provider without segments): Added as a single entry for the chunk.`, 'debug');
+           addLog(`Chunk ${i+1} (no segments from provider): Added as a single entry.`, 'debug');
         }
          setFullTranscriptionProgress(prev => ({
             ...prev!,
             percentage: Math.round(((i + 1) / numChunks) * 100),
             currentStage: null,
+            chunkProgress: 100, 
+            chunkMessage: 'Chunk complete',
         }));
       }
 
       allSubtitleEntries.sort((a, b) => a.startTime - b.startTime);
 
       const newTrackId = `track-generated-${Date.now()}`;
-      const trackLangSuffix = langForFullTranscription || (fullTranscriptionLanguageOverride === "auto-detect" ? "auto" : fullTranscriptionLanguageOverride);
-      const providerSuffix = appSettings.transcriptionProvider || 'ai';
-      const newTrackFileName = `${mediaFile.name.substring(0, mediaFile.name.lastIndexOf('.') || mediaFile.name.length)} - ${providerSuffix}-${selectedOpenAIModel}-${trackLangSuffix}.srt`;
+      const trackLangSuffix = langForFull || (fullTranscriptionLanguageOverride === "auto-detect" ? "auto" : fullTranscriptionLanguageOverride);
+      const newTrackFileName = `${mediaFile.name.substring(0, mediaFile.name.lastIndexOf('.') || mediaFile.name.length)} - ${providerForFull}-${modelForFull}-${trackLangSuffix}.srt`;
       const newTrack: SubtitleTrack = {
         id: newTrackId,
         fileName: newTrackFileName,
-        format: 'srt',
+        format: 'srt', // Default to SRT for generated tracks
         entries: allSubtitleEntries,
       };
 
@@ -527,6 +554,7 @@ export default function SubtitleSyncPage() {
     }
   }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, mediaFile, fullTranscriptionLanguageOverride, getAppSettings, t, toast, addLog]);
 
+
   const isEntryTranscribing = (entryId: string): boolean => {
     return !!entryTranscriptionLoading[entryId];
   };
@@ -535,16 +563,12 @@ export default function SubtitleSyncPage() {
 
   const handleProceedToEdit = useCallback(() => {
     if (!mediaFile) {
-      const msg = t('toast.mediaRequiredDescription');
-      toast({ title: t('toast.mediaRequired') as string, description: msg as string, variant: "destructive", duration: 5000 });
-      addLog(msg as string, 'warn');
-      return;
+      toast({ title: t('toast.mediaRequired') as string, description: t('toast.mediaRequiredDescription') as string, variant: "destructive" });
+      addLog(t('toast.mediaRequiredDescription') as string, 'warn'); return;
     }
     if (subtitleTracks.length === 0) {
-       const msg = t('toast.subtitlesRequiredDescription');
-       toast({ title: t('toast.subtitlesRequired') as string, description: msg as string, variant: "destructive", duration: 5000 });
-       addLog(msg as string, 'warn');
-       return;
+       toast({ title: t('toast.subtitlesRequired') as string, description: t('toast.subtitlesRequiredDescription') as string, variant: "destructive" });
+       addLog(t('toast.subtitlesRequiredDescription') as string, 'warn'); return;
     }
     if (!activeTrackId && subtitleTracks.length > 0) {
       setActiveTrackId(subtitleTracks[0].id);
@@ -556,10 +580,8 @@ export default function SubtitleSyncPage() {
 
   const handleProceedToExport = useCallback(() => {
     if (!activeTrack || activeTrack.entries.length === 0) {
-      const msg = t('toast.noSubtitlesToExportDescription');
-      toast({ title: t('toast.noSubtitlesToExport') as string, description: msg as string, variant: "destructive", duration: 5000});
-      addLog(msg as string, 'warn');
-      return;
+      toast({ title: t('toast.noSubtitlesToExport') as string, description: t('toast.noSubtitlesToExportDescription') as string, variant: "destructive"});
+      addLog(t('toast.noSubtitlesToExportDescription') as string, 'warn'); return;
     }
     setCurrentStep('export');
     addLog("Navigated to Export step.", 'debug');
@@ -569,7 +591,7 @@ export default function SubtitleSyncPage() {
     if (playerRef.current) {
       playerRef.current.currentTime = timeInSeconds;
       if (playerRef.current.paused) {
-        playerRef.current.play();
+        playerRef.current.play().catch(e => console.warn("Player play on seek failed:", e));
       }
     }
     addLog(`Seeked player to ${timeInSeconds.toFixed(3)} seconds.`, 'debug');
@@ -588,9 +610,8 @@ export default function SubtitleSyncPage() {
         playerRef.current.removeAttribute('src');
         playerRef.current.load();
       }
-      const msg = t('toast.projectResetDescription');
-      toast({ title: t('toast.projectReset') as string, description: msg as string, duration: 5000 });
-      addLog(msg as string, 'info');
+      toast({ title: t('toast.projectReset') as string, description: t('toast.projectResetDescription') as string });
+      addLog(t('toast.projectResetDescription') as string, 'info');
     }
     setCurrentStep('upload');
     setIsReplacingMedia(false);
@@ -620,25 +641,27 @@ export default function SubtitleSyncPage() {
   const handleSettingsDialogClose = useCallback(() => {
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     if (savedDefaultLang) {
-        if (editorTranscriptionLanguage !== savedDefaultLang) {
-            setEditorTranscriptionLanguage(savedDefaultLang);
-            addLog(`Editor transcription language updated from settings change: ${savedDefaultLang}`, "debug");
+        // For cue/slice task in editor
+        if (editorLLMLanguage !== savedDefaultLang) {
+            setEditorLLMLanguage(savedDefaultLang);
+            addLog(`Editor LLM language updated from settings change: ${savedDefaultLang}`, "debug");
         }
+        // For full transcription task on upload page
         if (fullTranscriptionLanguageOverride !== savedDefaultLang && currentStep === 'upload') {
             setFullTranscriptionLanguageOverride(savedDefaultLang);
-            addLog(`Full transcription override language updated from settings change: ${savedDefaultLang}`, "debug");
+            addLog(`Full transcription language override updated from settings change: ${savedDefaultLang}`, "debug");
         }
-    } else {
-        if (editorTranscriptionLanguage !== "auto-detect") {
-            setEditorTranscriptionLanguage("auto-detect");
-            addLog("Editor transcription language reset to 'auto-detect' as default was cleared.", "debug");
+    } else { // Default cleared
+        if (editorLLMLanguage !== "auto-detect") {
+            setEditorLLMLanguage("auto-detect");
+            addLog("Editor LLM language reset to 'auto-detect' as default was cleared.", "debug");
         }
         if (fullTranscriptionLanguageOverride !== "auto-detect" && currentStep === 'upload') {
             setFullTranscriptionLanguageOverride("auto-detect");
-            addLog("Full transcription override language reset to 'auto-detect' as default was cleared.", "debug");
+            addLog("Full transcription language override reset to 'auto-detect' as default was cleared.", "debug");
         }
     }
-  }, [editorTranscriptionLanguage, fullTranscriptionLanguageOverride, currentStep, addLog]);
+  }, [editorLLMLanguage, fullTranscriptionLanguageOverride, currentStep, addLog]);
 
 
   return (
@@ -700,8 +723,8 @@ export default function SubtitleSyncPage() {
                 activeTrackId={activeTrackId}
                 subtitleTracks={subtitleTracks}
                 setActiveTrackId={setActiveTrackId}
-                editorTranscriptionLanguage={editorTranscriptionLanguage}
-                setEditorTranscriptionLanguage={setEditorTranscriptionLanguage}
+                editorLLMLanguage={editorLLMLanguage} // Pass editorLLMLanguage
+                setEditorLLMLanguage={setEditorLLMLanguage} // Pass setter
                 mediaFile={mediaFile}
                 isGeneratingFullTranscription={isGeneratingFullTranscription}
                 isAnyTranscriptionLoading={isAnyTranscriptionLoading}
@@ -714,7 +737,7 @@ export default function SubtitleSyncPage() {
                 currentPlayerTime={currentPlayerTime}
                 editorDisabled={editorDisabled}
                 handleGoToUpload={handleGoToUpload}
- handleSeekPlayer={handleSeekPlayer}
+                handleSeekPlayer={handleSeekPlayer}
                 handleProceedToExport={handleProceedToExport}
                 addLog={addLog}
                 t={t}

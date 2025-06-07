@@ -21,15 +21,21 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import type { AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, TranscriptionProvider, LLMProviderType, LLMModelType } from '@/lib/types';
+import type { 
+  AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, 
+  TranscriptionProvider, LLMProviderType, LLMModelType, WhisperModelType, GPTStyleLLMType
+} from '@/lib/types';
 import { 
-  LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, TRANSCRIPTION_MODEL_KEY, 
-  DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, 
-  TRANSCRIPTION_PROVIDER_KEY, AVALAI_TOKEN_KEY, MAX_SEGMENT_DURATION_KEY,
-  LLM_MODEL_KEY, LLM_PROVIDER_KEY, OpenAIAvalAILLMModels, GroqLLMModels
+  LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
+  TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
+  LLM_PROVIDER_KEY, LLM_MODEL_KEY,
+  OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, AVALAI_BASE_URL_KEY,
+  MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY,
+  OpenAIWhisperModels, AvalAIWhisperModels, GroqWhisperModels,
+  GoogleGeminiLLModels, OpenAIGPTModels, AvalAIGPTModels
 } from '@/lib/types';
 
-import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff } from 'lucide-react';
+import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
@@ -42,24 +48,32 @@ interface SettingsDialogProps {
 export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps) {
   const { t, language: currentAppLanguage, setLanguage: setAppLanguage, dir } = useTranslation();
 
+  // API Keys
   const [openAIToken, setOpenAIToken] = useState('');
-  const [groqToken, setGroqToken] = useState('');
   const [avalaiToken, setAvalaiToken] = useState('');
+  const [avalaiBaseUrl, setAvalaiBaseUrl] = useState('https://api.avalai.ir/v1');
+  const [groqToken, setGroqToken] = useState('');
+  const [googleApiKey, setGoogleApiKey] = useState('');
 
+  // Visibility toggles for API keys
   const [showOpenAIToken, setShowOpenAIToken] = useState(false);
   const [showAvalAIToken, setShowAvalAIToken] = useState(false);
   const [showGroqToken, setShowGroqToken] = useState(false);
+  const [showGoogleApiKey, setShowGoogleApiKey] = useState(false);
 
+  // Provider and Model selections
   const [transcriptionProvider, setTranscriptionProvider] = useState<TranscriptionProvider>('openai');
+  const [transcriptionModel, setTranscriptionModel] = useState<WhisperModelType>(OpenAIWhisperModels[0]);
+  
   const [llmProvider, setLlmProvider] = useState<LLMProviderType>('openai');
+  const [llmModel, setLlmModel] = useState<LLMModelType>(OpenAIGPTModels[0] as LLMModelType);
   
-  const [transcriptionModel, setTranscriptionModel] = useState<TranscriptionModelType>('whisper-1');
-  const [llmModel, setLlmModel] = useState<LLMModelType>(OpenAIAvalAILLMModels[0]);
-  
+  // General settings
   const [defaultTranscriptionLanguage, setDefaultTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [selectedTheme, setSelectedTheme] = useState<Theme>('system');
   const [selectedAppLanguage, setSelectedAppLanguage] = useState<Language>(currentAppLanguage);
   
+  // Advanced settings
   const [maxSegmentDuration, setMaxSegmentDuration] = useState(60);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [temperature, setTemperature] = useState(0.7);
@@ -68,84 +82,105 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const applyTheme = (themeToApply: Theme) => {
     localStorage.setItem(THEME_KEY, themeToApply);
-    if (themeToApply === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (themeToApply === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else { 
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }
+    if (themeToApply === 'dark') document.documentElement.classList.add('dark');
+    else if (themeToApply === 'light') document.documentElement.classList.remove('dark');
+    else window.matchMedia('(prefers-color-scheme: dark)').matches ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
   };
 
-  const transcriptionModelOptions = useMemo(() => {
-    if (transcriptionProvider === 'groq') {
-      return ['whisper-large-v3'] as TranscriptionModelType[];
-    }
-    return ['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe'] as TranscriptionModelType[];
+  const transcriptionModelOptions = useMemo((): readonly WhisperModelType[] => {
+    if (transcriptionProvider === 'openai') return OpenAIWhisperModels;
+    if (transcriptionProvider === 'avalai') return AvalAIWhisperModels;
+    if (transcriptionProvider === 'groq') return GroqWhisperModels;
+    return OpenAIWhisperModels; // Default
   }, [transcriptionProvider]);
 
-  const llmModelOptions = useMemo((): LLMModelType[] => {
-    if (llmProvider === 'groq') {
-      return [...GroqLLMModels];
-    }
-    return [...OpenAIAvalAILLMModels];
+  const llmModelOptions = useMemo((): readonly LLMModelType[] => {
+    if (llmProvider === 'googleai') return GoogleGeminiLLModels;
+    if (llmProvider === 'openai') return OpenAIGPTModels;
+    if (llmProvider === 'avalai') return AvalAIGPTModels;
+    return OpenAIGPTModels as readonly LLMModelType[]; // Default
   }, [llmProvider]);
 
   useEffect(() => {
     if (isOpen) {
       addLog("Settings dialog opened. Loading saved settings.", "debug");
-      
-      const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
-      const storedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
-      
-      const currentTProvider = storedTranscriptionProvider || 'openai';
-      const currentLProvider = storedLlmProvider || 'openai';
-      setTranscriptionProvider(currentTProvider);
-      setLlmProvider(currentLProvider);
+      let logMessage = "Loaded settings: ";
+      try {
+        const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
+        const currentTProvider = storedTranscriptionProvider && ['openai', 'avalai', 'groq'].includes(storedTranscriptionProvider) ? storedTranscriptionProvider : 'openai';
+        setTranscriptionProvider(currentTProvider);
+        logMessage += `Trans. Provider - ${currentTProvider}, `;
 
-      setOpenAIToken(localStorage.getItem(OPENAI_TOKEN_KEY) || '');
-      setAvalaiToken(localStorage.getItem(AVALAI_TOKEN_KEY) || '');
-      setGroqToken(localStorage.getItem(GROQ_TOKEN_KEY) || '');
+        const storedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
+        const currentLProvider = storedLlmProvider && ['googleai', 'openai', 'avalai'].includes(storedLlmProvider) ? storedLlmProvider : 'openai';
+        setLlmProvider(currentLProvider);
+        logMessage += `LLM Provider - ${currentLProvider}, `;
 
-      const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
-      const currentTranscriptionModels = currentTProvider === 'groq' ? ['whisper-large-v3'] : ['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe'];
-      setTranscriptionModel(storedTranscriptionModel && currentTranscriptionModels.includes(storedTranscriptionModel) ? storedTranscriptionModel : currentTranscriptionModels[0] as TranscriptionModelType);
-      
-      const  storedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
-      const currentLlmModels = currentLProvider === 'groq' ? GroqLLMModels : OpenAIAvalAILLMModels;
-      setLlmModel(storedLlmModel && currentLlmModels.includes(storedLlmModel) ? storedLlmModel : currentLlmModels[0]);
+        setOpenAIToken(localStorage.getItem(OPENAI_TOKEN_KEY) || '');
+        setAvalaiToken(localStorage.getItem(AVALAI_TOKEN_KEY) || '');
+        setAvalaiBaseUrl(localStorage.getItem(AVALAI_BASE_URL_KEY) || 'https://api.avalai.ir/v1');
+        setGroqToken(localStorage.getItem(GROQ_TOKEN_KEY) || '');
+        setGoogleApiKey(localStorage.getItem(GOOGLE_API_KEY_KEY) || '');
 
-      setDefaultTranscriptionLanguage(localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" || "auto-detect");
-      setMaxSegmentDuration(parseInt(localStorage.getItem(MAX_SEGMENT_DURATION_KEY) || '60', 10));
-      setTemperature(parseFloat(localStorage.getItem('app-settings-temperature') || '0.7'));
-      
-      const initialTheme = (localStorage.getItem(THEME_KEY) as Theme | null) || 'system';
-      setSelectedTheme(initialTheme); 
-      
-      setSelectedAppLanguage((localStorage.getItem(LANGUAGE_KEY) as Language | null) || currentAppLanguage);
-      addLog(`Settings loaded: Trans. Provider - ${currentTProvider}, LLM Provider - ${currentLProvider}, Trans. Model - ${transcriptionModel}, LLM Model - ${llmModel}. Default Lang - ${defaultTranscriptionLanguage}. Theme - ${initialTheme}. App Lang - ${selectedAppLanguage}. Max Seg Dur - ${maxSegmentDuration}s. Temp - ${temperature}.`, "debug");
+        const currentTranscriptionModels = 
+          currentTProvider === 'openai' ? OpenAIWhisperModels :
+          currentTProvider === 'avalai' ? AvalAIWhisperModels :
+          currentTProvider === 'groq' ? GroqWhisperModels : OpenAIWhisperModels;
+        const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as WhisperModelType | null;
+        const tModel = storedTranscriptionModel && currentTranscriptionModels.includes(storedTranscriptionModel) ? storedTranscriptionModel : currentTranscriptionModels[0];
+        setTranscriptionModel(tModel);
+        logMessage += `Trans. Model - ${tModel}, `;
+        
+        const currentLlmModels = 
+          currentLProvider === 'googleai' ? GoogleGeminiLLModels :
+          currentLProvider === 'openai' ? OpenAIGPTModels :
+          currentLProvider === 'avalai' ? AvalAIGPTModels : OpenAIGPTModels;
+        const storedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
+        const lModel = storedLlmModel && (currentLlmModels as readonly string[]).includes(storedLlmModel) ? storedLlmModel : currentLlmModels[0];
+        setLlmModel(lModel);
+        logMessage += `LLM Model - ${lModel}, `;
+
+        setDefaultTranscriptionLanguage((localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect") || "auto-detect");
+        setMaxSegmentDuration(parseInt(localStorage.getItem(MAX_SEGMENT_DURATION_KEY) || '60', 10));
+        setTemperature(parseFloat(localStorage.getItem(TEMPERATURE_KEY) || '0.7'));
+        
+        const initialTheme = (localStorage.getItem(THEME_KEY) as Theme | null) || 'system';
+        setSelectedTheme(initialTheme);
+        
+        setSelectedAppLanguage((localStorage.getItem(LANGUAGE_KEY) as Language | null) || currentAppLanguage);
+        logMessage += `Default Lang - ${defaultTranscriptionLanguage}, Theme - ${initialTheme}, App Lang - ${selectedAppLanguage}, Max Seg Dur - ${maxSegmentDuration}s, Temp - ${temperature}.`;
+        addLog(logMessage, "debug");
+
+      } catch (error) {
+        console.error("Error loading settings from localStorage:", error);
+        addLog("Error loading settings from localStorage. Using defaults.", "error");
+        // Set defaults if localStorage fails
+        setTranscriptionProvider('openai');
+        setTranscriptionModel(OpenAIWhisperModels[0]);
+        setLlmProvider('openai');
+        setLlmModel(OpenAIGPTModels[0] as LLMModelType);
+      }
     }
-  }, [isOpen, addLog, currentAppLanguage]);
+  }, [isOpen, addLog, currentAppLanguage, defaultTranscriptionLanguage, maxSegmentDuration, temperature]);
 
 
   useEffect(() => {
-    if (!transcriptionModelOptions.includes(transcriptionModel)) {
-      setTranscriptionModel(transcriptionModelOptions[0]);
-      addLog(`Transcription model auto-adjusted to ${transcriptionModelOptions[0]} due to provider change.`, "debug");
+    const currentModels = transcriptionModelOptions;
+    if (!currentModels.includes(transcriptionModel)) {
+      const newModel = currentModels[0];
+      setTranscriptionModel(newModel);
+      addLog(`Transcription model auto-adjusted to ${newModel} due to provider change.`, "debug");
     }
   }, [transcriptionProvider, transcriptionModel, transcriptionModelOptions, addLog]);
 
   useEffect(() => {
-    if (!llmModelOptions.includes(llmModel)) {
-      setLlmModel(llmModelOptions[0]);
-      addLog(`LLM model auto-adjusted to ${llmModelOptions[0]} due to LLM provider change.`, "debug");
+    const currentModels = llmModelOptions;
+    if (!(currentModels as readonly string[]).includes(llmModel)) {
+      const newModel = currentModels[0];
+      setLlmModel(newModel);
+      addLog(`LLM model auto-adjusted to ${newModel} due to LLM provider change.`, "debug");
     }
   }, [llmProvider, llmModel, llmModelOptions, addLog]);
-
 
   const handleThemeChange = (newTheme: Theme) => {
     setSelectedTheme(newTheme);
@@ -159,56 +194,65 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   };
 
   const handleSave = () => {
-    // Validate maxSegmentDuration
-    const validatedMaxSegmentDuration = Math.max(4, Math.min(360, maxSegmentDuration));
-    if (maxSegmentDuration !== validatedMaxSegmentDuration) {
-      toast({
-        title: t('settings.toast.validationError') as string,
-        description: t('settings.toast.maxSegmentDurationValidation', { min: 4, max: 360 }) as string,
-        variant: 'destructive',
+    try {
+      const validatedMaxSegmentDuration = Math.max(4, Math.min(360, maxSegmentDuration));
+      if (maxSegmentDuration !== validatedMaxSegmentDuration) {
+        toast({
+          title: t('settings.toast.validationError') as string,
+          description: t('settings.toast.maxSegmentDurationValidation', { min: 4, max: 360 }) as string,
+          variant: 'destructive',
+        });
+      }
+
+      localStorage.setItem(TRANSCRIPTION_PROVIDER_KEY, transcriptionProvider);
+      localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
+      localStorage.setItem(LLM_PROVIDER_KEY, llmProvider);
+      localStorage.setItem(LLM_MODEL_KEY, llmModel);
+      localStorage.setItem(MAX_SEGMENT_DURATION_KEY, validatedMaxSegmentDuration.toString());
+      localStorage.setItem(TEMPERATURE_KEY, temperature.toString());
+      
+      if (openAIToken) localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken); else localStorage.removeItem(OPENAI_TOKEN_KEY);
+      if (avalaiToken) localStorage.setItem(AVALAI_TOKEN_KEY, avalaiToken); else localStorage.removeItem(AVALAI_TOKEN_KEY);
+      if (avalaiBaseUrl) localStorage.setItem(AVALAI_BASE_URL_KEY, avalaiBaseUrl); else localStorage.removeItem(AVALAI_BASE_URL_KEY);
+      if (groqToken) localStorage.setItem(GROQ_TOKEN_KEY, groqToken); else localStorage.removeItem(GROQ_TOKEN_KEY);
+      if (googleApiKey) localStorage.setItem(GOOGLE_API_KEY_KEY, googleApiKey); else localStorage.removeItem(GOOGLE_API_KEY_KEY);
+      
+      localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
+      localStorage.setItem(THEME_KEY, selectedTheme);
+
+      if (currentAppLanguage !== selectedAppLanguage) {
+        setAppLanguage(selectedAppLanguage); 
+      } else {
+        localStorage.setItem(LANGUAGE_KEY, selectedAppLanguage); 
+      }
+      
+      const toastDesc = t('settings.toast.savedDescription.v3', {
+        theme: selectedTheme,
+        appLanguage: selectedAppLanguage,
+        transcriptionProvider,
+        transcriptionModel,
+        llmProvider,
+        llmModel,
+        defaultLanguage: defaultTranscriptionLanguage,
       });
-    }
-    localStorage.setItem(LLM_PROVIDER_KEY, llmProvider);
-    localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
-    localStorage.setItem(LLM_MODEL_KEY, llmModel);
-    localStorage.setItem(MAX_SEGMENT_DURATION_KEY, maxSegmentDuration.toString());
-    localStorage.setItem('app-settings-temperature', temperature.toString());
-    
-    if (openAIToken) localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken); else localStorage.removeItem(OPENAI_TOKEN_KEY);
-    if (avalaiToken) localStorage.setItem(AVALAI_TOKEN_KEY, avalaiToken); else localStorage.removeItem(AVALAI_TOKEN_KEY);
-    if (groqToken) localStorage.setItem(GROQ_TOKEN_KEY, groqToken); else localStorage.removeItem(GROQ_TOKEN_KEY);
-    
-    localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
-    localStorage.setItem(THEME_KEY, selectedTheme);
 
-    if (currentAppLanguage !== selectedAppLanguage) {
-      setAppLanguage(selectedAppLanguage); 
-    } else {
-       localStorage.setItem(LANGUAGE_KEY, selectedAppLanguage); 
+      toast({
+        title: t('settings.toast.saved') as string,
+        description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
+        duration: 5000,
+      });
+      addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature}) }`, 'success');
+      onClose();
+    } catch (error) {
+        console.error("Error saving settings to localStorage:", error);
+        addLog("Error saving settings to localStorage.", "error");
+        toast({ title: "Save Error", description: "Could not save settings. LocalStorage might be full or unavailable.", variant: "destructive"});
     }
-    
-    const toastDesc = t('settings.toast.savedDescription.v2', {
-      theme: selectedTheme,
-      appLanguage: selectedAppLanguage,
-      transcriptionProvider,
-      transcriptionModel,
-      llmProvider,
-      llmModel,
-      defaultLanguage: defaultTranscriptionLanguage,
-    });
-
-    toast({
-      title: t('settings.toast.saved') as string,
-      description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
-      duration: 5000,
-    });
-    addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature}) }`, 'success');
-    onClose();
   };
   
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Dialog open={isOpen} onOpenChange={(openState) => !openState && onClose()}>
         <DialogContent className="sm:max-w-[700px] flex flex-col max-h-[85vh] min-h-[70vh]" dir={dir}>
           <DialogHeader>
             <DialogTitle>{t('settings.title')}</DialogTitle>
@@ -221,24 +265,12 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
             <ScrollArea className="h-full pr-2">
               <div className="space-y-6 py-4">
                 
+                {/* Theme Selection */}
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">{t('settings.theme.label')}</Label>
-                  <RadioGroup
-                    value={selectedTheme}
-                    onValueChange={(value: string) => handleThemeChange(value as Theme)}
-                    className="grid grid-cols-3 gap-2"
-                    dir={dir}
-                  >
-                    {[
-                      { value: 'light', label: t('settings.theme.light') as string, icon: Sun },
-                      { value: 'dark', label: t('settings.theme.dark') as string, icon: Moon },
-                      { value: 'system', label: t('settings.theme.system') as string, icon: Laptop },
-                    ].map((item) => (
-                      <Label
-                        key={item.value}
-                        htmlFor={`theme-${item.value}`}
-                        className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer"
-                      >
+                  <RadioGroup value={selectedTheme} onValueChange={(value: string) => handleThemeChange(value as Theme)} className="grid grid-cols-3 gap-2" dir={dir}>
+                    {[{ value: 'light', label: t('settings.theme.light') as string, icon: Sun }, { value: 'dark', label: t('settings.theme.dark') as string, icon: Moon }, { value: 'system', label: t('settings.theme.system') as string, icon: Laptop }].map((item) => (
+                      <Label key={item.value} htmlFor={`theme-${item.value}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer">
                         <RadioGroupItem value={item.value} id={`theme-${item.value}`} className="sr-only" />
                         <item.icon className="mb-1 h-5 w-5" />
                         {item.label}
@@ -246,312 +278,164 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     ))}
                   </RadioGroup>
                 </div>
-                
                 <Separator />
 
+                {/* Application Language */}
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold flex items-center gap-1">
-                      <Languages className="h-5 w-5"/>
-                      {t('settings.language.label')}
-                  </Label>
-                  <Select
-                      value={selectedAppLanguage}
-                      onValueChange={(value) => handleAppLanguageChange(value as Language)}
-                      dir={dir}
-                  >
-                      <SelectTrigger className="w-full" aria-label={t('settings.language.label') as string}>
-                          <SelectValue placeholder="Select application language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="en">{t('settings.language.english')}</SelectItem>
-                          <SelectItem value="fa">{t('settings.language.persian')}</SelectItem>
-                      </SelectContent>
+                  <Label className="text-base font-semibold flex items-center gap-1"><Languages className="h-5 w-5"/>{t('settings.language.label')}</Label>
+                  <Select value={selectedAppLanguage} onValueChange={(value) => handleAppLanguageChange(value as Language)} dir={dir}>
+                    <SelectTrigger className="w-full" aria-label={t('settings.language.label') as string}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">{t('settings.language.english')}</SelectItem>
+                      <SelectItem value="fa">{t('settings.language.persian')}</SelectItem>
+                    </SelectContent>
                   </Select>
                 </div>
-
                 <Separator />
 
+                {/* Timestamp Transcription Configuration (Whisper-like models) */}
                 <div className="space-y-4">
-                    <Label className="text-base font-semibold">{t('settings.transcriptionConfig.label') as string}</Label>
+                    <Label className="text-base font-semibold flex items-center gap-1"><Bot className="h-5 w-5" />{t('settings.timestampTaskConfig.label')}</Label>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="transcription-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.transcriptionConfig.providerLabel') as string}
-                        </Label>
-                        <Select
-                            value={transcriptionProvider}
-                            onValueChange={(value: string) => setTranscriptionProvider(value as TranscriptionProvider)}
-                            dir={dir}
-                        >
-                            <SelectTrigger id="transcription-provider-select" className="col-span-1 md:col-span-3" aria-label={t('settings.transcriptionConfig.providerLabel') as string}>
-                                <SelectValue placeholder="Select transcription provider" />
-                            </SelectTrigger>
+                        <Label htmlFor="transcription-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.transcriptionConfig.providerLabel')}</Label>
+                        <Select value={transcriptionProvider} onValueChange={(value: string) => setTranscriptionProvider(value as TranscriptionProvider)} dir={dir}>
+                            <SelectTrigger id="transcription-provider-select" className="col-span-1 md:col-span-3"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="openai">{t('settings.apiConfig.transcriptionProvider.openai')}</SelectItem>
-                                <SelectItem value="avalai">{t('settings.apiConfig.transcriptionProvider.avalai')}</SelectItem>
-                                <SelectItem value="groq">{t('settings.apiConfig.transcriptionProvider.groq')}</SelectItem>
+                                <SelectItem value="openai">{t('settings.apiConfig.provider.openai')}</SelectItem>
+                                <SelectItem value="avalai">{t('settings.apiConfig.provider.avalai')}</SelectItem>
+                                <SelectItem value="groq">{t('settings.apiConfig.provider.groq')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="transcription-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.transcriptionConfig.modelLabel') as string}
-                        </Label>
-                        <Select
-                            value={transcriptionModel}
-                            onValueChange={(value: string) => setTranscriptionModel(value as TranscriptionModelType)}
-                            dir={dir}
-                        >
-                            <SelectTrigger id="transcription-model-select" className="col-span-1 md:col-span-3" aria-label={t('settings.transcriptionConfig.modelLabel') as string}>
-                                <SelectValue placeholder="Select transcription model" />
-                            </SelectTrigger>
+                        <Label htmlFor="transcription-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.transcriptionConfig.modelLabel')}</Label>
+                        <Select value={transcriptionModel} onValueChange={(value: string) => setTranscriptionModel(value as WhisperModelType)} dir={dir}>
+                            <SelectTrigger id="transcription-model-select" className="col-span-1 md:col-span-3"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                {transcriptionModelOptions.map(model => (
-                                    <SelectItem key={model} value={model}>{model}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                        {t('settings.apiConfig.defaultLanguage')}
-                        </Label>
-                        <Select
-                            value={defaultTranscriptionLanguage}
-                            onValueChange={(value) => setDefaultTranscriptionLanguage(value as LanguageCode | "auto-detect")}
-                            dir={dir}
-                        >
-                            <SelectTrigger className="col-span-1 md:col-span-3" id="default-language-select" aria-label={t('settings.apiConfig.defaultLanguage') as string}>
-                                <SelectValue placeholder="Select default transcription language" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {LANGUAGE_OPTIONS.map((langOpt) => (
-                                <SelectItem key={langOpt.value} value={langOpt.value}>
-                                    {langOpt.label}
-                                </SelectItem>
-                                ))}
+                                {transcriptionModelOptions.map(model => (<SelectItem key={model} value={model}>{model}</SelectItem>))}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
-
                 <Separator />
 
+                {/* Cue/Slice Transcription Configuration (LLMs like Gemini, GPT) */}
                 <div className="space-y-4">
-                    <Label className="text-base font-semibold">{t('settings.llmConfig.label') as string}</Label>
+                    <Label className="text-base font-semibold flex items-center gap-1"><Bot className="h-5 w-5" />{t('settings.cueSliceTaskConfig.label')}</Label>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="llm-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.llmConfig.providerLabel') as string}
-                        </Label>
-                        <Select
-                            value={llmProvider}
-                            onValueChange={(value: string) => setLlmProvider(value as LLMProviderType)}
-                            dir={dir}
-                        >
-                            <SelectTrigger id="llm-provider-select" className="col-span-1 md:col-span-3" aria-label={t('settings.llmConfig.providerLabel') as string}>
-                                <SelectValue placeholder="Select LLM provider" />
-                            </SelectTrigger>
+                        <Label htmlFor="llm-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.llmConfig.providerLabel')}</Label>
+                        <Select value={llmProvider} onValueChange={(value: string) => setLlmProvider(value as LLMProviderType)} dir={dir}>
+                            <SelectTrigger id="llm-provider-select" className="col-span-1 md:col-span-3"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="openai">{t('settings.apiConfig.transcriptionProvider.openai')}</SelectItem>
-                                <SelectItem value="avalai">{t('settings.apiConfig.transcriptionProvider.avalai')}</SelectItem>
-                                <SelectItem value="groq">{t('settings.apiConfig.transcriptionProvider.groq')}</SelectItem>
+                                <SelectItem value="googleai">{t('settings.apiConfig.provider.googleai')}</SelectItem>
+                                <SelectItem value="openai">{t('settings.apiConfig.provider.openai')}</SelectItem>
+                                <SelectItem value="avalai">{t('settings.apiConfig.provider.avalai')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="llm-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.llmConfig.modelLabel') as string}
-                        </Label>
-                        <Select
-                            value={llmModel}
-                            onValueChange={(value: string) => setLlmModel(value as LLMModelType)}
-                            dir={dir}
-                        >
-                            <SelectTrigger id="llm-model-select" className="col-span-1 md:col-span-3" aria-label={t('settings.llmConfig.modelLabel') as string}>
-                                <SelectValue placeholder="Select LLM model" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {llmModelOptions.map(model => (
-                                    <SelectItem key={model} value={model}>{model}</SelectItem>
-                                ))}
-                            </SelectContent>
+                        <Label htmlFor="llm-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.llmConfig.modelLabel')}</Label>
+                        <Select value={llmModel} onValueChange={(value: string) => setLlmModel(value as LLMModelType)} dir={dir}>
+                            <SelectTrigger id="llm-model-select" className="col-span-1 md:col-span-3"><SelectValue /></SelectTrigger>
+                            <SelectContent>{llmModelOptions.map(model => (<SelectItem key={model} value={model}>{model}</SelectItem>))}</SelectContent>
                         </Select>
                     </div>
                 </div>
+                <Separator />
+
+                {/* Default Language for AI Tasks */}
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.defaultLanguage')}</Label>
+                    <Select value={defaultTranscriptionLanguage} onValueChange={(value) => setDefaultTranscriptionLanguage(value as LanguageCode | "auto-detect")} dir={dir}>
+                        <SelectTrigger className="col-span-1 md:col-span-3" id="default-language-select"><SelectValue /></SelectTrigger>
+                        <SelectContent>{LANGUAGE_OPTIONS.map((langOpt) => (<SelectItem key={langOpt.value} value={langOpt.value}>{langOpt.label}</SelectItem>))}</SelectContent>
+                    </Select>
+                </div>
+                <Separator />
                 
-                <Separator />
-
+                {/* API Key Management */}
                 <div className="space-y-4">
-                    <Label className="text-base font-semibold">{t('settings.apiKeyManagement.label') as string}</Label>
+                    <Label className="text-base font-semibold">{t('settings.apiKeyManagement.label')}</Label>
+                    {/* Google API Key */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                        <Label htmlFor="google-api-key-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.googleApiKeyLabel')}</Label>
+                        <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                            <Input id="google-api-key-input" type={showGoogleApiKey ? 'text' : 'password'} value={googleApiKey} onChange={(e) => setGoogleApiKey(e.target.value)} className="flex-grow" placeholder="AIzaSy..." aria-label={t('settings.apiKeyManagement.googleApiKeyLabel') as string} dir={dir}/>
+                            <Button variant="ghost" size="icon" onClick={() => setShowGoogleApiKey(!showGoogleApiKey)}>{showGoogleApiKey ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
+                        </div>
+                    </div>
                     {/* OpenAI Token */}
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="openai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.apiKeyManagement.openAITokenLabel') as string}
-                        </Label>
+                        <Label htmlFor="openai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.openAITokenLabel')}</Label>
                         <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                            <Input
-                                id="openai-token-input"
-                                type={showOpenAIToken ? 'text' : 'password'}
-                                value={openAIToken}
-                                onChange={(e) => setOpenAIToken(e.target.value)}
-                                className="flex-grow"
-                                placeholder="sk-..."
-                                aria-label={t('settings.apiKeyManagement.openAITokenLabel') as string}
-                                dir={dir}
-                            />
-                            <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)} aria-label={showOpenAIToken ? `Hide OpenAI Token` : `Show OpenAI Token`}>
-                                {showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                            </Button>
+                            <Input id="openai-token-input" type={showOpenAIToken ? 'text' : 'password'} value={openAIToken} onChange={(e) => setOpenAIToken(e.target.value)} className="flex-grow" placeholder="sk-..." aria-label={t('settings.apiKeyManagement.openAITokenLabel') as string} dir={dir}/>
+                            <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)}>{showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
                         </div>
                     </div>
-                    {/* AvalAI Token */}
+                    {/* AvalAI Token & Base URL */}
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="avalai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.apiKeyManagement.avalaiTokenLabel') as string}
-                        </Label>
+                        <Label htmlFor="avalai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiTokenLabel')}</Label>
                         <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                            <Input
-                                id="avalai-token-input"
-                                type={showAvalAIToken ? 'text' : 'password'}
-                                value={avalaiToken}
-                                onChange={(e) => setAvalaiToken(e.target.value)}
-                                className="flex-grow"
-                                placeholder={t('settings.apiConfig.avalaiTokenPlaceholder') as string}
-                                aria-label={t('settings.apiKeyManagement.avalaiTokenLabel') as string}
-                                dir={dir}
-                            />
-                            <Button variant="ghost" size="icon" onClick={() => setShowAvalAIToken(!showAvalAIToken)} aria-label={showAvalAIToken ? `Hide AvalAI Token` : `Show AvalAI Token`}>
-                                {showAvalAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                            </Button>
+                            <Input id="avalai-token-input" type={showAvalAIToken ? 'text' : 'password'} value={avalaiToken} onChange={(e) => setAvalaiToken(e.target.value)} className="flex-grow" placeholder={t('settings.apiConfig.avalaiTokenPlaceholder') as string} aria-label={t('settings.apiKeyManagement.avalaiTokenLabel') as string} dir={dir}/>
+                            <Button variant="ghost" size="icon" onClick={() => setShowAvalAIToken(!showAvalAIToken)}>{showAvalAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
                         </div>
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                        <Label htmlFor="avalai-baseurl-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiBaseUrlLabel')}</Label>
+                        <Input id="avalai-baseurl-input" type="url" value={avalaiBaseUrl} onChange={(e) => setAvalaiBaseUrl(e.target.value)} className="col-span-1 md:col-span-3" placeholder="https://api.avalai.ir/v1" aria-label={t('settings.apiKeyManagement.avalaiBaseUrlLabel') as string} dir={dir}/>
                     </div>
                     {/* Groq Token */}
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="groq-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.apiKeyManagement.groqTokenLabel') as string}
-                        </Label>
+                        <Label htmlFor="groq-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.groqTokenLabel')}</Label>
                         <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                            <Input
-                                id="groq-token-input"
-                                type={showGroqToken ? 'text' : 'password'}
-                                value={groqToken}
-                                onChange={(e) => setGroqToken(e.target.value)}
-                                className="flex-grow"
-                                placeholder="gsk_..."
-                                aria-label={t('settings.apiKeyManagement.groqTokenLabel') as string}
-                                dir={dir}
-                            />
-                            <Button variant="ghost" size="icon" onClick={() => setShowGroqToken(!showGroqToken)} aria-label={showGroqToken ? `Hide Groq Token` : `Show Groq Token`}>
-                                {showGroqToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                            </Button>
+                            <Input id="groq-token-input" type={showGroqToken ? 'text' : 'password'} value={groqToken} onChange={(e) => setGroqToken(e.target.value)} className="flex-grow" placeholder="gsk_..." aria-label={t('settings.apiKeyManagement.groqTokenLabel') as string} dir={dir}/>
+                            <Button variant="ghost" size="icon" onClick={() => setShowGroqToken(!showGroqToken)}>{showGroqToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
                         </div>
                     </div>
                 </div>
-                
                 <Separator />
                 
+                {/* Advanced Options */}
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="show-advanced-options" className={cn("md:text-end font-semibold text-base", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.apiConfig.advancedOptions.toggleLabel') as string}
-                        </Label>
-                        <div className="col-span-1 md:col-span-3 flex items-center">
-                            <Switch
-                                id="show-advanced-options"
-                                checked={showAdvancedOptions}
-                                onCheckedChange={setShowAdvancedOptions}
-                                aria-label={t('settings.apiConfig.advancedOptions.toggleAriaLabel') as string}
-                            />
-                        </div>
+                        <Label htmlFor="show-advanced-options" className={cn("md:text-end font-semibold text-base", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.advancedOptions.toggleLabel')}</Label>
+                        <div className="col-span-1 md:col-span-3 flex items-center"><Switch id="show-advanced-options" checked={showAdvancedOptions} onCheckedChange={setShowAdvancedOptions}/></div>
                     </div>
-
                     {showAdvancedOptions && (
                         <>
                         <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                            <Label htmlFor="temperature" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.apiConfig.advancedOptions.temperatureLabel') as string}
-                            </Label>
-                            <Input
-                            id="temperature"
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="1"
-                            value={temperature}
-                            onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                            className="col-span-1 md:col-span-3"
-                            aria-label={t('settings.apiConfig.advancedOptions.temperatureAriaLabel') as string}
-                            dir={dir}
-                            />
+                            <Label htmlFor="temperature" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.advancedOptions.temperatureLabel')}</Label>
+                            <Input id="temperature" type="number" step="0.1" min="0" max="1" value={temperature} onChange={(e) => setTemperature(parseFloat(e.target.value))} className="col-span-1 md:col-span-3" dir={dir}/>
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                            <Label htmlFor="max-segment-duration" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>
-                            {t('settings.apiConfig.advancedOptions.maxSegmentDurationLabel') as string}
-                            </Label>
-                            <Input
-                            id="max-segment-duration"
-                            type="number"
-                            step="1"
-                            min={4} // Set minimum to 4
-                            max={360} // Set maximum to 360
-                            value={Math.max(4, Math.min(360, maxSegmentDuration))} // Display validated value
-                            onChange={(e) => setMaxSegmentDuration(parseInt(e.target.value, 10))}
-                            className="col-span-1 md:col-span-3"
-                            aria-label={t('settings.apiConfig.advancedOptions.maxSegmentDurationAriaLabel') as string}
-                            dir={dir}
-                            />
+                            <Label htmlFor="max-segment-duration" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.advancedOptions.maxSegmentDurationLabel')}</Label>
+                            <Input id="max-segment-duration" type="number" step="1" min={4} max={360} value={maxSegmentDuration} onChange={(e) => setMaxSegmentDuration(parseInt(e.target.value, 10))} className="col-span-1 md:col-span-3" dir={dir}/>
                         </div>
                         </>
                     )}
                 </div>
-
                 <Separator />
 
+                {/* Cheatsheet & Credits */}
                 <div className="py-2">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      onClose(); // Close settings dialog first
-                      // Assuming CheatsheetDialog is managed by parent state, this will trigger it
-                      // For direct control, a callback prop would be needed.
-                      // For now, rely on parent component re-rendering to open cheatsheet if needed.
-                      // Or, pass a prop to open cheatsheet: openCheatsheetDialog();
-                      addLog("Cheatsheet button clicked from settings.", "debug");
-                    }}
-                  >
+                  <Button variant="outline" className="w-full" onClick={() => { onClose(); addLog("Cheatsheet button clicked from settings.", "debug"); /* Parent should handle opening cheatsheet */ }}>
                     <HelpCircle className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} />
                     {t('settings.cheatsheet.button')}
                   </Button>
                 </div>
-
                 <Separator />
-
                 <div>
                     <h3 className="text-lg font-medium mb-3">{t('settings.credits.title')}</h3>
                     <div className="text-sm text-muted-foreground space-y-2">
-                         <p className="font-medium">{t('settings.credits.builtWith')}</p>
+                        <p className="font-medium">{t('settings.credits.builtWith')}</p>
                         <ul className="list-disc list-inside ps-5 space-y-1">
-                            <li>Next.js by Vercel</li>
-                            <li>React</li>
-                            <li>ShadCN UI Components</li>
-                            <li>Tailwind CSS</li>
-                            <li>OpenAI API for transcription</li>
-                            <li>AvalAI API for transcription</li>
-                            <li>Groq API for transcription</li>
+                            <li>Next.js, React, ShadCN UI, Tailwind CSS</li>
+                            <li>Genkit, Google AI, OpenAI API, AvalAI API, Groq API</li>
                          </ul>
-                        <p className="pt-2">
-                            {t('settings.credits.codeDevelopedWith') as string} <a href="https://firebase.google.com/docs/studio" target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>Firebase Studio</a>.
-                        </p>
-                        <p>
-                            {t('settings.credits.originalConceptBy') as string} <a href='https://github.com/moaminsharifi' target='_blank' rel='noopener noreferrer follow' className='underline hover:text-primary'>Amin Sharifi (moaminsharifi)</a>.
-                        </p>
-                        <p className="pt-2">
-                          {t('settings.credits.repository') as string} <a href='https://github.com/moaminsharifi/subtitle-flow' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>github.com/moaminsharifi/subtitle-flow</a>
-                        </p>
-                        <p>
-                          {t('settings.credits.website') as string} <a href='https://subtitile-flow.moaminsharifi.com/' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>subtitile-flow.moaminsharifi.com</a>
-                        </p>
+                        <p className="pt-2">{t('settings.credits.codeDevelopedWith') as string} <a href="https://firebase.google.com/docs/studio" target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>Firebase Studio</a>.</p>
+                        <p>{t('settings.credits.originalConceptBy') as string} <a href='https://github.com/moaminsharifi' target='_blank' rel='noopener noreferrer follow' className='underline hover:text-primary'>Amin Sharifi (moaminsharifi)</a>.</p>
+                        <p className="pt-2">{t('settings.credits.repository') as string} <a href='https://github.com/moaminsharifi/subtitle-flow' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>github.com/moaminsharifi/subtitle-flow</a></p>
+                        <p>{t('settings.credits.website') as string} <a href='https://subtitile-flow.moaminsharifi.com/' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>subtitile-flow.moaminsharifi.com</a></p>
                     </div>
                 </div>
               </div>
@@ -559,14 +443,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
           </div>
 
           <DialogFooter className="mt-auto pt-4 border-t border-border">
-            <DialogClose asChild>
-              <Button type="button" variant="outline" onClick={() => addLog("Settings changes cancelled.", "debug")}>
-                {t('settings.buttons.cancel')}
-              </Button>
-            </DialogClose>
-            <Button type="button" onClick={handleSave}>
-              {t('settings.buttons.save')}
-            </Button>
+            <DialogClose asChild><Button type="button" variant="outline" onClick={() => addLog("Settings changes cancelled.", "debug")}>{t('settings.buttons.cancel')}</Button></DialogClose>
+            <Button type="button" onClick={handleSave}>{t('settings.buttons.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

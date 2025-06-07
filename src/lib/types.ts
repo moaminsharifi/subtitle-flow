@@ -23,41 +23,61 @@ export interface SubtitleTrack {
   entries: SubtitleEntry[];
 }
 
-// For OpenAI's verbose_json response
 export interface Segment {
-  id?: number; // Optional, as we mainly care about start, end, text
-  start: number; // Start time of the segment in seconds
-  end: number;   // End time of the segment in seconds
-  text: string;  // Transcribed text of the segment
+  id?: number;
+  start: number;
+  end: number;
+  text: string;
 }
-
 
 export type ToastFn = (message: string, type: 'info' | 'error' | 'warn' | 'success' | 'debug') => void;
 
-export type TranscriptionModelType = 'whisper-1' | 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe'| 'whisper-large-v3'| 'whisper-large-v3-turbo';
-export type OpenAIModelType = TranscriptionModelType; // Alias for backward compatibility or specific OpenAI usage
-export type Theme = 'light' | 'dark' | 'system';
-export type Language = 'en' | 'fa'; // Consider adding more supported UI languages
-export type TranscriptionProvider = 'openai' | 'avalai' | 'groq';
-export type LLMProviderType = TranscriptionProvider; // For now, LLM providers are the same as transcription providers
+// Model Types
+export const OpenAIWhisperModels = ['whisper-1'] as const;
+export const AvalAIWhisperModels = ['whisper-1'] as const; // Same model name, handled by AvalAI config
+export const GroqWhisperModels = ['whisper-large-v3'] as const;
 
-export const OpenAIAvalAILLMModels = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'] as const;
-export const GroqLLMModels = ['llama-3.1-8b-instant'] as const;
-export type LLMModelType = typeof OpenAIAvalAILLMModels[number] | typeof GroqLLMModels[number];
+export type WhisperModelType = 
+  | typeof OpenAIWhisperModels[number]
+  | typeof AvalAIWhisperModels[number]
+  | typeof GroqWhisperModels[number];
+
+export const GoogleGeminiLLModels = ['gemini-1.5-pro-latest', 'gemini-1.5-flash-latest'] as const; // Using known available models
+export const OpenAIGPTModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'] as const;
+export const AvalAIGPTModels = OpenAIGPTModels; // Same models, handled by AvalAI config
+
+export type GPTStyleLLMType = 
+  | typeof OpenAIGPTModels[number]
+  | typeof AvalAIGPTModels[number];
+
+export type TranscriptionModelType = WhisperModelType; // For models used in 'timestamp' task
+export type LLMModelType = typeof GoogleGeminiLLModels[number] | GPTStyleLLMType; // For models in 'cue_slice' task
+
+// Provider Types
+export type TranscriptionProvider = 'openai' | 'avalai' | 'groq'; // Providers for timestamp task
+export type LLMProviderType = 'googleai' | 'openai' | 'avalai'; // Providers for cue_slice task
+
+export type Theme = 'light' | 'dark' | 'system';
+export type Language = 'en' | 'fa';
 
 export interface AppSettings {
   openAIToken?: string;
-  groqToken?: string; 
-  avalaiToken?: string; 
+  avalaiToken?: string;
+  avalaiBaseUrl?: string; // Added for AvalAI
+  groqToken?: string;
+  googleApiKey?: string; // Added for Google AI
+
   transcriptionProvider?: TranscriptionProvider;
-  llmProvider?: LLMProviderType; 
-  transcriptionModel?: OpenAIModelType; 
-  llmModel?: LLMModelType; 
+  transcriptionModel?: TranscriptionModelType;
+
+  llmProvider?: LLMProviderType;
+  llmModel?: LLMModelType;
+
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
-  temperature?: number;
-  prompt?: string;
+  temperature?: number; // General temperature, contextually applied
+  prompt?: string; // General prompt, contextually applied
   theme?: Theme;
-  maxSegmentDuration?: number; 
+  maxSegmentDuration?: number;
   language?: Language;
 }
 
@@ -131,19 +151,26 @@ export interface LogEntry {
   type: 'info' | 'error' | 'warn' | 'success' | 'debug';
 }
 
+// Keys for localStorage
 export const THEME_KEY = 'app-theme';
 export const LANGUAGE_KEY = 'app-language';
 export const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcription-language';
+
 export const TRANSCRIPTION_PROVIDER_KEY = 'app-settings-transcription-provider';
-export const LLM_PROVIDER_KEY = 'app-settings-llm-provider'; // New key for LLM Provider
 export const TRANSCRIPTION_MODEL_KEY = 'app-settings-transcription-model';
+
+export const LLM_PROVIDER_KEY = 'app-settings-llm-provider';
 export const LLM_MODEL_KEY = 'app-settings-llm-model';
+
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
+export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url'; // Added for AvalAI
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
-export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';
+export const GOOGLE_API_KEY_KEY = 'app-settings-google-api-key'; // Added for Google
 
-// AudioSegment interface for splitting audio
+export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';
+export const TEMPERATURE_KEY = 'app-settings-temperature';
+
 export interface AudioSegment {
   startTime: number;
   endTime: number;
