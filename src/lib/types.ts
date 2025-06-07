@@ -57,22 +57,11 @@ export const AvalAIGeminiBasedModels = [
 ] as const;
 
 export const OpenAIGPTModels = [
-  'gpt-4o',
-  'gpt-4o-mini',
-  'gpt-3.5-turbo',
-  'gpt-4.1',
-  'gpt-4.1-mini',
-  'gpt-4.1-nano',
-  'o1-pro',
-  'o3',
-  'gpt-4o-transcribe', // Added for specific transcription tasks via chat-like interface
-  'gpt-4o-mini-transcribe', // Added for specific transcription tasks
+  'gpt-4o-transcribe',
+  'gpt-4o-mini-transcribe',
 ] as const;
 
 export const AvalAIOpenAIBasedGPTModels = [
-  'gpt-4o',
-  'gpt-4o-mini',
-  'o1-pro',
   'gpt-4o-transcribe',
   'gpt-4o-mini-transcribe',
 ] as const;
