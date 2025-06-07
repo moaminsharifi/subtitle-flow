@@ -7,7 +7,7 @@ import {
   LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_MODEL_KEY, TRANSCRIPTION_PROVIDER_KEY, 
   LLM_MODEL_KEY, LLM_PROVIDER_KEY,
-  OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY, // Added GROQ_TOKEN_KEY back
+  OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY, 
   MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY 
 } from '@/lib/types';
 // MediaUploader is no longer directly used here for initial upload
@@ -299,7 +299,7 @@ export default function SubtitleSyncPage() {
       transcriptionModel: (localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null) || 'whisper-1',
       
       llmProvider: (localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null) || 'openai',
-      llmModel: (localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null) || 'gpt-4o-mini',
+      llmModel: (localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null) || 'gpt-4o-mini-transcribe',
       
       defaultTranscriptionLanguage: (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect",
       temperature: parseFloat(localStorage.getItem(TEMPERATURE_KEY) || '0.7'),
@@ -333,13 +333,13 @@ export default function SubtitleSyncPage() {
 
     const appSettings = getAppSettings();
     const providerForCueSlice = appSettings.llmProvider || 'openai'; 
-    const modelForCueSlice = appSettings.llmModel || 'gpt-4o-mini'; 
+    const modelForCueSlice = appSettings.llmModel || 'gpt-4o-mini-transcribe'; 
 
     if (providerForCueSlice === 'openai' && !appSettings.openAIToken) {
       toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.openAITokenMissingDescription') as string, 'error'); return;
     }
-    if (providerForCueSlice === 'avalai_openai' && !appSettings.avalaiToken) { // Changed from 'avalai'
+    if (providerForCueSlice === 'avalai_openai' && !appSettings.avalaiToken) { 
       toast({ title: t('toast.avalaiTokenMissing') as string, description: t('toast.avalaiTokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.avalaiTokenMissingDescription') as string, 'error'); return;
     }
@@ -347,7 +347,7 @@ export default function SubtitleSyncPage() {
       toast({ title: t('toast.googleApiKeyMissing') as string, description: t('toast.googleApiKeyMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.googleApiKeyMissingDescription') as string, 'error'); return;
     }
-    if (providerForCueSlice === 'avalai_gemini' && !appSettings.googleApiKey) { // For AvalAI Gemini, still check Google API key as per current setup
+    if (providerForCueSlice === 'avalai_gemini' && !appSettings.googleApiKey) { 
         toast({ title: t('toast.googleApiKeyMissingForAvalAI') as string, description: t('toast.googleApiKeyMissingForAvalAIDescription') as string, variant: "destructive" });
         addLog(t('toast.googleApiKeyMissingForAvalAIDescription') as string, 'error'); return;
     }
@@ -419,7 +419,7 @@ export default function SubtitleSyncPage() {
       toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.openAITokenMissingDescription') as string, 'error'); return;
     }
-    if (providerForFull === 'avalai_openai' && !appSettings.avalaiToken) { // Changed from 'avalai'
+    if (providerForFull === 'avalai_openai' && !appSettings.avalaiToken) { 
       toast({ title: t('toast.avalaiTokenMissing') as string, description: t('toast.avalaiTokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.avalaiTokenMissingDescription') as string, 'error'); return;
     }
@@ -570,7 +570,9 @@ export default function SubtitleSyncPage() {
     return !!entryTranscriptionLoading[entryId];
   };
 
-  const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription || isAnyTranscriptionLoading;
+  // Refined editorDisabled: true if fundamental conditions for editing are not met (no media/track or full transcription is running)
+  const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription;
+
 
   const handleProceedToEdit = useCallback(() => {
     if (!mediaFile) {
@@ -727,15 +729,15 @@ export default function SubtitleSyncPage() {
                 setEditorLLMLanguage={setEditorLLMLanguage} 
                 mediaFile={mediaFile}
                 isGeneratingFullTranscription={isGeneratingFullTranscription}
-                isAnyTranscriptionLoading={isAnyTranscriptionLoading}
+                isAnyTranscriptionLoading={isAnyTranscriptionLoading} // Used to disable actions while any AI task runs
                 activeTrack={activeTrack}
                 handleSubtitleChange={handleSubtitleChange}
                 handleSubtitleAdd={handleSubtitleAdd}
                 handleSubtitleDelete={handleSubtitleDelete}
                 handleRegenerateTranscription={handleRegenerateTranscription}
-                isEntryTranscribing={isEntryTranscribing}
+                isEntryTranscribing={isEntryTranscribing} // For specific entry loading state
                 currentPlayerTime={currentPlayerTime}
-                editorDisabled={editorDisabled}
+                editorDisabled={editorDisabled} // Global disable (no media/track, full transcription)
                 handleGoToUpload={handleGoToUpload}
                 handleSeekPlayer={handleSeekPlayer}
                 handleProceedToExport={handleProceedToExport}

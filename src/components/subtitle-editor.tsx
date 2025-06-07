@@ -12,44 +12,42 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Trash2, PlusCircle, CaptionsIcon, Wand2, Loader2, PlayCircle, Languages } from 'lucide-react';
 import type { SubtitleEntry, SubtitleTrack } from '@/lib/types';
 import { LANGUAGE_OPTIONS } from '@/lib/types'; 
+import { useTranslation } from '@/contexts/LanguageContext';
+
 
 interface SubtitleEditorProps {
-  LLM_PROVIDER_KEY: string | null; // Add LLM provider key
+  LLM_PROVIDER_KEY: string | null; 
   activeTrack: SubtitleTrack | null;
   onSubtitleChange: (entryId: string, newEntryData: Partial<Omit<SubtitleEntry, 'id'>>) => void;
   onSubtitleAdd: () => void;
   onSubtitleDelete: (entryId: string) => void;
   onRegenerateTranscription: (entryId: string) => void;
-  isEntryTranscribing: (entryId: string) => boolean;
-  isAnyTranscriptionLoading?: boolean;
+  isEntryTranscribing: (entryId: string) => boolean; // Indicates if a specific entry is being transcribed
+  isAnyTranscriptionLoading?: boolean; // Indicates if any AI task (full or segment) is running
   currentTime: number;
-  disabled?: boolean; // General disable state for editor
-  onTranslateSubtitles: (targetLanguage: string) => Promise<void>; // Add translation function
+  disabled?: boolean; // General disable state for editor (e.g., no media, or full transcription running)
+  onTranslateSubtitles: (targetLanguage: string) => Promise<void>; 
+  handleSeekPlayer: (timeInSeconds: number) => void;
 }
 
-// const EDITOR_WINDOW_SECONDS = 5; // Show 5 seconds before and 5 after current time - No longer needed with full pagination
 
-const ENTRIES_PER_PAGE = 100; // Number of entries to display per page
+const ENTRIES_PER_PAGE = 100; 
 
-const MIN_SLICE_DURATION = 4; // Minimum duration in seconds
-const MAX_SLICE_DURATION = 360; // Maximum duration in seconds (6 minutes)
-
-// SubtitleEditor component definition
 export function SubtitleEditor({
-  LLM_PROVIDER_KEY, // Destructure LLM provider key
+  LLM_PROVIDER_KEY, 
   activeTrack,
   onSubtitleChange,
   onSubtitleAdd,
   onSubtitleDelete,
   onRegenerateTranscription,
   isEntryTranscribing,
-  isAnyTranscriptionLoading,
+  isAnyTranscriptionLoading, // This prop will be used to disable general interactions
   currentTime,
- disabled,
-  onTranslateSubtitles, // Destructure translation function
+  disabled, // This prop is for fundamental disabling (no media/track or full transcription)
+  onTranslateSubtitles, 
   handleSeekPlayer,
 }: SubtitleEditorProps) {
-
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleFieldChange = (entryId: string, field: keyof Omit<SubtitleEntry, 'id'>, value: string | number) => {
@@ -69,9 +67,8 @@ export function SubtitleEditor({
   const pagedEntries = useMemo(() => {
     if (!activeTrack) return [];
     return activeTrack.entries.slice(startIndex, endIndex);
-  }, [activeTrack, startIndex, endIndex]); // Added startIndex and endIndex to dependencies
+  }, [activeTrack, startIndex, endIndex]); 
 
-  // This was `entriesToDisplay`, changed to `pagedEntries` to reflect the pagination
   const entriesToDisplay = pagedEntries;
 
 
@@ -81,16 +78,26 @@ export function SubtitleEditor({
         <CardTitle className="flex items-center justify-between text-xl">
           <div className="flex items-center gap-2">
             <CaptionsIcon className="h-6 w-6 text-primary"/>
-            Subtitle Editor {activeTrack ? `(${activeTrack.fileName})` : ''}
+            {t('subtitleEditor.title') as string} {activeTrack ? `(${activeTrack.fileName})` : ''}
           </div>
-          <Button onClick={onSubtitleAdd} size="sm" disabled={disabled || isAnyTranscriptionLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground" aria-label="Add new subtitle cue">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add New
+          <Button 
+            onClick={onSubtitleAdd} 
+            size="sm" 
+            disabled={disabled || isAnyTranscriptionLoading} // Disable if globally disabled OR any AI task is running
+            className="bg-accent hover:bg-accent/90 text-accent-foreground" 
+            aria-label={t('subtitleEditor.button.addNew') as string}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" /> {t('subtitleEditor.button.addNew') as string}
           </Button>
-          {/* One-Click Translate Button */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" disabled={disabled || isAnyTranscriptionLoading || !activeTrack || !LLM_PROVIDER_KEY} className="bg-blue-500 hover:bg-blue-600 text-white" aria-label="Translate all subtitles">
-                <Languages className="mr-2 h-4 w-4" /> Translate All
+              <Button 
+                size="sm" 
+                disabled={disabled || isAnyTranscriptionLoading || !activeTrack || !LLM_PROVIDER_KEY} 
+                className="bg-blue-500 hover:bg-blue-600 text-white" 
+                aria-label="Translate all subtitles"
+              >
+                <Languages className="mr-2 h-4 w-4" /> {t('subtitleEditor.button.translateAll') as string || "Translate All"}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
@@ -108,38 +115,54 @@ export function SubtitleEditor({
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden p-0">
         <ScrollArea className="h-full p-4">
-          <ScrollBar orientation="vertical" /> {/* Ensure vertical scroll bar */}
-          {disabled && !activeTrack && (
+          <ScrollBar orientation="vertical" />
+          
+          {disabled && ( // Global disable (no media, no track, or full transcription)
              <div className="flex items-center justify-center h-full">
                 <p className="text-muted-foreground text-center">
-                    Upload media and select a subtitle track to begin editing.
+                    {t('subtitleEditor.placeholder.noTrack') as string}
                 </p>
             </div>
           )}
-          {!disabled && activeTrack && entriesToDisplay.length === 0 && (
+
+          {!disabled && !activeTrack && ( // Editor is enabled, but no track is active
+             <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground text-center">
+                    {t('subtitleEditor.placeholder.selectActiveTrack') as string}
+                </p>
+            </div>
+          )}
+
+          {!disabled && activeTrack && entriesToDisplay.length === 0 && ( // Editor enabled, track active, but track is empty
             <div className="flex items-center justify-center h-full">
                 <p className="text-muted-foreground">
-                    No subtitles found or currently displayed.
+                    {t('subtitleEditor.placeholder.emptyTrack') as string}
                 </p>
             </div>
           )}
+
           {!disabled && activeTrack && entriesToDisplay.length > 0 && (
             <div className="space-y-4">
               {entriesToDisplay.map((entry, index) => {
                 const isActiveInPlayer = currentTime >= entry.startTime && currentTime <= entry.endTime;
-                const isTranscribingThisEntry = isEntryTranscribing(entry.id);
-                const disableRegenerate = disabled || isTranscribingThisEntry || isAnyTranscriptionLoading;
-                const entryLabel = `Subtitle entry ${index + 1 + startIndex} from ${entry.startTime.toFixed(3)}s to ${entry.endTime.toFixed(3)}s`; // Adjusted index for pagination
+                const isThisEntryTranscribing = isEntryTranscribing(entry.id);
+                // Controls for this entry are disabled if:
+                // 1. Editor is globally disabled (prop `disabled`)
+                // 2. Any AI transcription (full or other segment) is loading (`isAnyTranscriptionLoading`)
+                // 3. This specific entry is being transcribed (`isThisEntryTranscribing`)
+                const controlsDisabledForThisEntry = disabled || isAnyTranscriptionLoading || isThisEntryTranscribing;
+                
+                const entryLabel = `${t('subtitleEditor.entry.ariaBaseLabel') as string} ${index + 1 + startIndex} ${t('subtitleEditor.entry.ariaTimeLabel', {startTime: entry.startTime.toFixed(3), endTime: entry.endTime.toFixed(3)}) as string}`;
                 return (
                   <div 
                     key={entry.id} 
                     className={`p-3 border rounded-lg shadow-sm ${isActiveInPlayer ? 'ring-2 ring-primary bg-primary/5' : 'bg-card'}`}
                     aria-labelledby={`entry-label-${entry.id}`}
- >
+                  >
                     <span id={`entry-label-${entry.id}`} className="sr-only">{entryLabel}</span>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1">
-                        <label htmlFor={`start-${entry.id}`} className="text-xs font-medium text-muted-foreground">Start (s)</label>
+                        <label htmlFor={`start-${entry.id}`} className="text-xs font-medium text-muted-foreground">{t('subtitleEditor.entry.startTimeLabel') as string}</label>
                         <Input
                           id={`start-${entry.id}`}
                           type="number"
@@ -147,12 +170,12 @@ export function SubtitleEditor({
                           onChange={(e) => handleFieldChange(entry.id, 'startTime', e.target.value)}
                           step="0.001"
                           className="h-8 text-sm"
-                          disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
-                          aria-label={`Start time for ${entryLabel}`}
+                          disabled={controlsDisabledForThisEntry}
+                          aria-label={`${t('subtitleEditor.entry.startTimeLabel') as string} ${t('subtitleEditor.entry.ariaForEntry') as string} ${index + 1 + startIndex}`}
                         />
                       </div>
                       <div className="flex-1">
-                        <label htmlFor={`end-${entry.id}`} className="text-xs font-medium text-muted-foreground">End (s)</label>
+                        <label htmlFor={`end-${entry.id}`} className="text-xs font-medium text-muted-foreground">{t('subtitleEditor.entry.endTimeLabel') as string}</label>
                         <Input
                           id={`end-${entry.id}`}
                           type="number"
@@ -160,20 +183,19 @@ export function SubtitleEditor({
                           onChange={(e) => handleFieldChange(entry.id, 'endTime', e.target.value)}
                           step="0.001"
                           className="h-8 text-sm"
-                          disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
-                          aria-label={`End time for ${entryLabel}`}
+                          disabled={controlsDisabledForThisEntry}
+                          aria-label={`${t('subtitleEditor.entry.endTimeLabel') as string} ${t('subtitleEditor.entry.ariaForEntry') as string} ${index + 1 + startIndex}`}
                         />
                       </div>
                       <div className="flex self-end space-x-1">
-                        {/* Go to Timestamp Button */}
- <Button
+                        <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleSeekPlayer(entry.startTime)}
-                          aria-label={`Go to start time ${entry.startTime.toFixed(3)}s for ${entryLabel}`}
+                          aria-label={t('subtitleEditor.entry.seekPlayerAriaLabel', {startTime: entry.startTime.toFixed(3)}) as string}
                           className="text-green-500 hover:bg-green-500/10"
-                          disabled={disabled || isAnyTranscriptionLoading}
-                          title={`Go to ${entry.startTime.toFixed(3)}s`}
+                          disabled={disabled || isAnyTranscriptionLoading} // Go to time should be possible even if this entry is transcribing
+                          title={t('subtitleEditor.entry.seekPlayerTitle', {startTime: entry.startTime.toFixed(3)}) as string}
                         >
                           <PlayCircle className="h-4 w-4" />
                         </Button>
@@ -181,39 +203,39 @@ export function SubtitleEditor({
                           variant="ghost"
                           size="icon"
                           onClick={() => onRegenerateTranscription(entry.id)}
-                          aria-label={`Regenerate transcription for ${entryLabel}`}
+                          aria-label={t('subtitleEditor.entry.regenerateAriaLabel', {entryIndex: index + 1 + startIndex}) as string}
                           className="text-blue-500 hover:bg-blue-500/10"
-                          disabled={disableRegenerate}
-                          title="Regenerate transcription for this segment"
+                          disabled={controlsDisabledForThisEntry} // Disabled if this one is loading or any other AI task is loading
+                          title={t('subtitleEditor.entry.regenerateTitle') as string}
                         >
-                          {isTranscribingThisEntry ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                          {isThisEntryTranscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="icon"
                           onClick={() => onSubtitleDelete(entry.id)}
-                          aria-label={`Delete ${entryLabel}`}
+                          aria-label={t('subtitleEditor.entry.deleteAriaLabel', {entryIndex: index + 1 + startIndex}) as string}
                           className="text-destructive hover:bg-destructive/10"
-                          disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
+                          disabled={controlsDisabledForThisEntry}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
                     <div>
-                      <label htmlFor={`text-${entry.id}`} className="text-xs font-medium text-muted-foreground">Text</label>
+                      <label htmlFor={`text-${entry.id}`} className="text-xs font-medium text-muted-foreground">{t('subtitleEditor.entry.textLabel') as string}</label>
                       <Textarea
                         id={`text-${entry.id}`}
                         value={entry.text}
                         onChange={(e) => handleFieldChange(entry.id, 'text', e.target.value)}
-                        rows={entry.text.split('\\n').length > 1 ? entry.text.split('\\n').length : 2} // Adjust rows based on line breaks
+                        rows={entry.text.split('\\n').length > 1 ? entry.text.split('\\n').length : 2} 
                         className="text-sm"
-                        disabled={disabled || isTranscribingThisEntry || isAnyTranscriptionLoading}
-                        aria-label={`Text for ${entryLabel}`}
+                        disabled={controlsDisabledForThisEntry}
+                        aria-label={`${t('subtitleEditor.entry.textLabel') as string} ${t('subtitleEditor.entry.ariaForEntry') as string} ${index + 1 + startIndex}`}
                       />
                     </div>
-                    {isTranscribingThisEntry && (
-                      <Progress value={100} className="mt-2 h-2 animate-pulse" aria-label="Transcription in progress" />
+                    {isThisEntryTranscribing && (
+                      <Progress value={100} className="mt-2 h-2 animate-pulse" aria-label={t('subtitleEditor.entry.progressLabel') as string} />
                     )}
                   </div>
                 );
@@ -221,29 +243,28 @@ export function SubtitleEditor({
             </div>
           )}
         </ScrollArea>
-        {/* Pagination Controls */}
         {!disabled && activeTrack && activeTrack.entries.length > ENTRIES_PER_PAGE && (
           <div className="flex justify-center items-center gap-4 p-4 border-t">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1 || disabled || isAnyTranscriptionLoading}
-              aria-label="Go to previous page"
+              disabled={currentPage === 1 || isAnyTranscriptionLoading} // Disable pagination if any AI task is running
+              aria-label={t('subtitleEditor.pagination.previous') as string}
             >
-              Previous
+              {t('subtitleEditor.pagination.previous') as string}
             </Button>
             <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {Math.ceil(activeTrack.entries.length / ENTRIES_PER_PAGE)}
+              {t('subtitleEditor.pagination.pageInfo', {currentPage, totalPages: Math.ceil(activeTrack.entries.length / ENTRIES_PER_PAGE)})}
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(prev => Math.min(Math.ceil(activeTrack.entries.length / ENTRIES_PER_PAGE), prev + 1))}
-              disabled={currentPage === Math.ceil(activeTrack.entries.length / ENTRIES_PER_PAGE) || disabled || isAnyTranscriptionLoading}
-              aria-label="Go to next page"
+              disabled={currentPage === Math.ceil(activeTrack.entries.length / ENTRIES_PER_PAGE) || isAnyTranscriptionLoading} // Disable pagination if any AI task is running
+              aria-label={t('subtitleEditor.pagination.next') as string}
             >
-              Next
+              {t('subtitleEditor.pagination.next') as string}
             </Button>
           </div>
         )}

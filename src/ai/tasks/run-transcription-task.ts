@@ -20,7 +20,8 @@ import type {
   WhisperModelType,
   LLMModelType as GenericLLMModelType, // Keep as GenericLLMModelType for clarity when it's truly generic
   TranscriptionModelType, // For timestamp task
-  LLMModelType, // For cue/slice task
+  LLMModelType,
+  GroqWhisperModels, // For cue/slice task
   // GroqWhisperModels as GroqWhisperModelTypes // Use GroqWhisperModels directly
 } from '@/lib/types';
 import {
