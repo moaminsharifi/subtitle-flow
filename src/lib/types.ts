@@ -68,12 +68,8 @@ export const AvalAIOpenAIBasedGPTModels = [ // Models for Cue/Slice when AvalAI 
   'whisper-1',
 ] as const;
 
-export const GroqLLModels = [
-    'llama3-8b-8192',
-    'llama3-70b-8192',
-    'mixtral-8x7b-32768',
-    'gemma-7b-it',
-    'whisper-large-v3', // Allow Whisper models for text-only output via Cue/Slice
+export const GroqLLModels = [ // Models for Cue/Slice when Groq provider is selected
+    'whisper-large-v3',
     'whisper-large-v3-turbo',
 ] as const;
 
@@ -111,7 +107,6 @@ export interface AppSettings {
   theme?: Theme;
   maxSegmentDuration?: number;
   language?: Language;
-  // avalaiBaseUrl?: string; // Removed as per previous request
 }
 
 export const LANGUAGE_OPTIONS = [
@@ -199,7 +194,6 @@ export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
 export const GOOGLE_API_KEY_KEY = 'app-settings-google-api-key';
-// export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url'; // Removed
 
 export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';
 export const TEMPERATURE_KEY = 'app-settings-temperature';
@@ -244,5 +238,6 @@ export const isOpenAIGPTModel = (modelName: string): modelName is OpenAIModelTyp
 // Type guard for GroqModelType (LLMs not Whisper)
 export type GroqModelType = typeof GroqLLModels[number];
 export const isGroqLLModel = (modelName: string): modelName is GroqModelType => {
-    return (GroqLLModels as readonly string[]).includes(modelName) && !isGroqWhisperModel(modelName);
+    // For GroqLLModels, it's now restricted to Whisper variants for cue/slice as well
+    return (GroqLLModels as readonly string[]).includes(modelName) && isGroqWhisperModel(modelName);
 };
