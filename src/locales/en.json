@@ -65,7 +65,7 @@
   "settings.theme.dark": "Dark",
   "settings.theme.system": "System",
   "settings.timestampTaskConfig.label": "Timestamp Transcription Configuration (e.g., Whisper)",
-  "settings.cueSliceTaskConfig.label": "Cue/Slice Transcription Configuration (e.g., Gemini, GPT)",
+  "settings.cueSliceTaskConfig.label": "Cue/Slice Transcription Configuration (e.g., Gemini, GPT, Llama)",
   "settings.transcriptionConfig.providerLabel": "Provider for Timestamp Task",
   "settings.transcriptionConfig.modelLabel": "Model for Timestamp Task",
   "settings.llmConfig.providerLabel": "Provider for Cue/Slice Task",
@@ -267,4 +267,3 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
-

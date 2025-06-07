@@ -13,11 +13,13 @@
 import {GenerateOptions, GenerateResult, genkit, type ModelReference} from 'genkit';
 import {googleAI, gemini15Pro, gemini15Flash} from '@genkit-ai/googleai';
 import {openAI as genkitOpenAI} from 'genkitx-openai';
-import {groq as genkitGroq} from 'genkitx-groq';
+import {groq as genkitGroq} from 'genkitx-groq'; // Added Groq import
 import {type CandidateData} from 'genkit/generate';
 import type {
   OpenAIModelType, GroqModelType, GoogleAILLMModelType,
-  AvalAIModelType
+  AvalAIOpenAIBasedWhisperModels, // Correct type for AvalAI OpenAI-based Whisper
+  AvalAIOpenAIBasedGPTModels, // Correct type for AvalAI OpenAI-based GPT
+  AvalAIGeminiBasedModels,   // Correct type for AvalAI Gemini-based
 } from '@/lib/types';
 
 // Initialize Genkit with plugins
@@ -26,8 +28,8 @@ import type {
 const ai = genkit({
   plugins: [
     googleAI(), // GOOGLE_API_KEY from environment
-    // genkitOpenAI(), // Not configured globally if keys are client-side for direct SDK use.
-    // genkitGroq(),   // Not configured globally if keys are client-side for direct SDK use.
+    genkitOpenAI(), // For direct OpenAI and AvalAI (OpenAI compatible)
+    genkitGroq(),   // For Groq
   ],
   logLevel: 'debug',
   enableTracing: true,
@@ -43,27 +45,32 @@ export async function performGoogleAIGeneration(options: GenerateOptions): Promi
 // Helper to get a specific Google AI model reference
 // Model names should align with what's available in the `googleAI` plugin and types.ts
 export async function getGoogleAIModel(modelName: string): Promise<ModelReference<any, CandidateData, any>> {
-  switch (modelName as GoogleAILLMModelType) {
+  switch (modelName as GoogleAILLMModelType | AvalAIGeminiBasedModels) { // AvalAI Gemini models are also Google AI models
     case 'gemini-1.5-pro-latest':
       return gemini15Pro;
     case 'gemini-1.5-flash-latest':
       return gemini15Flash;
-    // Add other Google AI models as needed
+    case 'gemini-2.5-pro-preview-06-05':
+        // Assuming gemini15Pro or a more specific reference if available for 2.5 from @genkit-ai/googleai
+        return gemini15Pro; // Or map to the correct Genkit model reference
+    case 'gemini-2.5-flash-preview-05-20':
+        // Assuming gemini15Flash or a more specific reference if available for 2.5 from @genkit-ai/googleai
+        return gemini15Flash; // Or map to the correct Genkit model reference
     default:
-      console.warn(`Unsupported Google AI model: ${modelName}, defaulting to gemini-1.5-flash-latest.`);
+      console.warn(`Unsupported Google AI/AvalAI Gemini model: ${modelName}, defaulting to gemini-1.5-flash-latest.`);
       return gemini15Flash; // Fallback to a default model
   }
 }
 
 // Placeholder for getting OpenAI/AvalAI model references if Genkit flows were to use them server-side
 // For client-side, SDKs are used directly. This shows how one might structure it for Genkit.
-export async function getOpenAIModel(modelName: OpenAIModelType | AvalAIModelType): Promise<ModelReference<any, any, any>> {
+export async function getOpenAIModel(modelName: OpenAIModelType | AvalAIOpenAIBasedWhisperModels | AvalAIOpenAIBasedGPTModels): Promise<ModelReference<any, any, any>> {
   const modelId = `openai/${modelName}`;
   // @ts-ignore - Assuming 'openAI' refers to the imported plugin function
   return genkitOpenAI(modelId as any) as ModelReference<any, any, any>;
 }
 
-// Placeholder for getting Groq model references
+// Helper to get Groq model reference
 export async function getGroqModel(modelName: GroqModelType): Promise<ModelReference<any, any, any>> {
   const modelId = `groq/${modelName}`;
   // @ts-ignore - Assuming 'groq' refers to the imported plugin function

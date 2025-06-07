@@ -35,7 +35,7 @@ export type ToastFn = (message: string, type: 'info' | 'error' | 'warn' | 'succe
 // --- Model Types ---
 // Timestamp Transcription Models (typically Whisper-like)
 export const OpenAIWhisperModels = ['whisper-1'] as const;
-export const AvalAIOpenAIBasedWhisperModels = ['whisper-1'] as const; // AvalAI offering OpenAI's Whisper
+export const AvalAIOpenAIBasedWhisperModels = ['whisper-1'] as const;
 export const GroqWhisperModels = ['whisper-large-v3'] as const;
 
 export type WhisperModelType = 
@@ -47,37 +47,42 @@ export type WhisperModelType =
 export const GoogleGeminiLLModels = [
   'gemini-1.5-pro-latest', 
   'gemini-1.5-flash-latest',
-  // From user's list, owned_by: "google"
   'gemini-2.5-pro-preview-06-05',
   'gemini-2.5-flash-preview-05-20',
 ] as const;
 
-export const AvalAIGeminiBasedModels = [ // Models AvalAI might offer that are Gemini-based
+export const AvalAIGeminiBasedModels = [
   'gemini-2.5-pro-preview-06-05',
   'gemini-2.5-flash-preview-05-20',
-  // Add more relevant Gemini model IDs from the user's list if AvalAI exposes them
 ] as const;
 
 export const OpenAIGPTModels = [
   'gpt-4o', 
   'gpt-4o-mini', 
   'gpt-3.5-turbo',
-  // From user's list, owned_by: "openai"
   'gpt-4.1',
   'gpt-4.1-mini',
   'gpt-4.1-nano',
   'o1-pro', 
   'o3',
-  'gpt-4o-transcribe', // Though named transcribe, might be usable for cue/slice text gen
+  'gpt-4o-transcribe',
   'gpt-4o-mini-transcribe',
 ] as const;
 
-export const AvalAIOpenAIBasedGPTModels = [ // Models AvalAI might offer that are OpenAI GPT-based
+export const AvalAIOpenAIBasedGPTModels = [
   'gpt-4o', 
   'gpt-4o-mini',
   'o1-pro',
-  // Add more relevant GPT model IDs from user's list if AvalAI exposes them
 ] as const;
+
+export const GroqLLModels = [
+    'llama3-8b-8192',
+    'llama3-70b-8192',
+    'mixtral-8x7b-32768',
+    'gemma-7b-it',
+    // Add other relevant Groq LLM models from your list if needed
+] as const;
+
 
 // Union types for overall model categories
 export type TranscriptionModelType = WhisperModelType; // For models used in 'timestamp' task (Whisper variants)
@@ -85,11 +90,12 @@ export type LLMModelType =
   | typeof GoogleGeminiLLModels[number]
   | typeof AvalAIGeminiBasedModels[number]
   | typeof OpenAIGPTModels[number]
-  | typeof AvalAIOpenAIBasedGPTModels[number];
+  | typeof AvalAIOpenAIBasedGPTModels[number]
+  | typeof GroqLLModels[number];
 
 // --- Provider Types ---
-export type TranscriptionProvider = 'openai' | 'avalai_openai' | 'groq'; // Providers for timestamp task
-export type LLMProviderType = 'googleai' | 'openai' | 'avalai_openai' | 'avalai_gemini'; // Providers for cue_slice task
+export type TranscriptionProvider = 'openai' | 'avalai_openai' | 'groq';
+export type LLMProviderType = 'googleai' | 'openai' | 'avalai_openai' | 'avalai_gemini' | 'groq';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa';
@@ -97,8 +103,8 @@ export type Language = 'en' | 'fa';
 export interface AppSettings {
   openAIToken?: string;
   avalaiToken?: string;
-  avalaiBaseUrl?: string; // Re-added
-  groqToken?: string;
+  avalaiBaseUrl?: string;
+  groqToken?: string; // Re-added
   googleApiKey?: string;
 
   transcriptionProvider?: TranscriptionProvider;
@@ -197,8 +203,8 @@ export const LLM_MODEL_KEY = 'app-settings-llm-model';
 
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
-export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url'; // Re-added
-export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
+export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url';
+export const GROQ_TOKEN_KEY = 'app-settings-groq-token'; // Re-added
 export const GOOGLE_API_KEY_KEY = 'app-settings-google-api-key';
 
 export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';

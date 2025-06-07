@@ -65,7 +65,7 @@
   "settings.theme.dark": "تیره",
   "settings.theme.system": "سیستم",
   "settings.timestampTaskConfig.label": "پیکربندی رونویسی زمان‌دار (مانند Whisper)",
-  "settings.cueSliceTaskConfig.label": "پیکربندی رونویسی بخش/خط (مانند Gemini, GPT)",
+  "settings.cueSliceTaskConfig.label": "پیکربندی رونویسی بخش/خط (مانند Gemini، GPT، Llama)",
   "settings.transcriptionConfig.providerLabel": "ارائه‌دهنده برای رونویسی زمان‌دار",
   "settings.transcriptionConfig.modelLabel": "مدل برای رونویسی زمان‌دار",
   "settings.llmConfig.providerLabel": "ارائه‌دهنده برای رونویسی بخش/خط",
@@ -83,7 +83,7 @@
   "settings.apiConfig.provider.avalai_gemini": "آوال (مبتنی بر Gemini)",
   "settings.apiConfig.provider.groq": "Groq (گراک)",
   "settings.apiConfig.avalaiTokenPlaceholder": "کلید API آوال خود را وارد کنید",
-  "settings.apiConfig.defaultLanguage": "زبان پیش‌فرض برای وظایf هوش مصنوعی",
+  "settings.apiConfig.defaultLanguage": "زبان پیش‌فرض برای وظایف هوش مصنوعی",
   "settings.apiConfig.advancedOptions.toggleLabel": "گزینه‌های پیشرفته هوش مصنوعی",
   "settings.apiConfig.advancedOptions.toggleAriaLabel": "تغییر وضعیت گزینه‌های پیشرفته هوش مصنوعی",
   "settings.apiConfig.advancedOptions.temperatureLabel": "دما (Temperature)",
@@ -267,4 +267,3 @@
   "debugLog.buttons.clear": "پاک کردن گزارش‌ها",
   "debugLog.buttons.close": "بستن"
 }
-
