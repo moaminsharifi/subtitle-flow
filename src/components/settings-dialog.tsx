@@ -23,16 +23,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import type { 
   AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, 
-  TranscriptionProvider, LLMProviderType, LLMModelType, WhisperModelType, GPTStyleLLMType
+  TranscriptionProvider, LLMProviderType, LLMModelType, WhisperModelType
 } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
   LLM_PROVIDER_KEY, LLM_MODEL_KEY,
   OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, AVALAI_BASE_URL_KEY,
-  MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY,
-  OpenAIWhisperModels, AvalAIWhisperModels, GroqWhisperModels,
-  GoogleGeminiLLModels, OpenAIGPTModels, AvalAIGPTModels
+  MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY, DEFAULT_AVALAI_BASE_URL,
+  OpenAIWhisperModels, AvalAIOpenAIBasedWhisperModels, GroqWhisperModels,
+  GoogleGeminiLLModels, OpenAIGPTModels, AvalAIGeminiBasedModels, AvalAIOpenAIBasedGPTModels
 } from '@/lib/types';
 
 import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot } from 'lucide-react';
@@ -48,10 +48,10 @@ interface SettingsDialogProps {
 export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps) {
   const { t, language: currentAppLanguage, setLanguage: setAppLanguage, dir } = useTranslation();
 
-  // API Keys
+  // API Keys & Base URL
   const [openAIToken, setOpenAIToken] = useState('');
   const [avalaiToken, setAvalaiToken] = useState('');
-  const [avalaiBaseUrl, setAvalaiBaseUrl] = useState('https://api.avalai.ir/v1');
+  const [avalaiBaseUrl, setAvalaiBaseUrl] = useState(DEFAULT_AVALAI_BASE_URL); // Re-added
   const [groqToken, setGroqToken] = useState('');
   const [googleApiKey, setGoogleApiKey] = useState('');
 
@@ -63,10 +63,10 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   // Provider and Model selections
   const [transcriptionProvider, setTranscriptionProvider] = useState<TranscriptionProvider>('openai');
-  const [transcriptionModel, setTranscriptionModel] = useState<WhisperModelType>(OpenAIWhisperModels[0]);
+  const [transcriptionModel, setTranscriptionModel] = useState<TranscriptionModelType>(OpenAIWhisperModels[0]);
   
   const [llmProvider, setLlmProvider] = useState<LLMProviderType>('openai');
-  const [llmModel, setLlmModel] = useState<LLMModelType>(OpenAIGPTModels[0] as LLMModelType);
+  const [llmModel, setLlmModel] = useState<LLMModelType>(OpenAIGPTModels[0]);
   
   // General settings
   const [defaultTranscriptionLanguage, setDefaultTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
@@ -87,9 +87,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     else window.matchMedia('(prefers-color-scheme: dark)').matches ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
   };
 
-  const transcriptionModelOptions = useMemo((): readonly WhisperModelType[] => {
+  const transcriptionModelOptions = useMemo((): readonly TranscriptionModelType[] => {
     if (transcriptionProvider === 'openai') return OpenAIWhisperModels;
-    if (transcriptionProvider === 'avalai') return AvalAIWhisperModels;
+    if (transcriptionProvider === 'avalai_openai') return AvalAIOpenAIBasedWhisperModels;
     if (transcriptionProvider === 'groq') return GroqWhisperModels;
     return OpenAIWhisperModels; // Default
   }, [transcriptionProvider]);
@@ -97,8 +97,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const llmModelOptions = useMemo((): readonly LLMModelType[] => {
     if (llmProvider === 'googleai') return GoogleGeminiLLModels;
     if (llmProvider === 'openai') return OpenAIGPTModels;
-    if (llmProvider === 'avalai') return AvalAIGPTModels;
-    return OpenAIGPTModels as readonly LLMModelType[]; // Default
+    if (llmProvider === 'avalai_openai') return AvalAIOpenAIBasedGPTModels;
+    if (llmProvider === 'avalai_gemini') return AvalAIGeminiBasedModels;
+    return OpenAIGPTModels; // Default
   }, [llmProvider]);
 
   useEffect(() => {
@@ -107,36 +108,45 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       let logMessage = "Loaded settings: ";
       try {
         const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
-        const currentTProvider = storedTranscriptionProvider && ['openai', 'avalai', 'groq'].includes(storedTranscriptionProvider) ? storedTranscriptionProvider : 'openai';
+        const validTranscriptionProviders: TranscriptionProvider[] = ['openai', 'avalai_openai', 'groq'];
+        const currentTProvider = storedTranscriptionProvider && validTranscriptionProviders.includes(storedTranscriptionProvider) ? storedTranscriptionProvider : 'openai';
         setTranscriptionProvider(currentTProvider);
         logMessage += `Trans. Provider - ${currentTProvider}, `;
 
         const storedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
-        const currentLProvider = storedLlmProvider && ['googleai', 'openai', 'avalai'].includes(storedLlmProvider) ? storedLlmProvider : 'openai';
+        const validLlmProviders: LLMProviderType[] = ['googleai', 'openai', 'avalai_openai', 'avalai_gemini'];
+        const currentLProvider = storedLlmProvider && validLlmProviders.includes(storedLlmProvider) ? storedLlmProvider : 'openai';
         setLlmProvider(currentLProvider);
         logMessage += `LLM Provider - ${currentLProvider}, `;
 
         setOpenAIToken(localStorage.getItem(OPENAI_TOKEN_KEY) || '');
         setAvalaiToken(localStorage.getItem(AVALAI_TOKEN_KEY) || '');
-        setAvalaiBaseUrl(localStorage.getItem(AVALAI_BASE_URL_KEY) || 'https://api.avalai.ir/v1');
+        setAvalaiBaseUrl(localStorage.getItem(AVALAI_BASE_URL_KEY) || DEFAULT_AVALAI_BASE_URL); // Re-added
         setGroqToken(localStorage.getItem(GROQ_TOKEN_KEY) || '');
         setGoogleApiKey(localStorage.getItem(GOOGLE_API_KEY_KEY) || '');
 
-        const currentTranscriptionModels = 
-          currentTProvider === 'openai' ? OpenAIWhisperModels :
-          currentTProvider === 'avalai' ? AvalAIWhisperModels :
-          currentTProvider === 'groq' ? GroqWhisperModels : OpenAIWhisperModels;
-        const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as WhisperModelType | null;
-        const tModel = storedTranscriptionModel && currentTranscriptionModels.includes(storedTranscriptionModel) ? storedTranscriptionModel : currentTranscriptionModels[0];
+        // Determine current transcription models based on loaded or defaulted provider
+        let currentActualTranscriptionModels: readonly TranscriptionModelType[];
+        if (currentTProvider === 'openai') currentActualTranscriptionModels = OpenAIWhisperModels;
+        else if (currentTProvider === 'avalai_openai') currentActualTranscriptionModels = AvalAIOpenAIBasedWhisperModels;
+        else if (currentTProvider === 'groq') currentActualTranscriptionModels = GroqWhisperModels;
+        else currentActualTranscriptionModels = OpenAIWhisperModels;
+        
+        const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
+        const tModel = storedTranscriptionModel && currentActualTranscriptionModels.includes(storedTranscriptionModel as WhisperModelType) ? storedTranscriptionModel : currentActualTranscriptionModels[0];
         setTranscriptionModel(tModel);
         logMessage += `Trans. Model - ${tModel}, `;
         
-        const currentLlmModels = 
-          currentLProvider === 'googleai' ? GoogleGeminiLLModels :
-          currentLProvider === 'openai' ? OpenAIGPTModels :
-          currentLProvider === 'avalai' ? AvalAIGPTModels : OpenAIGPTModels;
+        // Determine current LLM models based on loaded or defaulted provider
+        let currentActualLlmModels: readonly LLMModelType[];
+        if (currentLProvider === 'googleai') currentActualLlmModels = GoogleGeminiLLModels;
+        else if (currentLProvider === 'openai') currentActualLlmModels = OpenAIGPTModels;
+        else if (currentLProvider === 'avalai_openai') currentActualLlmModels = AvalAIOpenAIBasedGPTModels;
+        else if (currentLProvider === 'avalai_gemini') currentActualLlmModels = AvalAIGeminiBasedModels;
+        else currentActualLlmModels = OpenAIGPTModels;
+
         const storedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
-        const lModel = storedLlmModel && (currentLlmModels as readonly string[]).includes(storedLlmModel) ? storedLlmModel : currentLlmModels[0];
+        const lModel = storedLlmModel && currentActualLlmModels.includes(storedLlmModel) ? storedLlmModel : currentActualLlmModels[0];
         setLlmModel(lModel);
         logMessage += `LLM Model - ${lModel}, `;
 
@@ -148,7 +158,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         setSelectedTheme(initialTheme);
         
         setSelectedAppLanguage((localStorage.getItem(LANGUAGE_KEY) as Language | null) || currentAppLanguage);
-        logMessage += `Default Lang - ${defaultTranscriptionLanguage}, Theme - ${initialTheme}, App Lang - ${selectedAppLanguage}, Max Seg Dur - ${maxSegmentDuration}s, Temp - ${temperature}.`;
+        logMessage += `Default Lang - ${defaultTranscriptionLanguage}, Theme - ${initialTheme}, App Lang - ${selectedAppLanguage}, Max Seg Dur - ${maxSegmentDuration}s, Temp - ${temperature}. AvalAI URL: ${avalaiBaseUrl}`;
         addLog(logMessage, "debug");
 
       } catch (error) {
@@ -158,15 +168,16 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         setTranscriptionProvider('openai');
         setTranscriptionModel(OpenAIWhisperModels[0]);
         setLlmProvider('openai');
-        setLlmModel(OpenAIGPTModels[0] as LLMModelType);
+        setLlmModel(OpenAIGPTModels[0]);
+        setAvalaiBaseUrl(DEFAULT_AVALAI_BASE_URL);
       }
     }
-  }, [isOpen, addLog, currentAppLanguage, defaultTranscriptionLanguage, maxSegmentDuration, temperature]);
+  }, [isOpen, addLog, currentAppLanguage, defaultTranscriptionLanguage, maxSegmentDuration, temperature, avalaiBaseUrl]);
 
 
   useEffect(() => {
     const currentModels = transcriptionModelOptions;
-    if (!currentModels.includes(transcriptionModel)) {
+    if (!currentModels.includes(transcriptionModel as WhisperModelType)) {
       const newModel = currentModels[0];
       setTranscriptionModel(newModel);
       addLog(`Transcription model auto-adjusted to ${newModel} due to provider change.`, "debug");
@@ -175,7 +186,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   useEffect(() => {
     const currentModels = llmModelOptions;
-    if (!(currentModels as readonly string[]).includes(llmModel)) {
+    if (!currentModels.includes(llmModel)) {
       const newModel = currentModels[0];
       setLlmModel(newModel);
       addLog(`LLM model auto-adjusted to ${newModel} due to LLM provider change.`, "debug");
@@ -213,7 +224,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       
       if (openAIToken) localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken); else localStorage.removeItem(OPENAI_TOKEN_KEY);
       if (avalaiToken) localStorage.setItem(AVALAI_TOKEN_KEY, avalaiToken); else localStorage.removeItem(AVALAI_TOKEN_KEY);
-      if (avalaiBaseUrl) localStorage.setItem(AVALAI_BASE_URL_KEY, avalaiBaseUrl); else localStorage.removeItem(AVALAI_BASE_URL_KEY);
+      if (avalaiBaseUrl) localStorage.setItem(AVALAI_BASE_URL_KEY, avalaiBaseUrl); else localStorage.setItem(AVALAI_BASE_URL_KEY, DEFAULT_AVALAI_BASE_URL); // Save or default
       if (groqToken) localStorage.setItem(GROQ_TOKEN_KEY, groqToken); else localStorage.removeItem(GROQ_TOKEN_KEY);
       if (googleApiKey) localStorage.setItem(GOOGLE_API_KEY_KEY, googleApiKey); else localStorage.removeItem(GOOGLE_API_KEY_KEY);
       
@@ -241,7 +252,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
         duration: 5000,
       });
-      addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature}) }`, 'success');
+      addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature, avalaiBaseUrl}) }`, 'success');
       onClose();
     } catch (error) {
         console.error("Error saving settings to localStorage:", error);
@@ -302,14 +313,14 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                             <SelectTrigger id="transcription-provider-select" className="col-span-1 md:col-span-3"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="openai">{t('settings.apiConfig.provider.openai')}</SelectItem>
-                                <SelectItem value="avalai">{t('settings.apiConfig.provider.avalai')}</SelectItem>
+                                <SelectItem value="avalai_openai">{t('settings.apiConfig.provider.avalai_openai')}</SelectItem>
                                 <SelectItem value="groq">{t('settings.apiConfig.provider.groq')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
                         <Label htmlFor="transcription-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.transcriptionConfig.modelLabel')}</Label>
-                        <Select value={transcriptionModel} onValueChange={(value: string) => setTranscriptionModel(value as WhisperModelType)} dir={dir}>
+                        <Select value={transcriptionModel} onValueChange={(value: string) => setTranscriptionModel(value as TranscriptionModelType)} dir={dir}>
                             <SelectTrigger id="transcription-model-select" className="col-span-1 md:col-span-3"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {transcriptionModelOptions.map(model => (<SelectItem key={model} value={model}>{model}</SelectItem>))}
@@ -329,7 +340,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                             <SelectContent>
                                 <SelectItem value="googleai">{t('settings.apiConfig.provider.googleai')}</SelectItem>
                                 <SelectItem value="openai">{t('settings.apiConfig.provider.openai')}</SelectItem>
-                                <SelectItem value="avalai">{t('settings.apiConfig.provider.avalai')}</SelectItem>
+                                <SelectItem value="avalai_openai">{t('settings.apiConfig.provider.avalai_openai_gpt')}</SelectItem>
+                                <SelectItem value="avalai_gemini">{t('settings.apiConfig.provider.avalai_gemini')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -382,7 +394,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
                         <Label htmlFor="avalai-baseurl-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiBaseUrlLabel')}</Label>
-                        <Input id="avalai-baseurl-input" type="url" value={avalaiBaseUrl} onChange={(e) => setAvalaiBaseUrl(e.target.value)} className="col-span-1 md:col-span-3" placeholder="https://api.avalai.ir/v1" aria-label={t('settings.apiKeyManagement.avalaiBaseUrlLabel') as string} dir={dir}/>
+                        <Input id="avalai-baseurl-input" type="url" value={avalaiBaseUrl} onChange={(e) => setAvalaiBaseUrl(e.target.value)} className="col-span-1 md:col-span-3" placeholder={DEFAULT_AVALAI_BASE_URL} aria-label={t('settings.apiKeyManagement.avalaiBaseUrlLabel') as string} dir={dir}/>
                     </div>
                     {/* Groq Token */}
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">

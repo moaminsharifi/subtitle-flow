@@ -1,21 +1,43 @@
+
 /**
  * @fileOverview Client-side task for transcribing audio segments using various AI providers.
- * This function directly uses SDKs for OpenAI, AvalAI, and Groq with API keys from appSettings (localStorage).
- * For Google AI, it calls a server action that uses the Genkit `ai.generate()` with the globally configured Google AI plugin.
+ * This function directly uses SDKs for OpenAI, AvalAI (OpenAI-compatible), and Groq
+ * with API keys from appSettings (localStorage).
+ * For Google AI (including AvalAI Gemini-based), it calls a server action that uses
+ * the Genkit `ai.generate()` with the globally configured Google AI plugin.
  */
 
 import { z } from 'zod';
-import type { AppSettings, Segment, LanguageCode, TranscriptionProvider, LLMProviderType, GoogleAILLMModelType, OpenAIModelType, GroqModelType, AvalAIModelType } from '@/lib/types';
+import type { 
+  AppSettings, 
+  Segment, 
+  LanguageCode, 
+  TranscriptionProvider, // Added import
+  LLMProviderType,       // Added import
+  GoogleAILLMModelType, 
+  OpenAIModelType, 
+  GroqModelType, 
+  AvalAIOpenAIBasedWhisperModels, 
+  AvalAIOpenAIBasedGPTModels, 
+  AvalAIGeminiBasedModels, 
+  WhisperModelType, 
+  LLMModelType as GenericLLMModelType, 
+  AvalAIWhisperModels 
+} from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 import OpenAI from 'openai';
 import Groq from 'groq-sdk';
-// Import the new server action for Google AI and getGoogleAIModel, but NOT the 'ai' object itself.
 import { getGoogleAIModel, performGoogleAIGeneration } from '@/ai/genkit';
+import { DEFAULT_AVALAI_BASE_URL, AVALAI_BASE_URL_KEY } from '@/lib/types';
+
 
 // Input Schema
 const TranscriptionTaskInputSchema = z.object({
   audioDataUri: z.string().describe("Audio segment as a data URI."),
-  provider: z.enum(['googleai', 'openai', 'avalai', 'groq']).describe("The AI provider to use."),
+  provider: z.union([
+      z.enum(['openai', 'avalai_openai', 'groq']), // Changed from z.nativeEnum
+      z.enum(['googleai', 'openai', 'avalai_openai', 'avalai_gemini']) // Changed from z.nativeEnum
+  ]).describe("The AI provider to use."),
   modelName: z.string().describe("The specific model name for the provider."),
   language: z.string().optional().describe("Optional language code (BCP-47)."),
   task: z.enum(['timestamp', 'cue_slice']).describe("Transcription task type."),
@@ -52,50 +74,51 @@ export async function runTranscriptionTask(
   try {
     if (onProgress) onProgress(0, `Preparing transcription with ${provider}...`);
 
-    if (provider === 'googleai') {
-      if (!appSettings.googleApiKey) throw new Error('Google API Key is required for Google AI provider. Configure it in Settings.');
-      
-      if (task === 'cue_slice') { // Gemini for cue/slice transcription
+    if (provider === 'googleai' || provider === 'avalai_gemini') {
+      if (!appSettings.googleApiKey) {
+        const errorMsg = provider === 'avalai_gemini'
+          ? 'Google API Key is required for AvalAI (Gemini Base) provider. Configure it in Settings.'
+          : 'Google API Key is required for Google AI provider. Configure it in Settings.';
+        throw new Error(errorMsg);
+      }
+
+      if (task === 'cue_slice') {
         const genkitModel = await getGoogleAIModel(modelName as GoogleAILLMModelType);
-        if (onProgress) onProgress(20, `Transcribing with Google AI (${modelName})...`);
-        
-        // Call the server action performGoogleAIGeneration instead of ai.generate directly
+        if (onProgress) onProgress(20, `Transcribing with ${provider} (${modelName})...`);
+
         const generateOptions = {
           model: genkitModel,
           prompt: `Transcribe the following audio data precisely. Respond only with the transcribed text. Language hint: ${language || 'auto-detect'}. Audio: {{media url=${audioDataUri}}}`,
-          config: { 
+          config: {
             temperature: appSettings.temperature || 0.2,
           },
         };
         const result = await performGoogleAIGeneration(generateOptions);
         fullText = result.text || "";
-        if (onProgress) onProgress(100, `Google AI transcription complete.`);
+        if (onProgress) onProgress(100, `${provider} transcription complete.`);
       } else {
-        throw new Error(`Google AI provider currently only supports 'cue_slice' task with Gemini models for direct text output.`);
+        throw new Error(`${provider} provider currently only supports 'cue_slice' task with Gemini models for direct text output.`);
       }
-    } else if (provider === 'openai' || provider === 'avalai') {
+
+    } else if (provider === 'openai' || provider === 'avalai_openai') {
       let apiKey: string | undefined;
-      let baseURL: string | undefined;
-      let effectiveModelName = modelName;
+      let baseURL: string | undefined = provider === 'avalai_openai' ? (appSettings.avalaiBaseUrl || DEFAULT_AVALAI_BASE_URL) : undefined;
 
       if (provider === 'openai') {
         if (!appSettings.openAIToken) throw new Error('OpenAI API Key is required. Configure it in Settings.');
         apiKey = appSettings.openAIToken;
-        effectiveModelName = modelName as OpenAIModelType; 
-      } else { // avalai
+      } else { // avalai_openai
         if (!appSettings.avalaiToken) throw new Error('AvalAI API Key is required. Configure it in Settings.');
         apiKey = appSettings.avalaiToken;
-        baseURL = appSettings.avalaiBaseUrl || 'https://api.avalai.ir/v1'; 
-        effectiveModelName = modelName as AvalAIModelType;
       }
 
       const openaiClient = new OpenAI({ apiKey, baseURL, dangerouslyAllowBrowser: true });
-      
-      if (task === 'timestamp') { 
-        if (onProgress) onProgress(20, `Transcribing with ${provider} Whisper (${effectiveModelName})...`);
+
+      if (task === 'timestamp') {
+        if (onProgress) onProgress(20, `Transcribing with ${provider} Whisper (${modelName as WhisperModelType})...`);
         const response = await openaiClient.audio.transcriptions.create({
           file: audioFile,
-          model: effectiveModelName, 
+          model: modelName as WhisperModelType,
           response_format: 'verbose_json',
           timestamp_granularities: ["segment"],
           language: (language === "auto-detect" ? undefined : language),
@@ -104,19 +127,19 @@ export async function runTranscriptionTask(
         segments = response.segments?.map(s => ({ start: s.start, end: s.end, text: s.text.trim() })) || [];
         fullText = response.text || segments.map(s => s.text).join(' ') || "";
       } else { // 'cue_slice' with GPT models
-         if (onProgress) onProgress(20, `Transcribing with ${provider} GPT-style model (${effectiveModelName})...`);
+         if (onProgress) onProgress(20, `Transcribing with ${provider} GPT-style model (${modelName as GenericLLMModelType})...`);
         const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
           {
             role: 'user',
             content: [
               { type: 'text', text: `Transcribe the audio from the provided data URI precisely. Respond only with the transcribed text. Language hint: ${language || 'auto-detect'}.` },
-              { type: 'image_url', image_url: { url: audioDataUri, detail: 'auto' } } 
+              { type: 'image_url', image_url: { url: audioDataUri, detail: 'auto' } }
             ]
           }
         ];
-        
+
         const response = await openaiClient.chat.completions.create({
-          model: effectiveModelName,
+          model: modelName as GenericLLMModelType,
           messages: chatMessages,
           temperature: appSettings.temperature || 0.2,
         });
@@ -128,7 +151,7 @@ export async function runTranscriptionTask(
       if (!appSettings.groqToken) throw new Error('Groq API Key is required. Configure it in Settings.');
       const groqClient = new Groq({ apiKey: appSettings.groqToken, dangerouslyAllowBrowser: true });
 
-      if (task === 'timestamp') { 
+      if (task === 'timestamp') {
          if (onProgress) onProgress(20, `Transcribing with Groq Whisper (${modelName as GroqModelType})...`);
         const response = await groqClient.audio.transcriptions.create({
           file: audioFile,
@@ -141,7 +164,7 @@ export async function runTranscriptionTask(
         segments = response.segments?.map(s => ({ id: s.id, start: s.start, end: s.end, text: s.text.trim() })) || [];
         fullText = response.text || segments.map(s => s.text).join(' ') || "";
          if (onProgress) onProgress(100, `Groq transcription complete.`);
-      } else { 
+      } else { // 'cue_slice' with Groq LLMs
         if (onProgress) onProgress(20, `Transcribing with Groq LLM (${modelName})...`);
         const chatCompletion = await groqClient.chat.completions.create({
             messages: [
@@ -150,7 +173,7 @@ export async function runTranscriptionTask(
                     content:  `Transcribe the following audio data precisely. Respond only with the transcribed text. Language hint: ${language || 'auto-detect'}. The audio is provided as a data URI that you cannot directly process, but imagine it's available for transcription: ${audioDataUri.substring(0,100)}... [CONTEXT: Pretend you can process this audio data URI]`,
                 }
             ],
-            model: modelName, 
+            model: modelName as GenericLLMModelType,
             temperature: appSettings.temperature || 0.2,
         });
         fullText = chatCompletion.choices[0]?.message?.content?.trim() || "";
@@ -163,7 +186,7 @@ export async function runTranscriptionTask(
     if (segments.length === 0 && !fullText) {
       console.warn(`${provider} transcription resulted in empty output for model ${modelName}.`);
     }
-    
+
     return TranscriptionTaskOutputSchema.parse({ segments: segments.length > 0 ? segments : undefined, fullText });
 
   } catch (error: any) {

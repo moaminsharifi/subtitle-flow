@@ -32,30 +32,64 @@ export interface Segment {
 
 export type ToastFn = (message: string, type: 'info' | 'error' | 'warn' | 'success' | 'debug') => void;
 
-// Model Types
+// --- Model Types ---
+// Timestamp Transcription Models (typically Whisper-like)
 export const OpenAIWhisperModels = ['whisper-1'] as const;
-export const AvalAIWhisperModels = ['whisper-1'] as const; // Same model name, handled by AvalAI config
+export const AvalAIOpenAIBasedWhisperModels = ['whisper-1'] as const; // AvalAI offering OpenAI's Whisper
 export const GroqWhisperModels = ['whisper-large-v3'] as const;
 
 export type WhisperModelType = 
   | typeof OpenAIWhisperModels[number]
-  | typeof AvalAIWhisperModels[number]
+  | typeof AvalAIOpenAIBasedWhisperModels[number]
   | typeof GroqWhisperModels[number];
 
-export const GoogleGeminiLLModels = ['gemini-1.5-pro-latest', 'gemini-1.5-flash-latest'] as const; // Using known available models
-export const OpenAIGPTModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'] as const;
-export const AvalAIGPTModels = OpenAIGPTModels; // Same models, handled by AvalAI config
+// LLM Models for Cue/Slice Transcription (Gemini, GPTs, etc.)
+export const GoogleGeminiLLModels = [
+  'gemini-1.5-pro-latest', 
+  'gemini-1.5-flash-latest',
+  // From user's list, owned_by: "google"
+  'gemini-2.5-pro-preview-06-05',
+  'gemini-2.5-flash-preview-05-20',
+] as const;
 
-export type GPTStyleLLMType = 
+export const AvalAIGeminiBasedModels = [ // Models AvalAI might offer that are Gemini-based
+  'gemini-2.5-pro-preview-06-05',
+  'gemini-2.5-flash-preview-05-20',
+  // Add more relevant Gemini model IDs from the user's list if AvalAI exposes them
+] as const;
+
+export const OpenAIGPTModels = [
+  'gpt-4o', 
+  'gpt-4o-mini', 
+  'gpt-3.5-turbo',
+  // From user's list, owned_by: "openai"
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'o1-pro', 
+  'o3',
+  'gpt-4o-transcribe', // Though named transcribe, might be usable for cue/slice text gen
+  'gpt-4o-mini-transcribe',
+] as const;
+
+export const AvalAIOpenAIBasedGPTModels = [ // Models AvalAI might offer that are OpenAI GPT-based
+  'gpt-4o', 
+  'gpt-4o-mini',
+  'o1-pro',
+  // Add more relevant GPT model IDs from user's list if AvalAI exposes them
+] as const;
+
+// Union types for overall model categories
+export type TranscriptionModelType = WhisperModelType; // For models used in 'timestamp' task (Whisper variants)
+export type LLMModelType = 
+  | typeof GoogleGeminiLLModels[number]
+  | typeof AvalAIGeminiBasedModels[number]
   | typeof OpenAIGPTModels[number]
-  | typeof AvalAIGPTModels[number];
+  | typeof AvalAIOpenAIBasedGPTModels[number];
 
-export type TranscriptionModelType = WhisperModelType; // For models used in 'timestamp' task
-export type LLMModelType = typeof GoogleGeminiLLModels[number] | GPTStyleLLMType; // For models in 'cue_slice' task
-
-// Provider Types
-export type TranscriptionProvider = 'openai' | 'avalai' | 'groq'; // Providers for timestamp task
-export type LLMProviderType = 'googleai' | 'openai' | 'avalai'; // Providers for cue_slice task
+// --- Provider Types ---
+export type TranscriptionProvider = 'openai' | 'avalai_openai' | 'groq'; // Providers for timestamp task
+export type LLMProviderType = 'googleai' | 'openai' | 'avalai_openai' | 'avalai_gemini'; // Providers for cue_slice task
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa';
@@ -63,9 +97,9 @@ export type Language = 'en' | 'fa';
 export interface AppSettings {
   openAIToken?: string;
   avalaiToken?: string;
-  avalaiBaseUrl?: string; // Added for AvalAI
+  avalaiBaseUrl?: string; // Re-added
   groqToken?: string;
-  googleApiKey?: string; // Added for Google AI
+  googleApiKey?: string;
 
   transcriptionProvider?: TranscriptionProvider;
   transcriptionModel?: TranscriptionModelType;
@@ -74,8 +108,7 @@ export interface AppSettings {
   llmModel?: LLMModelType;
 
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
-  temperature?: number; // General temperature, contextually applied
-  prompt?: string; // General prompt, contextually applied
+  temperature?: number;
   theme?: Theme;
   maxSegmentDuration?: number;
   language?: Language;
@@ -164,9 +197,9 @@ export const LLM_MODEL_KEY = 'app-settings-llm-model';
 
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
-export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url'; // Added for AvalAI
+export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url'; // Re-added
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
-export const GOOGLE_API_KEY_KEY = 'app-settings-google-api-key'; // Added for Google
+export const GOOGLE_API_KEY_KEY = 'app-settings-google-api-key';
 
 export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';
 export const TEMPERATURE_KEY = 'app-settings-temperature';
@@ -177,6 +210,11 @@ export interface AudioSegment {
   duration: number;
 }
 
+// This interface was defined in page.tsx, better to have it generally available or remove if not used outside.
+// For now, keeping it as it might be related to editor props.
 export interface SubtitleEditorProps {
   handleSeekPlayer: (timeInSeconds: number) => void;
 }
+
+// For clarity in SettingsDialog
+export const DEFAULT_AVALAI_BASE_URL = 'https://api.avalai.ir/v1';
