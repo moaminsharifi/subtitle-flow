@@ -74,7 +74,6 @@
   "settings.apiKeyManagement.googleApiKeyLabel": "Google AI API Key",
   "settings.apiKeyManagement.openAITokenLabel": "OpenAI API Key",
   "settings.apiKeyManagement.avalaiTokenLabel": "AvalAI API Key",
-  "settings.apiKeyManagement.avalaiBaseUrlLabel": "AvalAI Base URL (Optional, uses default if empty)",
   "settings.apiKeyManagement.groqTokenLabel": "Groq API Key",
   "settings.apiConfig.provider.googleai": "Google AI (Gemini)",
   "settings.apiConfig.provider.openai": "OpenAI",
@@ -272,5 +271,3 @@
   "debugLog.buttons.close": "Close"
 }
 
-
-    

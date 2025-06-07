@@ -19,12 +19,12 @@ import type {
   AvalAIGeminiBasedModels, 
   WhisperModelType, 
   LLMModelType as GenericLLMModelType,
-  GroqWhisperModels as GroqWhisperModelTypes // Import the const array for checking
+  GroqWhisperModels as GroqWhisperModelTypes
 } from '@/lib/types';
 import { 
-  TranscriptionProvider as TranscriptionProviderType, // Renamed import
-  LLMProviderType as LLMProviderTypeType // Renamed import
-} from '@/lib/types'; // Import the type aliases
+  TranscriptionProvider as TranscriptionProviderType,
+  LLMProviderType as LLMProviderTypeType
+} from '@/lib/types';
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 import OpenAI from 'openai';
 import Groq from 'groq-sdk';
@@ -76,11 +76,11 @@ export async function runTranscriptionTask(
     if (onProgress) onProgress(0, `Preparing transcription with ${provider}...`);
 
     if (provider === 'googleai' || provider === 'avalai_gemini') {
-      if (!appSettings.googleApiKey && provider === 'googleai') { // Only require for direct googleai if avalai_gemini might use another key later
+      if (!appSettings.googleApiKey && provider === 'googleai') {
         const errorMsg = 'Google API Key is required for Google AI provider. Configure it in Settings.';
         throw new Error(errorMsg);
       }
-      if (!appSettings.googleApiKey && provider === 'avalai_gemini') { // For AvalAI Gemini, it currently routes through Google Genkit path
+      if (!appSettings.googleApiKey && provider === 'avalai_gemini') {
          const errorMsg = 'Google API Key is required for AvalAI (Gemini Base) provider. Configure it in Settings.';
         throw new Error(errorMsg);
       }
@@ -101,14 +101,12 @@ export async function runTranscriptionTask(
         fullText = result.text || "";
         if (onProgress) onProgress(100, `${provider} transcription complete.`);
       } else {
-        // Timestamp task for Google AI / AvalAI Gemini is not directly supported via simple ai.generate
-        // It would require a more complex prompt expecting structured output or a custom Genkit flow.
         throw new Error(`${provider} provider currently only supports 'cue_slice' task with Gemini models for direct text output via ai.generate.`);
       }
 
     } else if (provider === 'openai' || provider === 'avalai_openai') {
       let apiKey: string | undefined;
-      let baseURL: string | undefined = provider === 'avalai_openai' ? (appSettings.avalaiBaseUrl || DEFAULT_AVALAI_BASE_URL) : undefined;
+      let baseURL: string | undefined = provider === 'avalai_openai' ? DEFAULT_AVALAI_BASE_URL : undefined;
 
       if (provider === 'openai') {
         if (!appSettings.openAIToken) throw new Error('OpenAI API Key is required. Configure it in Settings.');
@@ -120,7 +118,7 @@ export async function runTranscriptionTask(
 
       const openaiClient = new OpenAI({ apiKey, baseURL, dangerouslyAllowBrowser: true });
 
-      if (task === 'timestamp') { // Whisper models for OpenAI and AvalAI (OpenAI-based)
+      if (task === 'timestamp') { 
         if (onProgress) onProgress(20, `Transcribing with ${provider} Whisper (${modelName as WhisperModelType})...`);
         const response = await openaiClient.audio.transcriptions.create({
           file: audioFile,
@@ -132,7 +130,7 @@ export async function runTranscriptionTask(
         });
         segments = response.segments?.map(s => ({ start: s.start, end: s.end, text: s.text.trim() })) || [];
         fullText = response.text || segments.map(s => s.text).join(' ') || "";
-      } else { // 'cue_slice' with GPT models for OpenAI and AvalAI (OpenAI-based)
+      } else { 
          if (onProgress) onProgress(20, `Transcribing with ${provider} GPT-style model (${modelName as GenericLLMModelType})...`);
         const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
           {
@@ -173,12 +171,12 @@ export async function runTranscriptionTask(
         if (task === 'cue_slice' && segments.length > 0 && !fullText) {
           fullText = segments.map(s => s.text).join(' ').trim();
         }
-        if (task === 'cue_slice') { // For cue_slice, we primarily want fullText. Clear segments if we only need fullText.
+        if (task === 'cue_slice') { 
             segments = [];
         }
 
 
-      } else if (task === 'cue_slice') { // 'cue_slice' with Groq LLMs (non-Whisper)
+      } else if (task === 'cue_slice') { 
         if (onProgress) onProgress(20, `Transcribing with Groq LLM (${modelName})...`);
         const chatCompletion = await groqClient.chat.completions.create({
             messages: [

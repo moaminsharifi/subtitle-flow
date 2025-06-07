@@ -26,16 +26,16 @@ import type {
   AvalAIOpenAIBasedWhisperModels,
   AvalAIOpenAIBasedGPTModels,
   AvalAIGeminiBasedModels,
-  GroqModelType // Re-added
+  GroqModelType
 } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
   LLM_PROVIDER_KEY, LLM_MODEL_KEY,
-  OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, AVALAI_BASE_URL_KEY, GROQ_TOKEN_KEY, // Re-added GROQ_TOKEN_KEY
+  OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY,
   MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY, DEFAULT_AVALAI_BASE_URL,
-  OpenAIWhisperModels, GroqWhisperModels, // Re-added GroqWhisperModels
-  GoogleGeminiLLModels, OpenAIGPTModels, GroqLLModels // Re-added GroqLLModels
+  OpenAIWhisperModels, GroqWhisperModels,
+  GoogleGeminiLLModels, OpenAIGPTModels, GroqLLModels
 } from '@/lib/types';
 
 import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot, Info, KeyRound, Cog, Palette } from 'lucide-react';
@@ -54,15 +54,15 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   // API Keys & Base URL
   const [openAIToken, setOpenAIToken] = useState('');
   const [avalaiToken, setAvalaiToken] = useState('');
-  const [avalaiBaseUrl, setAvalaiBaseUrl] = useState(DEFAULT_AVALAI_BASE_URL);
+  // const [avalaiBaseUrl, setAvalaiBaseUrl] = useState(DEFAULT_AVALAI_BASE_URL); // Removed
   const [googleApiKey, setGoogleApiKey] = useState('');
-  const [groqToken, setGroqToken] = useState(''); // Re-added
+  const [groqToken, setGroqToken] = useState('');
 
   // Visibility toggles for API keys
   const [showOpenAIToken, setShowOpenAIToken] = useState(false);
   const [showAvalAIToken, setShowAvalAIToken] = useState(false);
   const [showGoogleApiKey, setShowGoogleApiKey] = useState(false);
-  const [showGroqToken, setShowGroqToken] = useState(false); // Re-added
+  const [showGroqToken, setShowGroqToken] = useState(false);
 
   // Provider and Model selections
   const [transcriptionProvider, setTranscriptionProvider] = useState<TranscriptionProvider>('openai');
@@ -92,7 +92,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const transcriptionModelOptions = useMemo((): readonly TranscriptionModelType[] => {
     if (transcriptionProvider === 'openai') return OpenAIWhisperModels;
     if (transcriptionProvider === 'avalai_openai') return AvalAIOpenAIBasedWhisperModels;
-    if (transcriptionProvider === 'groq') return GroqWhisperModels; // Re-added
+    if (transcriptionProvider === 'groq') return GroqWhisperModels;
     return OpenAIWhisperModels; // Default
   }, [transcriptionProvider]);
 
@@ -101,7 +101,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     if (llmProvider === 'openai') return OpenAIGPTModels;
     if (llmProvider === 'avalai_openai') return AvalAIOpenAIBasedGPTModels;
     if (llmProvider === 'avalai_gemini') return AvalAIGeminiBasedModels;
-    if (llmProvider === 'groq') return GroqLLModels; // Re-added
+    if (llmProvider === 'groq') return GroqLLModels;
     return OpenAIGPTModels; // Default
   }, [llmProvider]);
 
@@ -111,27 +111,27 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       let logMessage = "Loaded settings: ";
       try {
         const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
-        const validTranscriptionProviders: TranscriptionProvider[] = ['openai', 'avalai_openai', 'groq']; // Added groq
+        const validTranscriptionProviders: TranscriptionProvider[] = ['openai', 'avalai_openai', 'groq'];
         const currentTProvider = storedTranscriptionProvider && validTranscriptionProviders.includes(storedTranscriptionProvider) ? storedTranscriptionProvider : 'openai';
         setTranscriptionProvider(currentTProvider);
         logMessage += `Trans. Provider - ${currentTProvider}, `;
 
         const storedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
-        const validLlmProviders: LLMProviderType[] = ['googleai', 'openai', 'avalai_openai', 'avalai_gemini', 'groq']; // Added groq
+        const validLlmProviders: LLMProviderType[] = ['googleai', 'openai', 'avalai_openai', 'avalai_gemini', 'groq'];
         const currentLProvider = storedLlmProvider && validLlmProviders.includes(storedLlmProvider) ? storedLlmProvider : 'openai';
         setLlmProvider(currentLProvider);
         logMessage += `LLM Provider - ${currentLProvider}, `;
 
         setOpenAIToken(localStorage.getItem(OPENAI_TOKEN_KEY) || '');
         setAvalaiToken(localStorage.getItem(AVALAI_TOKEN_KEY) || '');
-        setAvalaiBaseUrl(localStorage.getItem(AVALAI_BASE_URL_KEY) || DEFAULT_AVALAI_BASE_URL);
+        // setAvalaiBaseUrl(localStorage.getItem(AVALAI_BASE_URL_KEY) || DEFAULT_AVALAI_BASE_URL); // Removed
         setGoogleApiKey(localStorage.getItem(GOOGLE_API_KEY_KEY) || '');
-        setGroqToken(localStorage.getItem(GROQ_TOKEN_KEY) || ''); // Re-added
+        setGroqToken(localStorage.getItem(GROQ_TOKEN_KEY) || '');
 
         let currentActualTranscriptionModels: readonly TranscriptionModelType[];
         if (currentTProvider === 'openai') currentActualTranscriptionModels = OpenAIWhisperModels;
         else if (currentTProvider === 'avalai_openai') currentActualTranscriptionModels = AvalAIOpenAIBasedWhisperModels;
-        else if (currentTProvider === 'groq') currentActualTranscriptionModels = GroqWhisperModels; // Added groq
+        else if (currentTProvider === 'groq') currentActualTranscriptionModels = GroqWhisperModels;
         else currentActualTranscriptionModels = OpenAIWhisperModels;
         
         const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
@@ -144,7 +144,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         else if (currentLProvider === 'openai') currentActualLlmModels = OpenAIGPTModels;
         else if (currentLProvider === 'avalai_openai') currentActualLlmModels = AvalAIOpenAIBasedGPTModels;
         else if (currentLProvider === 'avalai_gemini') currentActualLlmModels = AvalAIGeminiBasedModels;
-        else if (currentLProvider === 'groq') currentActualLlmModels = GroqLLModels; // Added groq
+        else if (currentLProvider === 'groq') currentActualLlmModels = GroqLLModels;
         else currentActualLlmModels = OpenAIGPTModels;
 
         const storedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
@@ -160,7 +160,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         setSelectedTheme(initialTheme);
         
         setSelectedAppLanguage((localStorage.getItem(LANGUAGE_KEY) as Language | null) || currentAppLanguage);
-        logMessage += `Default Lang - ${defaultTranscriptionLanguage}, Theme - ${initialTheme}, App Lang - ${selectedAppLanguage}, Max Seg Dur - ${maxSegmentDuration}s, Temp - ${temperature}. AvalAI URL: ${avalaiBaseUrl}. Groq Token Present: ${!!groqToken}`;
+        logMessage += `Default Lang - ${defaultTranscriptionLanguage}, Theme - ${initialTheme}, App Lang - ${selectedAppLanguage}, Max Seg Dur - ${maxSegmentDuration}s, Temp - ${temperature}. Groq Token Present: ${!!groqToken}`; // Removed AvalAI URL from log
         addLog(logMessage, "debug");
 
       } catch (error) {
@@ -170,10 +170,10 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         setTranscriptionModel(OpenAIWhisperModels[0]);
         setLlmProvider('openai');
         setLlmModel(OpenAIGPTModels[0]);
-        setAvalaiBaseUrl(DEFAULT_AVALAI_BASE_URL);
+        // setAvalaiBaseUrl(DEFAULT_AVALAI_BASE_URL); // Removed
       }
     }
-  }, [isOpen, addLog, currentAppLanguage, defaultTranscriptionLanguage, maxSegmentDuration, temperature, avalaiBaseUrl, groqToken]);
+  }, [isOpen, addLog, currentAppLanguage, defaultTranscriptionLanguage, maxSegmentDuration, temperature, groqToken]);
 
 
   useEffect(() => {
@@ -225,9 +225,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       
       if (openAIToken) localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken); else localStorage.removeItem(OPENAI_TOKEN_KEY);
       if (avalaiToken) localStorage.setItem(AVALAI_TOKEN_KEY, avalaiToken); else localStorage.removeItem(AVALAI_TOKEN_KEY);
-      if (avalaiBaseUrl) localStorage.setItem(AVALAI_BASE_URL_KEY, avalaiBaseUrl); else localStorage.setItem(AVALAI_BASE_URL_KEY, DEFAULT_AVALAI_BASE_URL);
+      // if (avalaiBaseUrl) localStorage.setItem(AVALAI_BASE_URL_KEY, avalaiBaseUrl); else localStorage.setItem(AVALAI_BASE_URL_KEY, DEFAULT_AVALAI_BASE_URL); // Removed
       if (googleApiKey) localStorage.setItem(GOOGLE_API_KEY_KEY, googleApiKey); else localStorage.removeItem(GOOGLE_API_KEY_KEY);
-      if (groqToken) localStorage.setItem(GROQ_TOKEN_KEY, groqToken); else localStorage.removeItem(GROQ_TOKEN_KEY); // Re-added
+      if (groqToken) localStorage.setItem(GROQ_TOKEN_KEY, groqToken); else localStorage.removeItem(GROQ_TOKEN_KEY);
       
       localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
       localStorage.setItem(THEME_KEY, selectedTheme);
@@ -253,7 +253,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
         duration: 5000,
       });
-      addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature, avalaiBaseUrl, groqTokenPresent: !!groqToken }) }`, 'success');
+      addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature, groqTokenPresent: !!groqToken }) }`, 'success'); // Removed avalaiBaseUrl
       onClose();
     } catch (error) {
         console.error("Error saving settings to localStorage:", error);
@@ -422,17 +422,13 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                         <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)} aria-label={showOpenAIToken ? "Hide OpenAI API Key" : "Show OpenAI API Key"}>{showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
                     </div>
                 </div>
-                {/* AvalAI Token & Base URL */}
+                {/* AvalAI Token */}
                 <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
                     <Label htmlFor="avalai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiTokenLabel')}</Label>
                     <div className="col-span-1 md:col-span-3 flex items-center gap-2">
                         <Input id="avalai-token-input" type={showAvalAIToken ? 'text' : 'password'} value={avalaiToken} onChange={(e) => setAvalaiToken(e.target.value)} className="flex-grow" placeholder={t('settings.apiConfig.avalaiTokenPlaceholder') as string} aria-label={t('settings.apiKeyManagement.avalaiTokenLabel') as string} dir={dir}/>
                         <Button variant="ghost" size="icon" onClick={() => setShowAvalAIToken(!showAvalAIToken)} aria-label={showAvalAIToken ? "Hide AvalAI API Key" : "Show AvalAI API Key"}>{showAvalAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
                     </div>
-                </div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                    <Label htmlFor="avalai-baseurl-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiBaseUrlLabel')}</Label>
-                    <Input id="avalai-baseurl-input" type="url" value={avalaiBaseUrl} onChange={(e) => setAvalaiBaseUrl(e.target.value)} className="col-span-1 md:col-span-3" placeholder={DEFAULT_AVALAI_BASE_URL} aria-label={t('settings.apiKeyManagement.avalaiBaseUrlLabel') as string} dir={dir}/>
                 </div>
                 {/* Groq Token */}
                 <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
@@ -476,3 +472,4 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     </>
   );
 }
+

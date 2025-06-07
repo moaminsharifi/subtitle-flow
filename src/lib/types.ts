@@ -103,7 +103,7 @@ export type Language = 'en' | 'fa';
 export interface AppSettings {
   openAIToken?: string;
   avalaiToken?: string;
-  avalaiBaseUrl?: string;
+  // avalaiBaseUrl?: string; // Removed
   groqToken?: string; 
   googleApiKey?: string;
 
@@ -203,7 +203,7 @@ export const LLM_MODEL_KEY = 'app-settings-llm-model';
 
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
-export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url';
+// export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url'; // Removed
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token'; 
 export const GOOGLE_API_KEY_KEY = 'app-settings-google-api-key';
 

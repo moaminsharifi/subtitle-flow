@@ -74,7 +74,6 @@
   "settings.apiKeyManagement.googleApiKeyLabel": "کلید API هوش مصنوعی گوگل",
   "settings.apiKeyManagement.openAITokenLabel": "توکن OpenAI",
   "settings.apiKeyManagement.avalaiTokenLabel": "کلید API آوال",
-  "settings.apiKeyManagement.avalaiBaseUrlLabel": "آدرس پایه API آوال (اختیاری، در صورت خالی بودن از پیش‌فرض استفاده می‌شود)",
   "settings.apiKeyManagement.groqTokenLabel": "توکن Groq",
   "settings.apiConfig.provider.googleai": "Google AI (Gemini)",
   "settings.apiConfig.provider.openai": "OpenAI",
@@ -272,5 +271,3 @@
   "debugLog.buttons.close": "بستن"
 }
 
-
-    
