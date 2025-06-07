@@ -12,22 +12,24 @@ import type {
   AppSettings, 
   Segment, 
   LanguageCode, 
-  TranscriptionProvider,
-  LLMProviderType,
   GoogleAILLMModelType, 
   OpenAIModelType, 
-  GroqModelType, 
   AvalAIOpenAIBasedWhisperModels, 
   AvalAIOpenAIBasedGPTModels, 
   AvalAIGeminiBasedModels, 
   WhisperModelType, 
   LLMModelType as GenericLLMModelType,
+  GroqWhisperModels as GroqWhisperModelTypes // Import the const array for checking
 } from '@/lib/types';
+import { 
+  TranscriptionProvider as TranscriptionProviderType, // Renamed import
+  LLMProviderType as LLMProviderTypeType // Renamed import
+} from '@/lib/types'; // Import the type aliases
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 import OpenAI from 'openai';
 import Groq from 'groq-sdk';
 import { getGoogleAIModel, performGoogleAIGeneration } from '@/ai/genkit';
-import { DEFAULT_AVALAI_BASE_URL } from '@/lib/types';
+import { DEFAULT_AVALAI_BASE_URL, isGroqWhisperModel } from '@/lib/types';
 
 
 // Input Schema
@@ -74,12 +76,15 @@ export async function runTranscriptionTask(
     if (onProgress) onProgress(0, `Preparing transcription with ${provider}...`);
 
     if (provider === 'googleai' || provider === 'avalai_gemini') {
-      if (!appSettings.googleApiKey) {
-        const errorMsg = provider === 'avalai_gemini'
-          ? 'Google API Key is required for AvalAI (Gemini Base) provider. Configure it in Settings.'
-          : 'Google API Key is required for Google AI provider. Configure it in Settings.';
+      if (!appSettings.googleApiKey && provider === 'googleai') { // Only require for direct googleai if avalai_gemini might use another key later
+        const errorMsg = 'Google API Key is required for Google AI provider. Configure it in Settings.';
         throw new Error(errorMsg);
       }
+      if (!appSettings.googleApiKey && provider === 'avalai_gemini') { // For AvalAI Gemini, it currently routes through Google Genkit path
+         const errorMsg = 'Google API Key is required for AvalAI (Gemini Base) provider. Configure it in Settings.';
+        throw new Error(errorMsg);
+      }
+
 
       if (task === 'cue_slice') {
         const genkitModel = await getGoogleAIModel(modelName as GoogleAILLMModelType | AvalAIGeminiBasedModels);
@@ -119,7 +124,7 @@ export async function runTranscriptionTask(
         if (onProgress) onProgress(20, `Transcribing with ${provider} Whisper (${modelName as WhisperModelType})...`);
         const response = await openaiClient.audio.transcriptions.create({
           file: audioFile,
-          model: modelName as WhisperModelType, // Ensure modelName is compatible
+          model: modelName as WhisperModelType, 
           response_format: 'verbose_json',
           timestamp_granularities: ["segment"],
           language: (language === "auto-detect" ? undefined : language),
@@ -134,14 +139,13 @@ export async function runTranscriptionTask(
             role: 'user',
             content: [
               { type: 'text', text: `Transcribe the audio from the provided data URI precisely. Respond only with the transcribed text. Language hint: ${language || 'auto-detect'}.` },
-              // Assuming GPT-4o style multimodal input; ensure model supports this
               { type: 'image_url', image_url: { url: audioDataUri, detail: 'auto' } } 
             ]
           }
         ];
 
         const response = await openaiClient.chat.completions.create({
-          model: modelName as GenericLLMModelType, // Ensure modelName is compatible
+          model: modelName as GenericLLMModelType, 
           messages: chatMessages,
           temperature: appSettings.temperature || 0.2,
         });
@@ -153,11 +157,11 @@ export async function runTranscriptionTask(
       if (!appSettings.groqToken) throw new Error('Groq API Key is required. Configure it in Settings.');
       const groqClient = new Groq({ apiKey: appSettings.groqToken, dangerouslyAllowBrowser: true });
 
-      if (task === 'timestamp') { // Groq Whisper models
-         if (onProgress) onProgress(20, `Transcribing with Groq Whisper (${modelName as GroqModelType})...`);
+      if (task === 'timestamp' || (task === 'cue_slice' && isGroqWhisperModel(modelName))) {
+        if (onProgress) onProgress(20, `Transcribing with Groq Whisper (${modelName})...`);
         const response = await groqClient.audio.transcriptions.create({
           file: audioFile,
-          model: modelName as GroqModelType, // Ensure modelName is compatible
+          model: modelName as typeof GroqWhisperModelTypes[number],
           response_format: 'verbose_json',
           timestamp_granularities: ["segment"],
           language: (language === "auto-detect" ? undefined : language),
@@ -165,10 +169,17 @@ export async function runTranscriptionTask(
         });
         segments = response.segments?.map(s => ({ id: s.id, start: s.start, end: s.end, text: s.text.trim() })) || [];
         fullText = response.text || segments.map(s => s.text).join(' ') || "";
-      } else { // 'cue_slice' with Groq LLMs
+
+        if (task === 'cue_slice' && segments.length > 0 && !fullText) {
+          fullText = segments.map(s => s.text).join(' ').trim();
+        }
+        if (task === 'cue_slice') { // For cue_slice, we primarily want fullText. Clear segments if we only need fullText.
+            segments = [];
+        }
+
+
+      } else if (task === 'cue_slice') { // 'cue_slice' with Groq LLMs (non-Whisper)
         if (onProgress) onProgress(20, `Transcribing with Groq LLM (${modelName})...`);
-        // Groq LLMs typically don't process audio data URIs directly in chat.
-        // The prompt needs to instruct the model to imagine transcribing.
         const chatCompletion = await groqClient.chat.completions.create({
             messages: [
                 {
@@ -176,10 +187,12 @@ export async function runTranscriptionTask(
                     content:  `Transcribe the following audio data precisely. Respond only with the transcribed text. Language hint: ${language || 'auto-detect'}. The audio is provided as a data URI that you cannot directly process, but imagine it's available for transcription: ${audioDataUri.substring(0,100)}... [CONTEXT: Pretend you can process this audio data URI]`,
                 }
             ],
-            model: modelName as GenericLLMModelType, // Ensure modelName is compatible (e.g., llama3-8b-8192)
+            model: modelName as GenericLLMModelType, 
             temperature: appSettings.temperature || 0.2,
         });
         fullText = chatCompletion.choices[0]?.message?.content?.trim() || "";
+      } else {
+         throw new Error(`Unsupported task '${task}' for Groq provider with model ${modelName}.`);
       }
       if (onProgress) onProgress(100, `Groq transcription complete.`);
     } else {
