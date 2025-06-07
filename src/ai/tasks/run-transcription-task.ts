@@ -25,8 +25,8 @@ import type {
   // GroqWhisperModels as GroqWhisperModelTypes // Use GroqWhisperModels directly
 } from '@/lib/types';
 import {
-  TranscriptionProvider as TranscriptionProviderType, // Keep alias if used distinctly in Zod
-  LLMProviderType as LLMProviderTypeType, // Keep alias if used distinctly in Zod
+  TranscriptionProvider as TranscriptionProviderTypeImport, // Keep alias if used distinctly in Zod
+  LLMProviderType as LLMProviderTypeImport, // Keep alias if used distinctly in Zod
   DEFAULT_AVALAI_BASE_URL,
   isGroqWhisperModel,
   OpenAIWhisperModels, // To check if an OpenAI model is Whisper
@@ -42,8 +42,8 @@ import { getGoogleAIModel, performGoogleAIGeneration } from '@/ai/genkit';
 const TranscriptionTaskInputSchema = z.object({
   audioDataUri: z.string().describe("Audio segment as a data URI."),
   provider: z.union([
-      z.enum(['openai', 'avalai_openai', 'groq']), // For TranscriptionProviderType
-      z.enum(['googleai', 'openai', 'avalai_openai', 'avalai_gemini', 'groq']) // For LLMProviderTypeType
+      z.enum(['openai', 'avalai_openai', 'groq']), // For TranscriptionProviderTypeImport
+      z.enum(['googleai', 'openai', 'avalai_openai', 'avalai_gemini', 'groq']) // For LLMProviderTypeImport
   ]).describe("The AI provider to use."),
   modelName: z.string().describe("The specific model name for the provider."),
   language: z.string().optional().describe("Optional language code (BCP-47)."),
@@ -145,7 +145,7 @@ export async function runTranscriptionTask(
             if (onProgress) onProgress(20, `Transcribing with ${provider} specific model (${modelName})...`);
             const transcriptionResponse = await openaiClient.audio.transcriptions.create({
                 file: audioFile,
-                model: modelName as WhisperModelType, // Models like whisper-1 fit here
+                model: modelName, // Use modelName directly as it's a valid string ID
                 response_format: 'text', // Get plain text for cue_slice
                 language: (language === "auto-detect" ? undefined : language),
                 temperature: appSettings.temperature,
@@ -153,27 +153,12 @@ export async function runTranscriptionTask(
             fullText = (typeof transcriptionResponse === 'string' ? transcriptionResponse.trim() : '');
 
         } else {
-            // Use chat.completions for general GPT models
-            if (onProgress) onProgress(20, `Transcribing with ${provider} GPT-style model (${modelName as GenericLLMModelType})...`);
-            const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: `Transcribe the audio from the provided data URI precisely. Respond only with the transcribed text. Language hint: ${language || 'auto-detect'}.` },
-                  // For models that support direct audio input in chat, this might need adjustment.
-                  // Current OpenAI SDK for chat primarily uses image_url for multimodal.
-                  // If a model can take audio via data URI in image_url, this works.
-                  { type: 'image_url', image_url: { url: audioDataUri, detail: 'auto' } }
-                ]
-              }
-            ];
-
-            const response = await openaiClient.chat.completions.create({
-              model: modelName as GenericLLMModelType, // Cast as Generic LLM
-              messages: chatMessages,
-              temperature: appSettings.temperature || 0.2,
-            });
-            fullText = response.choices[0]?.message?.content?.trim() || "";
+            // This block should ideally not be reached if settings restrict models correctly for OpenAI/AvalAI cue/slice.
+            // Passing audio data URI as an image_url to chat.completions is invalid.
+            const errorMsg = `Invalid model ('${modelName}') for OpenAI/AvalAI cue/slice task. Only specific transcription models (e.g., whisper-1, gpt-4o-transcribe) are supported for this provider and task combination. Check settings.`;
+            console.error(errorMsg);
+            if (onProgress) onProgress(0, `Error: ${errorMsg}`);
+            throw new Error(errorMsg);
         }
       }
       if (onProgress) onProgress(100, `${provider} transcription complete.`);
@@ -202,14 +187,15 @@ export async function runTranscriptionTask(
             segments = []; // No segments for cue_slice output
         }
 
-      } else if (task === 'cue_slice') { // cue_slice with a Groq non-Whisper LLM
+      } else if (task === 'cue_slice') { // cue_slice with a Groq non-Whisper LLM (THIS PATH SHOULD NO LONGER BE REACHED GIVEN MODEL RESTRICTIONS)
+        // This branch is problematic as Groq LLMs cannot directly process audio.
+        // Keeping for now but ideally this path is avoided by model selection UI.
         if (onProgress) onProgress(20, `Transcribing with Groq LLM (${modelName})...`);
+        console.warn(`Attempting cue/slice with Groq LLM (${modelName}) which cannot directly process audio. Transcription quality may be poor or fail.`);
         const chatCompletion = await groqClient.chat.completions.create({
             messages: [
                 {
                     role: "user",
-                    // Groq LLMs (non-Whisper) cannot directly process audio data URI.
-                    // Prompt instructs to imagine it can.
                     content:  `Transcribe the following audio data precisely. Respond only with the transcribed text. Language hint: ${language || 'auto-detect'}. The audio is provided as a data URI that you cannot directly process, but imagine it's available for transcription: ${audioDataUri.substring(0,100)}... [CONTEXT: Pretend you can process this audio data URI]`,
                 }
             ],
@@ -234,6 +220,9 @@ export async function runTranscriptionTask(
   } catch (error: any) {
     console.error(`Error during ${provider} transcription task (${task}, ${modelName}):`, error);
     if (onProgress) onProgress(0, `Error: ${error.message}`);
-    throw new Error(`${provider} transcription failed: ${error.message || 'Unknown error'}`);
+    // Propagate the error message more directly
+    const errorMessage = error.response?.data?.error?.message || error.message || 'Unknown error';
+    throw new Error(`${provider} transcription failed: ${errorMessage}`);
   }
 }
+
