@@ -51,19 +51,21 @@ export const GoogleGeminiLLModels = [
   'gemini-2.5-flash-preview-05-20',
 ] as const;
 
-export const AvalAIGeminiBasedModels = [
+export const AvalAIGeminiBasedModels = [ // Used with AvalAI's Gemini-compatible endpoint (if it uses Google API directly)
   'gemini-2.5-pro-preview-06-05',
   'gemini-2.5-flash-preview-05-20',
 ] as const;
 
-export const OpenAIGPTModels = [
+export const OpenAIGPTModels = [ // Models for Cue/Slice when OpenAI provider is selected
   'gpt-4o-transcribe',
   'gpt-4o-mini-transcribe',
+  'whisper-1',
 ] as const;
 
-export const AvalAIOpenAIBasedGPTModels = [
+export const AvalAIOpenAIBasedGPTModels = [ // Models for Cue/Slice when AvalAI (OpenAI compatible) provider is selected
   'gpt-4o-transcribe',
   'gpt-4o-mini-transcribe',
+  'whisper-1',
 ] as const;
 
 export const GroqLLModels = [
@@ -96,7 +98,7 @@ export interface AppSettings {
   openAIToken?: string;
   avalaiToken?: string;
   groqToken?: string;
-  googleApiKey?: string;
+  googleApiKey?: string; // For direct Google AI or AvalAI Gemini-based via Google API
 
   transcriptionProvider?: TranscriptionProvider;
   transcriptionModel?: TranscriptionModelType;
@@ -109,6 +111,7 @@ export interface AppSettings {
   theme?: Theme;
   maxSegmentDuration?: number;
   language?: Language;
+  // avalaiBaseUrl?: string; // Removed as per previous request
 }
 
 export const LANGUAGE_OPTIONS = [
@@ -196,6 +199,7 @@ export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
 export const GROQ_TOKEN_KEY = 'app-settings-groq-token';
 export const GOOGLE_API_KEY_KEY = 'app-settings-google-api-key';
+// export const AVALAI_BASE_URL_KEY = 'app-settings-avalai-base-url'; // Removed
 
 export const MAX_SEGMENT_DURATION_KEY = 'app-settings-max-segment-duration';
 export const TEMPERATURE_KEY = 'app-settings-temperature';
@@ -223,4 +227,22 @@ export const isGroqWhisperModel = (modelName: string): modelName is typeof GroqW
 // Helper to identify OpenAI models that should use the audio.transcriptions endpoint even for cue/slice
 export const isOpenAISpecificTranscriptionModel = (modelName: string): boolean => {
   return ['whisper-1', 'gpt-4o-transcribe', 'gpt-4o-mini-transcribe'].includes(modelName);
+};
+
+// Type guard for GoogleAILLMModelType
+export type GoogleAILLMModelType = typeof GoogleGeminiLLModels[number];
+export const isGoogleAILLMModel = (modelName: string): modelName is GoogleAILLMModelType => {
+    return (GoogleGeminiLLModels as readonly string[]).includes(modelName);
+};
+
+// Type guard for OpenAIModelType (GPT)
+export type OpenAIModelType = typeof OpenAIGPTModels[number];
+export const isOpenAIGPTModel = (modelName: string): modelName is OpenAIModelType => {
+    return (OpenAIGPTModels as readonly string[]).includes(modelName);
+};
+
+// Type guard for GroqModelType (LLMs not Whisper)
+export type GroqModelType = typeof GroqLLModels[number];
+export const isGroqLLModel = (modelName: string): modelName is GroqModelType => {
+    return (GroqLLModels as readonly string[]).includes(modelName) && !isGroqWhisperModel(modelName);
 };
