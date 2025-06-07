@@ -88,41 +88,49 @@ export function PageActions({
           </div>
         )}
 
-        <div className="text-center text-muted-foreground space-y-3">
-          <p
-            className="text-sm"
-            dangerouslySetInnerHTML={{ __html: t('footer.copyright', {
-              '0': `<a href="https://github.com/moaminsharifi/subtitle-flow" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary transition-colors">Subtitle Flow project</a>`,
-              '1': `<a href="https://github.com/moaminsharifi" target="_blank" rel="noopener noreferrer follow" class="underline hover:text-primary transition-colors">Amin Sharifi (moaminsharifi)</a>`
-            }) as string }}
-          />
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2 text-sm">
-            <a
-              href='https://github.com/moaminsharifi/subtitle-flow'
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 hover:text-primary hover:underline transition-colors"
-            >
-              <Github className="h-4 w-4" />
-              <span>{t('footer.projectRepository') as string}</span>
-            </a>
-            <span className="hidden sm:inline text-muted-foreground/50">|</span>
-            <a
-              href='https://subtitile-flow.moaminsharifi.com/'
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 hover:text-primary hover:underline transition-colors"
-            >
-              <Globe className="h-4 w-4" />
-              <span>{t('footer.projectWebsite') as string}</span>
-            </a>
+        <div className="text-center text-muted-foreground space-y-4">
+          <div className="space-y-2">
+            <p
+              className="text-sm"
+              dangerouslySetInnerHTML={{ __html: t('footer.copyright', {
+                '0': `<a href="https://github.com/moaminsharifi/subtitle-flow" target="_blank" rel="noopener noreferrer" class="underline hover:text-primary transition-colors">Subtitle Flow project</a>`,
+                '1': `<a href="https://github.com/moaminsharifi" target="_blank" rel="noopener noreferrer follow" class="underline hover:text-primary transition-colors">Amin Sharifi (moaminsharifi)</a>`
+              }) as string }}
+            />
+            <p className="text-sm">
+              {t('footer.sponsoredBy') as string}{' '}
+              <a href="https://avalai.ir" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary transition-colors">
+                AvalAI
+              </a>
+            </p>
           </div>
-          <p className="text-sm">
-            {t('footer.sponsoredBy') as string}{' '}
-            <a href="https://avalai.ir" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary transition-colors">
-              AvalAI
-            </a>
-          </p>
+          <nav aria-label={t('footer.navigationLabel') as string}>
+            <ul className="flex flex-col sm:flex-row justify-center items-center gap-x-3 gap-y-2 text-sm">
+              <li>
+                <a
+                  href='https://github.com/moaminsharifi/subtitle-flow'
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:text-primary hover:underline transition-colors"
+                >
+                  <Github className="h-4 w-4" />
+                  <span>{t('footer.projectRepository') as string}</span>
+                </a>
+              </li>
+              <li className="hidden sm:block" aria-hidden="true">|</li>
+              <li>
+                <a
+                  href='https://subtitile-flow.moaminsharifi.com/'
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:text-primary hover:underline transition-colors"
+                >
+                  <Globe className="h-4 w-4" />
+                  <span>{t('footer.projectWebsite') as string}</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
         </div>
       </footer>
 

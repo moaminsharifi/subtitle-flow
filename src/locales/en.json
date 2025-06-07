@@ -54,6 +54,7 @@
   "footer.projectRepository": "Project Repository",
   "footer.projectWebsite": "Project Website",
   "footer.sponsoredBy": "Sponsored by",
+  "footer.navigationLabel": "Footer Navigation",
   "settings.title": "Application Settings",
   "settings.description": "Manage your API tokens, theme, language, and other preferences here.",
   "settings.tabs.general": "General",
@@ -282,4 +283,3 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
-

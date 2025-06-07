@@ -54,6 +54,7 @@
   "footer.projectRepository": "مخزن پروژه",
   "footer.projectWebsite": "وبسایت پروژه",
   "footer.sponsoredBy": "با حمایت مالی",
+  "footer.navigationLabel": "ناوبری پاورقی",
   "settings.title": "تنظیمات برنامه",
   "settings.description": "توکن‌های API، پوسته، زبان و سایر تنظیمات خود را اینجا مدیریت کنید.",
   "settings.tabs.general": "عمومی",
@@ -282,4 +283,3 @@
   "debugLog.buttons.clear": "پاک کردن گزارش‌ها",
   "debugLog.buttons.close": "بستن"
 }
-
