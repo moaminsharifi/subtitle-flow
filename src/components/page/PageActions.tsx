@@ -88,7 +88,7 @@ export function PageActions({
           </div>
         )}
 
-        <div className="text-center text-muted-foreground space-y-4">
+        <div className="text-center text-muted-foreground space-y-4 max-w-5xl mx-auto">
           <div className="space-y-2">
             <p
               className="text-sm"
