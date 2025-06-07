@@ -127,6 +127,7 @@
   "aiGenerator.option2.description": "Let AI generate timestamped subtitles for the entire media file (uses Timestamp Task settings).",
   "aiGenerator.option2.descriptionDisabled": " (Upload or finalize media file first)",
   "aiGenerator.option2.descriptionEnabled": " This may take several minutes depending on provider and media length.",
+  "aiGenerator.option2.apiKeyNeededMessage": "One or more API keys (OpenAI, AvalAI, or Groq) must be set in Settings to use this feature.",
   "aiGenerator.language.label": "Language for Full Transcription",
   "aiGenerator.language.placeholder": "Select transcription language",
   "aiGenerator.language.description": "Uses the language selected here for this generation. Initial value from Settings.",
@@ -267,3 +268,4 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
+

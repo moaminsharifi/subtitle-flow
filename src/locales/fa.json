@@ -127,6 +127,7 @@
   "aiGenerator.option2.description": "اجازه دهید هوش مصنوعی زیرنویس‌های زمان‌دار برای کل فایل رسانه ایجاد کند (از تنظیمات وظیفه رونویسی زمان‌دار استفاده می‌کند).",
   "aiGenerator.option2.descriptionDisabled": " (ابتدا فایل رسانه را بارگذاری یا نهایی کنید)",
   "aiGenerator.option2.descriptionEnabled": " این ممکن است بسته به ارائه‌دهنده و طول رسانه چند دقیقه طول بکشد.",
+  "aiGenerator.option2.apiKeyNeededMessage": "برای استفاده از این قابلیت، حداقل یکی از کلیدهای API (OpenAI، AvalAI یا Groq) باید در تنظیمات وارد شده باشد.",
   "aiGenerator.language.label": "زبان برای رونویسی کامل",
   "aiGenerator.language.placeholder": "انتخاب زبان رونویسی",
   "aiGenerator.language.description": "از زبان انتخاب شده در اینجا برای این ایجاد استفاده می‌کند. مقدار اولیه از تنظیمات.",
@@ -267,3 +268,4 @@
   "debugLog.buttons.clear": "پاک کردن گزارش‌ها",
   "debugLog.buttons.close": "بستن"
 }
+
