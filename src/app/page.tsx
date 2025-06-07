@@ -5,10 +5,12 @@ import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, AppSettings, TranscriptionProvider, LLMProviderType, TranscriptionModelType, LLMModelType } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
-  TRANSCRIPTION_MODEL_KEY, TRANSCRIPTION_PROVIDER_KEY, 
-  LLM_MODEL_KEY, LLM_PROVIDER_KEY,
+  TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
+  LLM_PROVIDER_KEY, LLM_MODEL_KEY,
   OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY, 
-  MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY 
+  MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY,
+  OpenAIWhisperModels, AvalAIOpenAIBasedWhisperModels, GroqWhisperModels,
+  GoogleGeminiLLModels, OpenAIGPTModels, AvalAIOpenAIBasedGPTModels, GroqLLModels, AvalAIGeminiBasedModels
 } from '@/lib/types';
 // MediaUploader is no longer directly used here for initial upload
 import { useToast } from '@/hooks/use-toast';
@@ -289,23 +291,68 @@ export default function SubtitleSyncPage() {
   }, [activeTrackId, activeTrack, mediaFile, t, toast, addLog]);
 
   const getAppSettings = useCallback((): AppSettings => {
+    // LLM Provider and Model validation
+    const savedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
+    const finalLlmProvider = savedLlmProvider || 'openai'; // Default LLM provider
+
+    let finalLlmModel: LLMModelType;
+    const savedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
+    let validLlmModelsForProvider: readonly LLMModelType[];
+
+    switch (finalLlmProvider) {
+      case 'googleai': validLlmModelsForProvider = GoogleGeminiLLModels; break;
+      case 'openai': validLlmModelsForProvider = OpenAIGPTModels; break;
+      case 'avalai_openai': validLlmModelsForProvider = AvalAIOpenAIBasedGPTModels; break;
+      case 'avalai_gemini': validLlmModelsForProvider = AvalAIGeminiBasedModels; break;
+      case 'groq': validLlmModelsForProvider = GroqLLModels; break;
+      default: validLlmModelsForProvider = OpenAIGPTModels; // Fallback
+    }
+
+    if (savedLlmModel && (validLlmModelsForProvider as readonly string[]).includes(savedLlmModel)) {
+      finalLlmModel = savedLlmModel;
+    } else {
+      finalLlmModel = validLlmModelsForProvider[0];
+    }
+
+    // Transcription Provider and Model validation
+    const savedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
+    const finalTranscriptionProvider = savedTranscriptionProvider || 'openai'; // Default Transcription provider
+
+    let finalTranscriptionModel: TranscriptionModelType;
+    const savedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
+    let validTranscriptionModelsForProvider: readonly TranscriptionModelType[];
+
+    switch (finalTranscriptionProvider) {
+      case 'openai': validTranscriptionModelsForProvider = OpenAIWhisperModels; break;
+      case 'avalai_openai': validTranscriptionModelsForProvider = AvalAIOpenAIBasedWhisperModels; break;
+      case 'groq': validTranscriptionModelsForProvider = GroqWhisperModels; break;
+      default: validTranscriptionModelsForProvider = OpenAIWhisperModels; // Fallback
+    }
+
+    if (savedTranscriptionModel && (validTranscriptionModelsForProvider as readonly string[]).includes(savedTranscriptionModel)) {
+      finalTranscriptionModel = savedTranscriptionModel;
+    } else {
+      finalTranscriptionModel = validTranscriptionModelsForProvider[0];
+    }
+
     return {
       openAIToken: localStorage.getItem(OPENAI_TOKEN_KEY) || undefined,
       avalaiToken: localStorage.getItem(AVALAI_TOKEN_KEY) || undefined,
       googleApiKey: localStorage.getItem(GOOGLE_API_KEY_KEY) || undefined,
       groqToken: localStorage.getItem(GROQ_TOKEN_KEY) || undefined,
       
-      transcriptionProvider: (localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null) || 'openai',
-      transcriptionModel: (localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null) || 'whisper-1',
+      transcriptionProvider: finalTranscriptionProvider,
+      transcriptionModel: finalTranscriptionModel,
       
-      llmProvider: (localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null) || 'openai',
-      llmModel: (localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null) || 'gpt-4o-mini-transcribe',
+      llmProvider: finalLlmProvider,
+      llmModel: finalLlmModel,
       
       defaultTranscriptionLanguage: (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect",
       temperature: parseFloat(localStorage.getItem(TEMPERATURE_KEY) || '0.7'),
       maxSegmentDuration: parseInt(localStorage.getItem(MAX_SEGMENT_DURATION_KEY) || '60', 10),
     };
   }, []);
+
 
   const handleRegenerateTranscription = useCallback(async (entryId: string) => {
     if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
@@ -332,8 +379,8 @@ export default function SubtitleSyncPage() {
     }
 
     const appSettings = getAppSettings();
-    const providerForCueSlice = appSettings.llmProvider || 'openai'; 
-    const modelForCueSlice = appSettings.llmModel || 'gpt-4o-mini-transcribe'; 
+    const providerForCueSlice = appSettings.llmProvider; 
+    const modelForCueSlice = appSettings.llmModel; 
 
     if (providerForCueSlice === 'openai' && !appSettings.openAIToken) {
       toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
@@ -412,8 +459,8 @@ export default function SubtitleSyncPage() {
     }
 
     const appSettings = getAppSettings();
-    const providerForFull = appSettings.transcriptionProvider || 'openai';
-    const modelForFull = appSettings.transcriptionModel || 'whisper-1';
+    const providerForFull = appSettings.transcriptionProvider;
+    const modelForFull = appSettings.transcriptionModel;
 
     if (providerForFull === 'openai' && !appSettings.openAIToken) {
       toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
@@ -570,7 +617,6 @@ export default function SubtitleSyncPage() {
     return !!entryTranscriptionLoading[entryId];
   };
 
-  // Refined editorDisabled: true if fundamental conditions for editing are not met (no media/track or full transcription is running)
   const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription;
 
 
@@ -729,15 +775,15 @@ export default function SubtitleSyncPage() {
                 setEditorLLMLanguage={setEditorLLMLanguage} 
                 mediaFile={mediaFile}
                 isGeneratingFullTranscription={isGeneratingFullTranscription}
-                isAnyTranscriptionLoading={isAnyTranscriptionLoading} // Used to disable actions while any AI task runs
+                isAnyTranscriptionLoading={isAnyTranscriptionLoading} 
                 activeTrack={activeTrack}
                 handleSubtitleChange={handleSubtitleChange}
                 handleSubtitleAdd={handleSubtitleAdd}
                 handleSubtitleDelete={handleSubtitleDelete}
                 handleRegenerateTranscription={handleRegenerateTranscription}
-                isEntryTranscribing={isEntryTranscribing} // For specific entry loading state
+                isEntryTranscribing={isEntryTranscribing} 
                 currentPlayerTime={currentPlayerTime}
-                editorDisabled={editorDisabled} // Global disable (no media/track, full transcription)
+                editorDisabled={editorDisabled} 
                 handleGoToUpload={handleGoToUpload}
                 handleSeekPlayer={handleSeekPlayer}
                 handleProceedToExport={handleProceedToExport}
