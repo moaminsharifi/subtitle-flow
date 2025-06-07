@@ -31,7 +31,7 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 ### Key Benefits
 
 - **🔒 Complete Privacy** - All processing happens locally in your browser.
-- **🔑 Bring Your Own API Key** - You control your API keys (OpenAI, Groq, AvalAI); they are stored locally in your browser and never sent to our servers.
+- **🔑 Bring Your Own API Key** - You control your API keys (Google AI, OpenAI, Groq, AvalAI); they are stored locally in your browser and never sent to our servers.
 - **⚡ Lightning Fast** - No network latency or server delays for core editing.
 - **🌐 Works Offline** - Edit subtitles anywhere, anytime (AI features require an internet connection).
 - **💰 Free Forever** - No subscriptions or hidden costs for the editor. AI features depend on your API provider's pricing.
@@ -45,13 +45,18 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 - 🔄 **Undo/Redo** - Never lose your work with comprehensive history (planned feature)
 
 ### AI-Powered Tools
-- 🤖 **Automatic Transcription** - Generate subtitles using OpenAI Whisper, Groq, or AvalAI API models.
-- 🚀 **Groq API Support** - Leverage fast and potentially free transcription tiers with your Groq API key.
-- 💠 **AvalAI Support** - Utilize AvalAI's transcription services with your AvalAI API key.
-- 🌍 **60+ Languages** - Support for major world languages via OpenAI, Groq, and AvalAI.
-- 🔧 **Segment Regeneration** - Fix specific parts without starting over.
+- 🤖 **Automatic Transcription (Full Media)** - Generate timestamped subtitles for your entire media file using specialized models from OpenAI (Whisper), Groq (Whisper Large v3, v3-turbo), or AvalAI (Whisper-based).
+- 🚀 **Google AI (Gemini) for Cue/Slice Transcription** - Leverage Google's Gemini models (via your Google API key) for regenerating specific subtitle segments in the editor.
+- ⚡ **Groq API Support** - Utilize fast Whisper models (`whisper-large-v3`, `whisper-large-v3-turbo`) for both full media transcription and individual segment regeneration.
+- 💠 **AvalAI Support** - Use AvalAI for:
+    - Full media transcription with Whisper-based models (requires AvalAI API key).
+    - Segment regeneration with specific OpenAI models like `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1` (requires AvalAI API key).
+    - Segment regeneration with Google Gemini models (requires Google API key, configured via AvalAI (Gemini Base) provider in settings).
+- 🎤 **OpenAI Models for Segment Regeneration** - Regenerate specific subtitle segments using models like `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1` (requires OpenAI API key).
+- 🌍 **60+ Languages** - Broad language support across various AI providers.
+- 🔧 **Segment Regeneration** - Fix or re-transcribe specific parts of your subtitles without redoing the entire file, using models optimized for text output.
 - 🇹 **One-Click Translation (Coming Soon)** - Translate subtitles from their original language to all supported languages with a single click.
-- ⚙️ **Expanded API Support (Coming Soon)** - Support for OpenRouter and Gemini API, expanding your choices for AI-powered features.
+- ⚙️ **Expanded API Support (Coming Soon)** - Exploring further integrations, like OpenRouter, to expand your choices for AI-powered features.
 
 ### User Experience
 - 🎨 **Dark/Light Themes** - Comfortable editing in any environment
@@ -63,7 +68,7 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 ### Quick Start
 1. Visit [subtitle-flow.moaminsharifi.com](https://subtitile-flow.moaminsharifi.com/) (or your deployment URL)
 2. Upload your video or audio file
-3. Start editing or generate subtitles with AI (requires API key in Settings)
+3. Start editing or generate subtitles with AI (requires API key(s) in Settings)
 4. Export your finished subtitles
 
 No installation, no sign-up, no hassle!
@@ -106,26 +111,36 @@ No installation, no sign-up, no hassle!
 
 ### AI Transcription Setup
 
-To use the AI-powered transcription features, you'll need an API key from OpenAI, Groq, or AvalAI.
+To use the AI-powered transcription features, you'll need API keys from the respective providers. Configure these in **Settings**:
 
-#### Getting Your API Key
-1.  **OpenAI**:
+1.  **Google AI (for Gemini models)**:
+    *   Used for: Cue/Slice (segment) transcription, either directly or via "AvalAI (Gemini Base)" provider.
+    *   Visit [Google AI Studio](https://aistudio.google.com/app/apikey) or Google Cloud Console.
+    *   Create an account or sign in.
+    *   Generate a new API key.
+    *   Copy and paste it into Subtitle Flow settings (Google AI API Key field).
+2.  **OpenAI**:
+    *   Used for: Full media transcription (Whisper) and Cue/Slice transcription (`gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`).
     *   Visit [OpenAI Platform](https://platform.openai.com/)
-    *   Create an account or sign in
-    *   Navigate to API Keys section
-    *   Generate a new API key
-    *   Copy and paste it into Subtitle Flow settings (OpenAI Token field).
-2.  **Groq**:
+    *   Create an account or sign in.
+    *   Navigate to API Keys section.
+    *   Generate a new API key.
+    *   Copy and paste it into Subtitle Flow settings (OpenAI API Key field).
+3.  **Groq**:
+    *   Used for: Full media transcription and Cue/Slice transcription (Whisper Large v3 models like `whisper-large-v3`, `whisper-large-v3-turbo`).
     *   Visit [GroqCloud Console](https://console.groq.com/keys)
-    *   Create an account or sign in
-    *   Create a new API key
-    *   Copy and paste it into Subtitle Flow settings (Groq Token field).
-3.  **AvalAI**:
-    *   Visit [AvalAI Dashboard](https://dashboard.avalai.ir/) (or their API key provisioning page)
-    *   Create an account or sign in
-    *   Navigate to your API Keys/Tokens section
-    *   Generate or copy your API key
-    *   Copy and paste it into Subtitle Flow settings (AvalAI Token field).
+    *   Create an account or sign in.
+    *   Create a new API key.
+    *   Copy and paste it into Subtitle Flow settings (Groq API Key field).
+4.  **AvalAI**:
+    *   **For OpenAI-compatible models (Whisper for full transcription, `gpt-4o-transcribe`, etc. for cue/slice)**:
+        *   Visit [AvalAI Dashboard](https://dashboard.avalai.ir/)
+        *   Generate or copy your AvalAI API key.
+        *   Paste into Subtitle Flow settings (AvalAI API Key field).
+        *   Select "AvalAI (OpenAI Whisper/GPT)" as the provider in AI Settings for the respective task.
+    *   **For Gemini-based models (for cue/slice)**:
+        *   You will use your **Google AI API Key** (see step 1).
+        *   In Subtitle Flow settings, select "AvalAI (Gemini Base)" as the LLM Provider for Cue/Slice Task and ensure your Google API Key is entered.
 
 > **🔒 Privacy Note**: Your API keys are stored locally in your browser's localStorage and are only used to communicate directly with the respective API provider's servers. They never pass through our systems.
 
@@ -191,8 +206,9 @@ npm run build
 ### Tech Stack
 - **Frontend**: React (Next.js)
 - **Styling**: Tailwind CSS, ShadCN UI
+- **AI Orchestration**: Genkit
+- **AI Integration**: Google AI API, OpenAI API, Groq API, AvalAI API
 - **Media Processing**: Web Audio API, WebCodecs API (planned)
-- **AI Integration**: OpenAI API, Groq API, AvalAI API
 - **Storage**: Browser localStorage (for settings), IndexedDB (planned for project persistence)
 
 ### Contributing
@@ -211,11 +227,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- OpenAI for the Whisper transcription model
+- Google AI for the Gemini models and Genkit
+- OpenAI for the Whisper and GPT models
 - Groq for providing API access to fast language models
 - AvalAI for their transcription services and support
 - The open-source community for inspiration and tools
 - All our contributors and users
 
 ---
-
