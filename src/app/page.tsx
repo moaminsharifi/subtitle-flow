@@ -7,11 +7,12 @@ import {
   LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_MODEL_KEY, TRANSCRIPTION_PROVIDER_KEY, 
   LLM_MODEL_KEY, LLM_PROVIDER_KEY,
-  OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, AVALAI_BASE_URL_KEY
+  OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, // Removed GROQ_TOKEN_KEY, AVALAI_BASE_URL_KEY
+  MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY // Added MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY
 } from '@/lib/types';
-import { MediaUploader } from '@/components/media-uploader';
+// MediaUploader is no longer directly used here for initial upload
 import { useToast } from '@/hooks/use-toast';
-import { runTranscriptionTask } from '@/ai/tasks/run-transcription-task'; // Updated import
+import { runTranscriptionTask } from '@/ai/tasks/run-transcription-task';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 import { useTranslation } from '@/contexts/LanguageContext';
 
@@ -22,6 +23,7 @@ import { UploadStepControls } from '@/components/page/UploadStepControls';
 import { EditStepControls } from '@/components/page/EditStepControls';
 import { ExportStepControls } from '@/components/page/ExportStepControls';
 import { PageActions } from '@/components/page/PageActions';
+import { StepContentWrapper } from '@/components/page/StepContentWrapper'; // Import new component
 
 
 type AppStep = 'upload' | 'edit' | 'export';
@@ -34,14 +36,6 @@ interface FullTranscriptionProgress {
   chunkProgress?: number; // Progress within the current chunk
   chunkMessage?: string; // Message for current chunk progress
 }
-
-const StepContentWrapper = React.memo(({ children }: { children: React.ReactNode }) => (
-  <div className="space-y-6 flex flex-col h-full animate-fade-in">
-    {children}
-  </div>
-));
-StepContentWrapper.displayName = 'StepContentWrapper';
-
 
 export default function SubtitleSyncPage() {
   const { t, dir, language } = useTranslation();
@@ -59,9 +53,7 @@ export default function SubtitleSyncPage() {
   const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
   const [fullTranscriptionProgress, setFullTranscriptionProgress] = useState<FullTranscriptionProgress | null>(null);
   
-  // This state is for language selection in the Editor for cue/slice regeneration (LLM task)
   const [editorLLMLanguage, setEditorLLMLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
-  // This state is for language selection on Upload page for full transcription (Timestamp task)
   const [fullTranscriptionLanguageOverride, setFullTranscriptionLanguageOverride] = useState<LanguageCode | "auto-detect">("auto-detect");
   
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
@@ -89,8 +81,8 @@ export default function SubtitleSyncPage() {
     addLog("Application initialized.", "debug");
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     if (savedDefaultLang) {
-      setEditorLLMLanguage(savedDefaultLang); // For cue/slice task in editor
-      setFullTranscriptionLanguageOverride(savedDefaultLang); // For full transcription task on upload page
+      setEditorLLMLanguage(savedDefaultLang); 
+      setFullTranscriptionLanguageOverride(savedDefaultLang); 
       addLog(`Default transcription language initialized from settings: ${savedDefaultLang}`, "debug");
     } else {
       setEditorLLMLanguage("auto-detect");
@@ -119,7 +111,7 @@ export default function SubtitleSyncPage() {
     const message = t('toast.mediaLoadedDescription', { fileName: file.name, type, duration: duration.toFixed(2) });
     toast({ title: t('toast.mediaLoaded') as string, description: message as string, duration: 5000 });
     addLog(message as string, 'success');
-    setIsReplacingMedia(false);
+    setIsReplacingMedia(false); // Ensure this is reset after upload
   }, [addLog, t, toast]);
 
   const handleSubtitleUpload = useCallback((entries: SubtitleEntry[], fileName: string, format: SubtitleFormat) => {
@@ -300,8 +292,7 @@ export default function SubtitleSyncPage() {
     return {
       openAIToken: localStorage.getItem(OPENAI_TOKEN_KEY) || undefined,
       avalaiToken: localStorage.getItem(AVALAI_TOKEN_KEY) || undefined,
-      avalaiBaseUrl: localStorage.getItem(AVALAI_BASE_URL_KEY) || 'https://api.avalai.ir/v1',
-      groqToken: localStorage.getItem(GROQ_TOKEN_KEY) || undefined,
+      // avalaiBaseUrl is no longer user-configurable from settings
       googleApiKey: localStorage.getItem(GOOGLE_API_KEY_KEY) || undefined,
       
       transcriptionProvider: (localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null) || 'openai',
@@ -311,7 +302,7 @@ export default function SubtitleSyncPage() {
       llmModel: (localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null) || 'gpt-4o-mini',
       
       defaultTranscriptionLanguage: (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect",
-      temperature: parseFloat(localStorage.getItem('app-settings-temperature') || '0.7'),
+      temperature: parseFloat(localStorage.getItem(TEMPERATURE_KEY) || '0.7'),
       maxSegmentDuration: parseInt(localStorage.getItem(MAX_SEGMENT_DURATION_KEY) || '60', 10),
     };
   }, []);
@@ -341,10 +332,9 @@ export default function SubtitleSyncPage() {
     }
 
     const appSettings = getAppSettings();
-    const providerForCueSlice = appSettings.llmProvider || 'openai'; // Default to openai if not set
-    const modelForCueSlice = appSettings.llmModel || 'gpt-4o-mini'; // Default model
+    const providerForCueSlice = appSettings.llmProvider || 'openai'; 
+    const modelForCueSlice = appSettings.llmModel || 'gpt-4o-mini'; 
 
-    // API Key Checks
     if (providerForCueSlice === 'openai' && !appSettings.openAIToken) {
       toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.openAITokenMissingDescription') as string, 'error'); return;
@@ -417,7 +407,6 @@ export default function SubtitleSyncPage() {
     const providerForFull = appSettings.transcriptionProvider || 'openai';
     const modelForFull = appSettings.transcriptionModel || 'whisper-1';
 
-    // API Key Checks
     if (providerForFull === 'openai' && !appSettings.openAIToken) {
       toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.openAITokenMissingDescription') as string, 'error'); return;
@@ -426,11 +415,7 @@ export default function SubtitleSyncPage() {
       toast({ title: t('toast.avalaiTokenMissing') as string, description: t('toast.avalaiTokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.avalaiTokenMissingDescription') as string, 'error'); return;
     }
-    if (providerForFull === 'groq' && !appSettings.groqToken) {
-      toast({ title: t('toast.groqTokenMissing') as string, description: t('toast.groqTokenMissingDescription') as string, variant: "destructive" });
-      addLog(t('toast.groqTokenMissingDescription') as string, 'error'); return;
-    }
-    
+        
     const langForFull = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
     addLog(`Starting full media timestamp transcription with provider: ${providerForFull}, model: ${modelForFull}, Language: ${langForFull || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
     setIsGeneratingFullTranscription(true);
@@ -468,15 +453,13 @@ export default function SubtitleSyncPage() {
         
         const slicingMsg = t('toast.fullTranscriptionProgress.slicing', { currentChunk: i + 1, totalChunks: numChunks, startTime: chunkStartTime.toFixed(1), endTime: chunkEndTime.toFixed(1) });
         addLog(slicingMsg as string, 'debug');
-        // toast({ title: t('aiGenerator.progress.inProgress') as string, description: slicingMsg as string, duration: 2000});
-
+        
         const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, chunkStartTime, chunkEndTime);
         addLog(`Audio chunk ${i+1} sliced.`, 'debug');
 
         setFullTranscriptionProgress(prev => ({ ...prev!, currentStage: t('aiGenerator.progress.stage.transcribing') as string }));
         const transcribingMsg = t('toast.fullTranscriptionProgress.transcribing', { currentChunk: i + 1, totalChunks: numChunks, model: modelForFull });
         addLog(transcribingMsg as string, 'debug');
-        // toast({ title: t('aiGenerator.progress.inProgress') as string, description: transcribingMsg as string, duration: 2000 });
 
         const result = await runTranscriptionTask({
           audioDataUri,
@@ -490,7 +473,6 @@ export default function SubtitleSyncPage() {
         setFullTranscriptionProgress(prev => ({ ...prev!, currentStage: t('aiGenerator.progress.stage.processing') as string, chunkProgress: 0, chunkMessage: '' }));
         const processingMsg = t('toast.fullTranscriptionProgress.processing', { currentChunk: i + 1 });
         addLog(processingMsg as string, 'debug');
-        // toast({ title: t('aiGenerator.progress.inProgress') as string, description: processingMsg as string, duration: 2000 });
         addLog(`Chunk ${i+1} transcribed. Segments: ${result.segments?.length || 0}. Full text: "${result.fullText.substring(0,50)}..."`, 'debug');
 
         if (result.segments && result.segments.length > 0) {
@@ -502,7 +484,7 @@ export default function SubtitleSyncPage() {
               text: segment.text,
             });
           });
-        } else if (result.fullText) { // Fallback if no segments but full text exists
+        } else if (result.fullText) { 
           allSubtitleEntries.push({
             id: `gen-chunk-${chunkStartTime}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
             startTime: parseFloat(chunkStartTime.toFixed(3)),
@@ -528,7 +510,7 @@ export default function SubtitleSyncPage() {
       const newTrack: SubtitleTrack = {
         id: newTrackId,
         fileName: newTrackFileName,
-        format: 'srt', // Default to SRT for generated tracks
+        format: 'srt', 
         entries: allSubtitleEntries,
       };
 
@@ -641,17 +623,15 @@ export default function SubtitleSyncPage() {
   const handleSettingsDialogClose = useCallback(() => {
     const savedDefaultLang = localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null;
     if (savedDefaultLang) {
-        // For cue/slice task in editor
         if (editorLLMLanguage !== savedDefaultLang) {
             setEditorLLMLanguage(savedDefaultLang);
             addLog(`Editor LLM language updated from settings change: ${savedDefaultLang}`, "debug");
         }
-        // For full transcription task on upload page
         if (fullTranscriptionLanguageOverride !== savedDefaultLang && currentStep === 'upload') {
             setFullTranscriptionLanguageOverride(savedDefaultLang);
             addLog(`Full transcription language override updated from settings change: ${savedDefaultLang}`, "debug");
         }
-    } else { // Default cleared
+    } else { 
         if (editorLLMLanguage !== "auto-detect") {
             setEditorLLMLanguage("auto-detect");
             addLog("Editor LLM language reset to 'auto-detect' as default was cleared.", "debug");
@@ -670,35 +650,26 @@ export default function SubtitleSyncPage() {
 
       <main className="flex-grow flex flex-col gap-6">
         <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Column 1: Media Display */}
           <div className="space-y-6 flex flex-col h-full">
-            {currentStep === 'upload' && !mediaFile && (
-              <div className="h-full">
-                <MediaUploader
-                  onMediaUpload={handleMediaUpload}
-                  disabled={isGeneratingFullTranscription}
-                  className="flex flex-col flex-grow h-full"
-                />
-              </div>
-            )}
-            {mediaFile && (
-              <MediaDisplay
-                mediaFile={mediaFile}
-                activeSubtitlesToDisplay={activeTrack ? activeTrack.entries : []}
-                onTimeUpdate={handleTimeUpdate}
-                onShiftTime={handleShiftTime}
-                playerRef={playerRef}
-                currentStep={currentStep}
-                isReplacingMedia={isReplacingMedia}
-                setIsReplacingMedia={setIsReplacingMedia}
-                onMediaUpload={handleMediaUpload}
-                isGeneratingFullTranscription={isGeneratingFullTranscription}
-                addLog={addLog}
-                t={t}
-                dir={dir}
-              />
-            )}
+            <MediaDisplay
+              mediaFile={mediaFile}
+              activeSubtitlesToDisplay={activeTrack ? activeTrack.entries : []}
+              onTimeUpdate={handleTimeUpdate}
+              onShiftTime={handleShiftTime}
+              playerRef={playerRef}
+              currentStep={currentStep}
+              isReplacingMedia={isReplacingMedia}
+              setIsReplacingMedia={setIsReplacingMedia}
+              onMediaUpload={handleMediaUpload}
+              isGeneratingFullTranscription={isGeneratingFullTranscription}
+              addLog={addLog}
+              t={t}
+              dir={dir}
+            />
           </div>
 
+          {/* Column 2: Step Controls */}
           <StepContentWrapper key={currentStep}>
             {currentStep === 'upload' && (
               <UploadStepControls
@@ -723,8 +694,8 @@ export default function SubtitleSyncPage() {
                 activeTrackId={activeTrackId}
                 subtitleTracks={subtitleTracks}
                 setActiveTrackId={setActiveTrackId}
-                editorLLMLanguage={editorLLMLanguage} // Pass editorLLMLanguage
-                setEditorLLMLanguage={setEditorLLMLanguage} // Pass setter
+                editorLLMLanguage={editorLLMLanguage}
+                setEditorLLMLanguage={setEditorLLMLanguage}
                 mediaFile={mediaFile}
                 isGeneratingFullTranscription={isGeneratingFullTranscription}
                 isAnyTranscriptionLoading={isAnyTranscriptionLoading}

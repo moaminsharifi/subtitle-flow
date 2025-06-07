@@ -41,11 +41,36 @@ export function MediaDisplay({
   t,
   dir,
 }: MediaDisplayProps) {
+
+  // Handle initial upload scenario within MediaDisplay
+  if (currentStep === 'upload' && !mediaFile && !isReplacingMedia) {
+    return (
+      <Card className="shadow-lg animate-fade-in flex-grow">
+        <CardContent className="p-4 h-full flex flex-col">
+          <MediaUploader
+            onMediaUpload={onMediaUpload}
+            disabled={isGeneratingFullTranscription}
+            className="flex flex-col flex-grow h-full"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // If no media file is present (and it's not the initial upload scenario handled above)
   if (!mediaFile) {
-    // This case is handled by the MediaUploader being rendered directly in page.tsx when mediaFile is null
-    return null; 
+    return (
+      <Card className="shadow-lg animate-fade-in flex-grow">
+        <CardContent className="p-4 h-full flex flex-col items-center justify-center">
+            <div className="w-full aspect-video bg-muted flex items-center justify-center rounded-lg shadow-inner">
+                <p className="text-muted-foreground">{t('mediaPlayer.uploadPrompt') as string}</p>
+            </div>
+        </CardContent>
+      </Card>
+    );
   }
 
+  // Media file is present, render player and "change media" options
   return (
     <Card className={cn(
       "shadow-lg animate-fade-in",
@@ -79,7 +104,7 @@ export function MediaDisplay({
             ) : (
               <div className="w-full space-y-2">
                 <MediaUploader
-                  onMediaUpload={onMediaUpload}
+                  onMediaUpload={onMediaUpload} // This is the "replace" uploader
                   disabled={isGeneratingFullTranscription}
                 />
                 <Button
