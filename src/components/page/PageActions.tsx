@@ -7,12 +7,22 @@ import { Button } from '@/components/ui/button';
 import {
   SettingsIcon, ScrollText, HelpCircle, Github, Globe,
   FileText, WandSparkles, Edit3, ShieldCheck, WifiOff, Languages as LanguagesIcon,
-  Cpu, // Removed Translate
+  Cpu,
 } from 'lucide-react';
-import { SettingsDialog } from '@/components/settings-dialog';
-import { DebugLogDialog } from '@/components/debug-log-dialog';
-import { CheatsheetDialog } from '@/components/cheatsheet-dialog';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
+
+// Dynamically import dialogs
+const SettingsDialog = dynamic(() =>
+  import('@/components/settings-dialog').then((mod) => mod.SettingsDialog)
+);
+const DebugLogDialog = dynamic(() =>
+  import('@/components/debug-log-dialog').then((mod) => mod.DebugLogDialog)
+);
+const CheatsheetDialog = dynamic(() =>
+  import('@/components/cheatsheet-dialog').then((mod) => mod.CheatsheetDialog)
+);
+
 
 interface PageActionsProps {
   isSettingsDialogOpen: boolean;
@@ -35,7 +45,7 @@ const iconMap: { [key: string]: React.ElementType } = {
   ShieldCheck,
   WifiOff,
   Languages: LanguagesIcon,
-  Translate: LanguagesIcon, // Use LanguagesIcon for the "Translate" feature
+  Translate: LanguagesIcon,
   Cpu,
 };
 
@@ -58,8 +68,6 @@ export function PageActions({
 
   return (
     <>
-      {/* Floating action buttons */}
-
       {/* Footer */}
       <footer className="mt-12 pt-8 border-t border-border/80">
         {features.length > 0 && (
@@ -160,31 +168,37 @@ export function PageActions({
         </Button>
       </div>
 
-      <SettingsDialog
-        isOpen={isSettingsDialogOpen}
-        onClose={() => {
-          setIsSettingsDialogOpen(false);
-          addLog("Settings dialog closed.", "debug");
-          onSettingsDialogClose();
-        }}
-        addLog={addLog}
-      />
-      <DebugLogDialog
-        isOpen={isDebugLogDialogOpen}
-        onClose={() => {
-          setIsDebugLogDialogOpen(false);
-          addLog("Debug log dialog closed.", "debug");
-        }}
-        logs={logEntries}
-        onClearLogs={clearLogs}
-      />
-      <CheatsheetDialog
-        isOpen={isCheatsheetDialogOpen}
-        onClose={() => {
-          setIsCheatsheetDialogOpen(false);
-          addLog("Cheatsheet dialog closed.", "debug");
-        }}
-      />
+      {isSettingsDialogOpen && (
+        <SettingsDialog
+          isOpen={isSettingsDialogOpen}
+          onClose={() => {
+            setIsSettingsDialogOpen(false);
+            addLog("Settings dialog closed.", "debug");
+            onSettingsDialogClose();
+          }}
+          addLog={addLog}
+        />
+      )}
+      {isDebugLogDialogOpen && (
+        <DebugLogDialog
+          isOpen={isDebugLogDialogOpen}
+          onClose={() => {
+            setIsDebugLogDialogOpen(false);
+            addLog("Debug log dialog closed.", "debug");
+          }}
+          logs={logEntries}
+          onClearLogs={clearLogs}
+        />
+      )}
+      {isCheatsheetDialogOpen && (
+        <CheatsheetDialog
+          isOpen={isCheatsheetDialogOpen}
+          onClose={() => {
+            setIsCheatsheetDialogOpen(false);
+            addLog("Cheatsheet dialog closed.", "debug");
+          }}
+        />
+      )}
     </>
   );
 }
