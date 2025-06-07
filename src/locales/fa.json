@@ -74,12 +74,11 @@
   "settings.apiKeyManagement.googleApiKeyLabel": "کلید API هوش مصنوعی گوگل",
   "settings.apiKeyManagement.openAITokenLabel": "توکن OpenAI",
   "settings.apiKeyManagement.avalaiTokenLabel": "کلید API آوال",
-  "settings.apiKeyManagement.avalaiBaseUrlLabel": "آدرس پایه API آوال (اختیاری)",
+  "settings.apiKeyManagement.avalaiBaseUrlLabel": "آدرس پایه API آوال (اختیاری، در صورت خالی بودن از پیش‌فرض استفاده می‌شود)",
   "settings.apiKeyManagement.groqTokenLabel": "توکن Groq",
   "settings.apiConfig.provider.googleai": "Google AI (Gemini)",
   "settings.apiConfig.provider.openai": "OpenAI",
-  "settings.apiConfig.provider.avalai_openai": "آوال (OpenAI Whisper)",
-  "settings.apiConfig.provider.avalai_openai_gpt": "آوال (مبتنی بر OpenAI GPT)",
+  "settings.apiConfig.provider.avalai_openai": "آوال (OpenAI Whisper/GPT)",
   "settings.apiConfig.provider.avalai_gemini": "آوال (مبتنی بر Gemini)",
   "settings.apiConfig.provider.groq": "Groq (گراک)",
   "settings.apiConfig.avalaiTokenPlaceholder": "کلید API آوال خود را وارد کنید",
@@ -215,6 +214,10 @@
   "toast.fullTranscriptionCompleteDescription": "رونویسی کامل شد! ترک جدید \"{trackName}\" با {count} خط زیرنویس اضافه شد.",
   "toast.fullTranscriptionError.generic": "خطای رونویسی کامل",
   "toast.fullTranscriptionError.genericDescription": "خطای رونویسی کامل: {errorMessage}",
+  "toast.fullTranscriptionWarning.noTimestampsTitle": "هشدار رونویسی",
+  "toast.fullTranscriptionWarning.noTimestampsDescription": "بخش‌های زمان‌بندی شده برای قطعه {chunk} بازگردانده نشد (ارائه‌دهنده: {provider}، مدل: {model}). به جای آن از متن کامل برای این قطعه استفاده شد.",
+  "toast.fullTranscriptionError.noOutputTitle": "خطای رونویسی",
+  "toast.fullTranscriptionError.noOutputDescription": "هیچ خروجی (بخش‌ها یا متن) برای قطعه {chunk} بازگردانده نشد (ارائه‌دهنده: {provider}، مدل: {model}). این قطعه رد شد.",
   "toast.mediaRequired": "رسانه مورد نیاز است",
   "toast.mediaRequiredDescription": "لطفاً ابتدا یک فایل رسانه بارگذاری کنید.",
   "toast.subtitlesRequired": "زیرنویس مورد نیاز است",
@@ -269,3 +272,5 @@
   "debugLog.buttons.close": "بستن"
 }
 
+
+    

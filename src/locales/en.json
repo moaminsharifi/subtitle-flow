@@ -74,12 +74,11 @@
   "settings.apiKeyManagement.googleApiKeyLabel": "Google AI API Key",
   "settings.apiKeyManagement.openAITokenLabel": "OpenAI API Key",
   "settings.apiKeyManagement.avalaiTokenLabel": "AvalAI API Key",
-  "settings.apiKeyManagement.avalaiBaseUrlLabel": "AvalAI Base URL (Optional)",
+  "settings.apiKeyManagement.avalaiBaseUrlLabel": "AvalAI Base URL (Optional, uses default if empty)",
   "settings.apiKeyManagement.groqTokenLabel": "Groq API Key",
   "settings.apiConfig.provider.googleai": "Google AI (Gemini)",
   "settings.apiConfig.provider.openai": "OpenAI",
-  "settings.apiConfig.provider.avalai_openai": "AvalAI (OpenAI Whisper)",
-  "settings.apiConfig.provider.avalai_openai_gpt": "AvalAI (OpenAI GPT Base)",
+  "settings.apiConfig.provider.avalai_openai": "AvalAI (OpenAI Whisper/GPT)",
   "settings.apiConfig.provider.avalai_gemini": "AvalAI (Gemini Base)",
   "settings.apiConfig.provider.groq": "Groq",
   "settings.apiConfig.avalaiTokenPlaceholder": "Enter your AvalAI API Key",
@@ -215,6 +214,10 @@
   "toast.fullTranscriptionCompleteDescription": "Full transcription complete! New track \"{trackName}\" added with {count} cues.",
   "toast.fullTranscriptionError.generic": "Full Transcription Error",
   "toast.fullTranscriptionError.genericDescription": "Full Transcription Error: {errorMessage}",
+  "toast.fullTranscriptionWarning.noTimestampsTitle": "Transcription Warning",
+  "toast.fullTranscriptionWarning.noTimestampsDescription": "Timestamped segments not returned for chunk {chunk} (Provider: {provider}, Model: {model}). Full text for the chunk was used instead.",
+  "toast.fullTranscriptionError.noOutputTitle": "Transcription Error",
+  "toast.fullTranscriptionError.noOutputDescription": "No output (segments or text) returned for chunk {chunk} (Provider: {provider}, Model: {model}). This chunk was skipped.",
   "toast.mediaRequired": "Media Required",
   "toast.mediaRequiredDescription": "Please upload a media file first.",
   "toast.subtitlesRequired": "Subtitles Required",
@@ -269,3 +272,5 @@
   "debugLog.buttons.close": "Close"
 }
 
+
+    

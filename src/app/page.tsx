@@ -7,8 +7,8 @@ import {
   LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_MODEL_KEY, TRANSCRIPTION_PROVIDER_KEY, 
   LLM_MODEL_KEY, LLM_PROVIDER_KEY,
-  OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, // Removed GROQ_TOKEN_KEY, AVALAI_BASE_URL_KEY
-  MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY // Added MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY
+  OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY, // Added GROQ_TOKEN_KEY back
+  MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY 
 } from '@/lib/types';
 // MediaUploader is no longer directly used here for initial upload
 import { useToast } from '@/hooks/use-toast';
@@ -292,8 +292,8 @@ export default function SubtitleSyncPage() {
     return {
       openAIToken: localStorage.getItem(OPENAI_TOKEN_KEY) || undefined,
       avalaiToken: localStorage.getItem(AVALAI_TOKEN_KEY) || undefined,
-      // avalaiBaseUrl is no longer user-configurable from settings
       googleApiKey: localStorage.getItem(GOOGLE_API_KEY_KEY) || undefined,
+      groqToken: localStorage.getItem(GROQ_TOKEN_KEY) || undefined,
       
       transcriptionProvider: (localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null) || 'openai',
       transcriptionModel: (localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null) || 'whisper-1',
@@ -339,13 +339,21 @@ export default function SubtitleSyncPage() {
       toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.openAITokenMissingDescription') as string, 'error'); return;
     }
-    if (providerForCueSlice === 'avalai' && !appSettings.avalaiToken) {
+    if (providerForCueSlice === 'avalai_openai' && !appSettings.avalaiToken) { // Changed from 'avalai'
       toast({ title: t('toast.avalaiTokenMissing') as string, description: t('toast.avalaiTokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.avalaiTokenMissingDescription') as string, 'error'); return;
     }
     if (providerForCueSlice === 'googleai' && !appSettings.googleApiKey) {
       toast({ title: t('toast.googleApiKeyMissing') as string, description: t('toast.googleApiKeyMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.googleApiKeyMissingDescription') as string, 'error'); return;
+    }
+    if (providerForCueSlice === 'avalai_gemini' && !appSettings.googleApiKey) { // For AvalAI Gemini, still check Google API key as per current setup
+        toast({ title: t('toast.googleApiKeyMissingForAvalAI') as string, description: t('toast.googleApiKeyMissingForAvalAIDescription') as string, variant: "destructive" });
+        addLog(t('toast.googleApiKeyMissingForAvalAIDescription') as string, 'error'); return;
+    }
+    if (providerForCueSlice === 'groq' && !appSettings.groqToken) {
+      toast({ title: t('toast.groqTokenMissing') as string, description: t('toast.groqTokenMissingDescription') as string, variant: "destructive" });
+      addLog(t('toast.groqTokenMissingDescription') as string, 'error'); return;
     }
     
     const langForSegment = editorLLMLanguage === "auto-detect" ? undefined : editorLLMLanguage;
@@ -411,9 +419,13 @@ export default function SubtitleSyncPage() {
       toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.openAITokenMissingDescription') as string, 'error'); return;
     }
-    if (providerForFull === 'avalai' && !appSettings.avalaiToken) {
+    if (providerForFull === 'avalai_openai' && !appSettings.avalaiToken) { // Changed from 'avalai'
       toast({ title: t('toast.avalaiTokenMissing') as string, description: t('toast.avalaiTokenMissingDescription') as string, variant: "destructive" });
       addLog(t('toast.avalaiTokenMissingDescription') as string, 'error'); return;
+    }
+    if (providerForFull === 'groq' && !appSettings.groqToken) {
+      toast({ title: t('toast.groqTokenMissing') as string, description: t('toast.groqTokenMissingDescription') as string, variant: "destructive" });
+      addLog(t('toast.groqTokenMissingDescription') as string, 'error'); return;
     }
         
     const langForFull = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
@@ -485,13 +497,30 @@ export default function SubtitleSyncPage() {
             });
           });
         } else if (result.fullText) { 
+          const warningMsg = `Timestamped segments not returned for chunk ${i+1} (${chunkStartTime.toFixed(1)}s-${chunkEndTime.toFixed(1)}s) using ${providerForFull}/${modelForFull}. Using full text for this chunk.`;
+          addLog(warningMsg, 'warn');
+          toast({
+            title: t('toast.fullTranscriptionWarning.noTimestampsTitle') as string,
+            description: t('toast.fullTranscriptionWarning.noTimestampsDescription', { chunk: i + 1, provider: providerForFull, model: modelForFull }) as string,
+            variant: "destructive",
+            duration: 7000
+          });
           allSubtitleEntries.push({
             id: `gen-chunk-${chunkStartTime}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
             startTime: parseFloat(chunkStartTime.toFixed(3)),
             endTime: parseFloat(chunkEndTime.toFixed(3)),
             text: result.fullText,
           });
-           addLog(`Chunk ${i+1} (no segments from provider): Added as a single entry.`, 'debug');
+           addLog(`Chunk ${i+1} (no segments from provider, fallback): Added as a single entry.`, 'debug');
+        } else {
+            const errorMsgForToast = `No output (segments or text) returned for chunk ${i+1} (${chunkStartTime.toFixed(1)}s-${chunkEndTime.toFixed(1)}s) using ${providerForFull}/${modelForFull}. Skipping chunk.`;
+            addLog(errorMsgForToast, 'error');
+            toast({
+                title: t('toast.fullTranscriptionError.noOutputTitle') as string,
+                description: t('toast.fullTranscriptionError.noOutputDescription', { chunk: i + 1, provider: providerForFull, model: modelForFull }) as string,
+                variant: "destructive",
+                duration: 7000
+            });
         }
          setFullTranscriptionProgress(prev => ({
             ...prev!,
@@ -694,8 +723,8 @@ export default function SubtitleSyncPage() {
                 activeTrackId={activeTrackId}
                 subtitleTracks={subtitleTracks}
                 setActiveTrackId={setActiveTrackId}
-                editorLLMLanguage={editorLLMLanguage}
-                setEditorLLMLanguage={setEditorLLMLanguage}
+                editorLLMLanguage={editorLLMLanguage} 
+                setEditorLLMLanguage={setEditorLLMLanguage} 
                 mediaFile={mediaFile}
                 isGeneratingFullTranscription={isGeneratingFullTranscription}
                 isAnyTranscriptionLoading={isAnyTranscriptionLoading}
@@ -746,3 +775,6 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
+
+
+    
