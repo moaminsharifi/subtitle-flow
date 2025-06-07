@@ -1,42 +1,49 @@
 'use server';
 /**
- * @fileOverview Initializes Genkit with the Google AI plugin.
+ * @fileOverview Initializes Genkit with specified plugins and provides model utility functions.
  *
- * This file sets up a global `ai` object configured to use Google AI models.
- * API keys for Google AI should be set via the GOOGLE_API_KEY environment variable.
- * Other Genkit plugins like `genkitx-openai` and `genkitx-groq` are included
- * in package.json but are typically instantiated directly in client-side tasks
- * with API keys from localStorage, rather than being globally configured here,
- * to support dynamic, user-provided keys in a client-rendered application.
+ * This file sets up a global `ai` object for internal use and exports async functions
+ * to interact with Genkit features, suitable for use as Server Actions.
+ * For OpenAI, AvalAI, and Groq, primary interaction from client-side tasks
+ * will be through direct SDK instantiation, not these Genkit model getters,
+ * as API keys are managed client-side. The Google AI interactions will go through
+ * exported server actions from this file.
  */
 
-import {genkit, type ModelReference} from 'genkit';
-import {googleAI, geminiPro, gemini15Pro, gemini15Flash} from '@genkit-ai/googleai';
+import {GenerateOptions, GenerateResult, genkit, type ModelReference} from 'genkit';
+import {googleAI, gemini15Pro, gemini15Flash} from '@genkit-ai/googleai';
+import {openAI as genkitOpenAI} from 'genkitx-openai';
+import {groq as genkitGroq} from 'genkitx-groq';
 import {type CandidateData} from 'genkit/generate';
+import type {
+  OpenAIModelType, GroqModelType, GoogleAILLMModelType,
+  AvalAIModelType
+} from '@/lib/types';
 
-// Initialize Genkit with the Google AI plugin.
-// The Google AI plugin will typically look for the GOOGLE_API_KEY environment variable.
-// In a Next.js `output: 'export'` setup, "environment variables" for server actions
-// might need to be managed carefully or passed through. For client-side rendering,
-// API keys from localStorage are usually passed directly to SDKs or client-side Genkit calls if supported.
-// Here, we initialize it simply. The `runTranscriptionTask` will handle API keys for Google AI if needed
-// or rely on this global initialization if it correctly picks up a key from the execution environment.
-export const ai = genkit({
+// Initialize Genkit with plugins
+// This 'ai' object is NOT exported directly to avoid "use server" issues with non-async exports.
+// It's used internally by the async functions exported from this module.
+const ai = genkit({
   plugins: [
-    googleAI(), // GOOGLE_API_KEY should be available in the environment where this code runs
-    // `genkitx-openai` and `genkitx-groq` are not initialized globally here
-    // as their API keys come from localStorage and are used for direct SDK instantiation
-    // in client-side tasks like `runTranscriptionTask`.
+    googleAI(), // GOOGLE_API_KEY from environment
+    // genkitOpenAI(), // Not configured globally if keys are client-side for direct SDK use.
+    // genkitGroq(),   // Not configured globally if keys are client-side for direct SDK use.
   ],
-  logLevel: 'debug', // Set to 'info' or 'warn' for production
+  logLevel: 'debug',
   enableTracing: true,
 });
+
+// Exported async function to perform generation using Google AI models via Genkit
+export async function performGoogleAIGeneration(options: GenerateOptions): Promise<GenerateResult> {
+  // The 'ai.generate' call is now encapsulated within a server action.
+  return ai.generate(options);
+}
 
 
 // Helper to get a specific Google AI model reference
 // Model names should align with what's available in the `googleAI` plugin and types.ts
-export function getGoogleAIModel(modelName: string): ModelReference<any, CandidateData, any> {
-  switch (modelName) {
+export async function getGoogleAIModel(modelName: string): Promise<ModelReference<any, CandidateData, any>> {
+  switch (modelName as GoogleAILLMModelType) {
     case 'gemini-1.5-pro-latest':
       return gemini15Pro;
     case 'gemini-1.5-flash-latest':
@@ -48,6 +55,17 @@ export function getGoogleAIModel(modelName: string): ModelReference<any, Candida
   }
 }
 
-// Note: Specific model references for OpenAI (genkitx-openai) or Groq (genkitx-groq)
-// are not exposed here because those services will be called via their direct SDKs
-// in `runTranscriptionTask.ts` using API keys from `localStorage`.
+// Placeholder for getting OpenAI/AvalAI model references if Genkit flows were to use them server-side
+// For client-side, SDKs are used directly. This shows how one might structure it for Genkit.
+export async function getOpenAIModel(modelName: OpenAIModelType | AvalAIModelType): Promise<ModelReference<any, any, any>> {
+  const modelId = `openai/${modelName}`;
+  // @ts-ignore - Assuming 'openAI' refers to the imported plugin function
+  return genkitOpenAI(modelId as any) as ModelReference<any, any, any>;
+}
+
+// Placeholder for getting Groq model references
+export async function getGroqModel(modelName: GroqModelType): Promise<ModelReference<any, any, any>> {
+  const modelId = `groq/${modelName}`;
+  // @ts-ignore - Assuming 'groq' refers to the imported plugin function
+  return genkitGroq(modelId as any) as ModelReference<any, any, any>;
+}
