@@ -18,24 +18,27 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Added Tabs
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import type { 
   AppSettings, TranscriptionModelType, LogEntry, LanguageCode, Theme, Language, 
-  TranscriptionProvider, LLMProviderType, LLMModelType, WhisperModelType
+  TranscriptionProvider, LLMProviderType, LLMModelType, WhisperModelType,
+  AvalAIOpenAIBasedWhisperModels as AvalAIWhisper, // Alias for clarity
+  AvalAIOpenAIBasedGPTModels as AvalAIGPT,
+  AvalAIGeminiBasedModels as AvalAIGemini
 } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
   LLM_PROVIDER_KEY, LLM_MODEL_KEY,
-  OPENAI_TOKEN_KEY, GROQ_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, AVALAI_BASE_URL_KEY,
+  OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, AVALAI_BASE_URL_KEY,
   MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY, DEFAULT_AVALAI_BASE_URL,
-  OpenAIWhisperModels, AvalAIOpenAIBasedWhisperModels, GroqWhisperModels,
-  GoogleGeminiLLModels, OpenAIGPTModels, AvalAIGeminiBasedModels, AvalAIOpenAIBasedGPTModels
+  OpenAIWhisperModels, GroqWhisperModels, // Groq models were removed, but keeping for potential re-add
+  GoogleGeminiLLModels, OpenAIGPTModels
 } from '@/lib/types';
 
-import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot } from 'lucide-react';
+import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot, Info, KeyRound, Cog, Palette } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
@@ -51,14 +54,12 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   // API Keys & Base URL
   const [openAIToken, setOpenAIToken] = useState('');
   const [avalaiToken, setAvalaiToken] = useState('');
-  const [avalaiBaseUrl, setAvalaiBaseUrl] = useState(DEFAULT_AVALAI_BASE_URL); // Re-added
-  const [groqToken, setGroqToken] = useState('');
+  const [avalaiBaseUrl, setAvalaiBaseUrl] = useState(DEFAULT_AVALAI_BASE_URL);
   const [googleApiKey, setGoogleApiKey] = useState('');
 
   // Visibility toggles for API keys
   const [showOpenAIToken, setShowOpenAIToken] = useState(false);
   const [showAvalAIToken, setShowAvalAIToken] = useState(false);
-  const [showGroqToken, setShowGroqToken] = useState(false);
   const [showGoogleApiKey, setShowGoogleApiKey] = useState(false);
 
   // Provider and Model selections
@@ -89,16 +90,16 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
   const transcriptionModelOptions = useMemo((): readonly TranscriptionModelType[] => {
     if (transcriptionProvider === 'openai') return OpenAIWhisperModels;
-    if (transcriptionProvider === 'avalai_openai') return AvalAIOpenAIBasedWhisperModels;
-    if (transcriptionProvider === 'groq') return GroqWhisperModels;
+    if (transcriptionProvider === 'avalai_openai') return AvalAIWhisper;
+    // if (transcriptionProvider === 'groq') return GroqWhisperModels; // Groq was removed
     return OpenAIWhisperModels; // Default
   }, [transcriptionProvider]);
 
   const llmModelOptions = useMemo((): readonly LLMModelType[] => {
     if (llmProvider === 'googleai') return GoogleGeminiLLModels;
     if (llmProvider === 'openai') return OpenAIGPTModels;
-    if (llmProvider === 'avalai_openai') return AvalAIOpenAIBasedGPTModels;
-    if (llmProvider === 'avalai_gemini') return AvalAIGeminiBasedModels;
+    if (llmProvider === 'avalai_openai') return AvalAIGPT;
+    if (llmProvider === 'avalai_gemini') return AvalAIGemini;
     return OpenAIGPTModels; // Default
   }, [llmProvider]);
 
@@ -108,7 +109,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       let logMessage = "Loaded settings: ";
       try {
         const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
-        const validTranscriptionProviders: TranscriptionProvider[] = ['openai', 'avalai_openai', 'groq'];
+        const validTranscriptionProviders: TranscriptionProvider[] = ['openai', 'avalai_openai']; // Groq removed
         const currentTProvider = storedTranscriptionProvider && validTranscriptionProviders.includes(storedTranscriptionProvider) ? storedTranscriptionProvider : 'openai';
         setTranscriptionProvider(currentTProvider);
         logMessage += `Trans. Provider - ${currentTProvider}, `;
@@ -121,15 +122,13 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
         setOpenAIToken(localStorage.getItem(OPENAI_TOKEN_KEY) || '');
         setAvalaiToken(localStorage.getItem(AVALAI_TOKEN_KEY) || '');
-        setAvalaiBaseUrl(localStorage.getItem(AVALAI_BASE_URL_KEY) || DEFAULT_AVALAI_BASE_URL); // Re-added
-        setGroqToken(localStorage.getItem(GROQ_TOKEN_KEY) || '');
+        setAvalaiBaseUrl(localStorage.getItem(AVALAI_BASE_URL_KEY) || DEFAULT_AVALAI_BASE_URL);
         setGoogleApiKey(localStorage.getItem(GOOGLE_API_KEY_KEY) || '');
 
-        // Determine current transcription models based on loaded or defaulted provider
         let currentActualTranscriptionModels: readonly TranscriptionModelType[];
         if (currentTProvider === 'openai') currentActualTranscriptionModels = OpenAIWhisperModels;
-        else if (currentTProvider === 'avalai_openai') currentActualTranscriptionModels = AvalAIOpenAIBasedWhisperModels;
-        else if (currentTProvider === 'groq') currentActualTranscriptionModels = GroqWhisperModels;
+        else if (currentTProvider === 'avalai_openai') currentActualTranscriptionModels = AvalAIWhisper;
+        // else if (currentTProvider === 'groq') currentActualTranscriptionModels = GroqWhisperModels; // Groq removed
         else currentActualTranscriptionModels = OpenAIWhisperModels;
         
         const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
@@ -137,12 +136,11 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         setTranscriptionModel(tModel);
         logMessage += `Trans. Model - ${tModel}, `;
         
-        // Determine current LLM models based on loaded or defaulted provider
         let currentActualLlmModels: readonly LLMModelType[];
         if (currentLProvider === 'googleai') currentActualLlmModels = GoogleGeminiLLModels;
         else if (currentLProvider === 'openai') currentActualLlmModels = OpenAIGPTModels;
-        else if (currentLProvider === 'avalai_openai') currentActualLlmModels = AvalAIOpenAIBasedGPTModels;
-        else if (currentLProvider === 'avalai_gemini') currentActualLlmModels = AvalAIGeminiBasedModels;
+        else if (currentLProvider === 'avalai_openai') currentActualLlmModels = AvalAIGPT;
+        else if (currentLProvider === 'avalai_gemini') currentActualLlmModels = AvalAIGemini;
         else currentActualLlmModels = OpenAIGPTModels;
 
         const storedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
@@ -164,7 +162,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       } catch (error) {
         console.error("Error loading settings from localStorage:", error);
         addLog("Error loading settings from localStorage. Using defaults.", "error");
-        // Set defaults if localStorage fails
         setTranscriptionProvider('openai');
         setTranscriptionModel(OpenAIWhisperModels[0]);
         setLlmProvider('openai');
@@ -224,8 +221,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       
       if (openAIToken) localStorage.setItem(OPENAI_TOKEN_KEY, openAIToken); else localStorage.removeItem(OPENAI_TOKEN_KEY);
       if (avalaiToken) localStorage.setItem(AVALAI_TOKEN_KEY, avalaiToken); else localStorage.removeItem(AVALAI_TOKEN_KEY);
-      if (avalaiBaseUrl) localStorage.setItem(AVALAI_BASE_URL_KEY, avalaiBaseUrl); else localStorage.setItem(AVALAI_BASE_URL_KEY, DEFAULT_AVALAI_BASE_URL); // Save or default
-      if (groqToken) localStorage.setItem(GROQ_TOKEN_KEY, groqToken); else localStorage.removeItem(GROQ_TOKEN_KEY);
+      if (avalaiBaseUrl) localStorage.setItem(AVALAI_BASE_URL_KEY, avalaiBaseUrl); else localStorage.setItem(AVALAI_BASE_URL_KEY, DEFAULT_AVALAI_BASE_URL);
       if (googleApiKey) localStorage.setItem(GOOGLE_API_KEY_KEY, googleApiKey); else localStorage.removeItem(GOOGLE_API_KEY_KEY);
       
       localStorage.setItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, defaultTranscriptionLanguage);
@@ -272,14 +268,28 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
             </DialogDescription>
           </DialogHeader>
 
-          <div className="my-1 flex-grow overflow-y-auto px-2 pr-3 min-h-0">
-            <ScrollArea className="h-full pr-2">
-              <div className="space-y-6 py-4">
-                
+          <Tabs defaultValue="general" className="flex flex-col flex-grow overflow-hidden mt-2">
+            <TabsList className={cn("grid w-full mb-4 shrink-0", "grid-cols-4")}>
+              <TabsTrigger value="general" className="gap-1">
+                <Palette className="h-4 w-4" /> {t('settings.tabs.general') as string}
+              </TabsTrigger>
+              <TabsTrigger value="aiConfig" className="gap-1">
+                <Bot className="h-4 w-4" /> {t('settings.tabs.aiSettings') as string}
+              </TabsTrigger>
+              <TabsTrigger value="apiKeys" className="gap-1">
+                <KeyRound className="h-4 w-4" /> {t('settings.tabs.apiKeys') as string}
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="gap-1">
+                 <Cog className="h-4 w-4" /> {t('settings.tabs.advanced') as string}
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar"> {/* Scrollable content area */}
+              <TabsContent value="general" className="mt-0 space-y-6 py-4 pr-2">
                 {/* Theme Selection */}
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">{t('settings.theme.label')}</Label>
-                  <RadioGroup value={selectedTheme} onValueChange={(value: string) => handleThemeChange(value as Theme)} className="grid grid-cols-3 gap-2" dir={dir}>
+                  <RadioGroup value={selectedTheme} onValueChange={(value: string) => handleThemeChange(value as Theme)} className="grid grid-cols-1 sm:grid-cols-3 gap-2" dir={dir}>
                     {[{ value: 'light', label: t('settings.theme.light') as string, icon: Sun }, { value: 'dark', label: t('settings.theme.dark') as string, icon: Moon }, { value: 'system', label: t('settings.theme.system') as string, icon: Laptop }].map((item) => (
                       <Label key={item.value} htmlFor={`theme-${item.value}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer">
                         <RadioGroupItem value={item.value} id={`theme-${item.value}`} className="sr-only" />
@@ -302,9 +312,33 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     </SelectContent>
                   </Select>
                 </div>
-                <Separator />
+                 <Separator />
+                  {/* Cheatsheet & Credits moved to About tab for better organization */}
+                  <div className="py-2">
+                    <Button variant="outline" className="w-full" onClick={() => { onClose(); addLog("Cheatsheet button clicked from settings.", "debug"); /* Parent should handle opening cheatsheet */ }}>
+                      <HelpCircle className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} />
+                      {t('settings.cheatsheet.button')}
+                    </Button>
+                  </div>
+                  <Separator />
+                  <div>
+                      <h3 className="text-lg font-medium mb-3">{t('settings.credits.title')}</h3>
+                      <div className="text-sm text-muted-foreground space-y-2">
+                          <p className="font-medium">{t('settings.credits.builtWith')}</p>
+                          <ul className="list-disc list-inside ps-5 space-y-1">
+                              <li>Next.js, React, ShadCN UI, Tailwind CSS</li>
+                              <li>Genkit, Google AI, OpenAI API, AvalAI API</li>
+                          </ul>
+                          <p className="pt-2">{t('settings.credits.codeDevelopedWith') as string} <a href="https://firebase.google.com/docs/studio" target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>Firebase Studio</a>.</p>
+                          <p>{t('settings.credits.originalConceptBy') as string} <a href='https://github.com/moaminsharifi' target='_blank' rel='noopener noreferrer follow' className='underline hover:text-primary'>Amin Sharifi (moaminsharifi)</a>.</p>
+                          <p className="pt-2">{t('settings.credits.repository') as string} <a href='https://github.com/moaminsharifi/subtitle-flow' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>github.com/moaminsharifi/subtitle-flow</a></p>
+                          <p>{t('settings.credits.website') as string} <a href='https://subtitile-flow.moaminsharifi.com/' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>subtitile-flow.moaminsharifi.com</a></p>
+                      </div>
+                  </div>
+              </TabsContent>
 
-                {/* Timestamp Transcription Configuration (Whisper-like models) */}
+              <TabsContent value="aiConfig" className="mt-0 space-y-6 py-4 pr-2">
+                {/* Timestamp Transcription Configuration */}
                 <div className="space-y-4">
                     <Label className="text-base font-semibold flex items-center gap-1"><Bot className="h-5 w-5" />{t('settings.timestampTaskConfig.label')}</Label>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
@@ -314,7 +348,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                             <SelectContent>
                                 <SelectItem value="openai">{t('settings.apiConfig.provider.openai')}</SelectItem>
                                 <SelectItem value="avalai_openai">{t('settings.apiConfig.provider.avalai_openai')}</SelectItem>
-                                <SelectItem value="groq">{t('settings.apiConfig.provider.groq')}</SelectItem>
+                                {/* <SelectItem value="groq">{t('settings.apiConfig.provider.groq')}</SelectItem> */} {/* Groq Removed */}
                             </SelectContent>
                         </Select>
                     </div>
@@ -330,7 +364,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                 </div>
                 <Separator />
 
-                {/* Cue/Slice Transcription Configuration (LLMs like Gemini, GPT) */}
+                {/* Cue/Slice Transcription Configuration */}
                 <div className="space-y-4">
                     <Label className="text-base font-semibold flex items-center gap-1"><Bot className="h-5 w-5" />{t('settings.cueSliceTaskConfig.label')}</Label>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
@@ -354,7 +388,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                     </div>
                 </div>
                 <Separator />
-
                 {/* Default Language for AI Tasks */}
                 <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
                     <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.defaultLanguage')}</Label>
@@ -363,98 +396,65 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                         <SelectContent>{LANGUAGE_OPTIONS.map((langOpt) => (<SelectItem key={langOpt.value} value={langOpt.value}>{langOpt.label}</SelectItem>))}</SelectContent>
                     </Select>
                 </div>
-                <Separator />
-                
-                {/* API Key Management */}
-                <div className="space-y-4">
-                    <Label className="text-base font-semibold">{t('settings.apiKeyManagement.label')}</Label>
-                    {/* Google API Key */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="google-api-key-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.googleApiKeyLabel')}</Label>
-                        <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                            <Input id="google-api-key-input" type={showGoogleApiKey ? 'text' : 'password'} value={googleApiKey} onChange={(e) => setGoogleApiKey(e.target.value)} className="flex-grow" placeholder="AIzaSy..." aria-label={t('settings.apiKeyManagement.googleApiKeyLabel') as string} dir={dir}/>
-                            <Button variant="ghost" size="icon" onClick={() => setShowGoogleApiKey(!showGoogleApiKey)}>{showGoogleApiKey ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
-                        </div>
-                    </div>
-                    {/* OpenAI Token */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="openai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.openAITokenLabel')}</Label>
-                        <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                            <Input id="openai-token-input" type={showOpenAIToken ? 'text' : 'password'} value={openAIToken} onChange={(e) => setOpenAIToken(e.target.value)} className="flex-grow" placeholder="sk-..." aria-label={t('settings.apiKeyManagement.openAITokenLabel') as string} dir={dir}/>
-                            <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)}>{showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
-                        </div>
-                    </div>
-                    {/* AvalAI Token & Base URL */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="avalai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiTokenLabel')}</Label>
-                        <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                            <Input id="avalai-token-input" type={showAvalAIToken ? 'text' : 'password'} value={avalaiToken} onChange={(e) => setAvalaiToken(e.target.value)} className="flex-grow" placeholder={t('settings.apiConfig.avalaiTokenPlaceholder') as string} aria-label={t('settings.apiKeyManagement.avalaiTokenLabel') as string} dir={dir}/>
-                            <Button variant="ghost" size="icon" onClick={() => setShowAvalAIToken(!showAvalAIToken)}>{showAvalAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
-                        </div>
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="avalai-baseurl-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiBaseUrlLabel')}</Label>
-                        <Input id="avalai-baseurl-input" type="url" value={avalaiBaseUrl} onChange={(e) => setAvalaiBaseUrl(e.target.value)} className="col-span-1 md:col-span-3" placeholder={DEFAULT_AVALAI_BASE_URL} aria-label={t('settings.apiKeyManagement.avalaiBaseUrlLabel') as string} dir={dir}/>
-                    </div>
-                    {/* Groq Token */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="groq-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.groqTokenLabel')}</Label>
-                        <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-                            <Input id="groq-token-input" type={showGroqToken ? 'text' : 'password'} value={groqToken} onChange={(e) => setGroqToken(e.target.value)} className="flex-grow" placeholder="gsk_..." aria-label={t('settings.apiKeyManagement.groqTokenLabel') as string} dir={dir}/>
-                            <Button variant="ghost" size="icon" onClick={() => setShowGroqToken(!showGroqToken)}>{showGroqToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
-                        </div>
+              </TabsContent>
+
+              <TabsContent value="apiKeys" className="mt-0 space-y-6 py-4 pr-2">
+                <Label className="text-base font-semibold block mb-4">{t('settings.apiKeyManagement.label')}</Label>
+                {/* Google API Key */}
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="google-api-key-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.googleApiKeyLabel')}</Label>
+                    <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                        <Input id="google-api-key-input" type={showGoogleApiKey ? 'text' : 'password'} value={googleApiKey} onChange={(e) => setGoogleApiKey(e.target.value)} className="flex-grow" placeholder="AIzaSy..." aria-label={t('settings.apiKeyManagement.googleApiKeyLabel') as string} dir={dir}/>
+                        <Button variant="ghost" size="icon" onClick={() => setShowGoogleApiKey(!showGoogleApiKey)} aria-label={showGoogleApiKey ? "Hide Google API Key" : "Show Google API Key"}>{showGoogleApiKey ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
                     </div>
                 </div>
-                <Separator />
-                
-                {/* Advanced Options */}
+                {/* OpenAI Token */}
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="openai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.openAITokenLabel')}</Label>
+                    <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                        <Input id="openai-token-input" type={showOpenAIToken ? 'text' : 'password'} value={openAIToken} onChange={(e) => setOpenAIToken(e.target.value)} className="flex-grow" placeholder="sk-..." aria-label={t('settings.apiKeyManagement.openAITokenLabel') as string} dir={dir}/>
+                        <Button variant="ghost" size="icon" onClick={() => setShowOpenAIToken(!showOpenAIToken)} aria-label={showOpenAIToken ? "Hide OpenAI API Key" : "Show OpenAI API Key"}>{showOpenAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
+                    </div>
+                </div>
+                {/* AvalAI Token & Base URL */}
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="avalai-token-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiTokenLabel')}</Label>
+                    <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+                        <Input id="avalai-token-input" type={showAvalAIToken ? 'text' : 'password'} value={avalaiToken} onChange={(e) => setAvalaiToken(e.target.value)} className="flex-grow" placeholder={t('settings.apiConfig.avalaiTokenPlaceholder') as string} aria-label={t('settings.apiKeyManagement.avalaiTokenLabel') as string} dir={dir}/>
+                        <Button variant="ghost" size="icon" onClick={() => setShowAvalAIToken(!showAvalAIToken)} aria-label={showAvalAIToken ? "Hide AvalAI API Key" : "Show AvalAI API Key"}>{showAvalAIToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
+                    </div>
+                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="avalai-baseurl-input" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiKeyManagement.avalaiBaseUrlLabel')}</Label>
+                    <Input id="avalai-baseurl-input" type="url" value={avalaiBaseUrl} onChange={(e) => setAvalaiBaseUrl(e.target.value)} className="col-span-1 md:col-span-3" placeholder={DEFAULT_AVALAI_BASE_URL} aria-label={t('settings.apiKeyManagement.avalaiBaseUrlLabel') as string} dir={dir}/>
+                </div>
+                {/* Groq Token was removed */}
+              </TabsContent>
+              
+              <TabsContent value="advanced" className="mt-0 space-y-6 py-4 pr-2">
+                <Label className="text-base font-semibold block mb-4">{t('settings.apiConfig.advancedOptions.toggleLabel')}</Label>
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                        <Label htmlFor="show-advanced-options" className={cn("md:text-end font-semibold text-base", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.advancedOptions.toggleLabel')}</Label>
-                        <div className="col-span-1 md:col-span-3 flex items-center"><Switch id="show-advanced-options" checked={showAdvancedOptions} onCheckedChange={setShowAdvancedOptions}/></div>
+                        <Label htmlFor="temperature" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.advancedOptions.temperatureLabel')}</Label>
+                        <Input id="temperature" type="number" step="0.1" min="0" max="2" value={temperature} onChange={(e) => setTemperature(parseFloat(e.target.value))} className="col-span-1 md:col-span-3" dir={dir} aria-label={t('settings.apiConfig.advancedOptions.temperatureAriaLabel') as string}/>
                     </div>
-                    {showAdvancedOptions && (
-                        <>
-                        <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                            <Label htmlFor="temperature" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.advancedOptions.temperatureLabel')}</Label>
-                            <Input id="temperature" type="number" step="0.1" min="0" max="1" value={temperature} onChange={(e) => setTemperature(parseFloat(e.target.value))} className="col-span-1 md:col-span-3" dir={dir}/>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
-                            <Label htmlFor="max-segment-duration" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.advancedOptions.maxSegmentDurationLabel')}</Label>
-                            <Input id="max-segment-duration" type="number" step="1" min={4} max={360} value={maxSegmentDuration} onChange={(e) => setMaxSegmentDuration(parseInt(e.target.value, 10))} className="col-span-1 md:col-span-3" dir={dir}/>
-                        </div>
-                        </>
-                    )}
-                </div>
-                <Separator />
+                     <p className="text-xs text-muted-foreground col-span-1 md:col-start-2 md:col-span-3 px-1">
+                        {t('settings.apiConfig.advancedOptions.temperatureDescription') as string}
+                    </p>
 
-                {/* Cheatsheet & Credits */}
-                <div className="py-2">
-                  <Button variant="outline" className="w-full" onClick={() => { onClose(); addLog("Cheatsheet button clicked from settings.", "debug"); /* Parent should handle opening cheatsheet */ }}>
-                    <HelpCircle className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} />
-                    {t('settings.cheatsheet.button')}
-                  </Button>
-                </div>
-                <Separator />
-                <div>
-                    <h3 className="text-lg font-medium mb-3">{t('settings.credits.title')}</h3>
-                    <div className="text-sm text-muted-foreground space-y-2">
-                        <p className="font-medium">{t('settings.credits.builtWith')}</p>
-                        <ul className="list-disc list-inside ps-5 space-y-1">
-                            <li>Next.js, React, ShadCN UI, Tailwind CSS</li>
-                            <li>Genkit, Google AI, OpenAI API, AvalAI API, Groq API</li>
-                         </ul>
-                        <p className="pt-2">{t('settings.credits.codeDevelopedWith') as string} <a href="https://firebase.google.com/docs/studio" target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>Firebase Studio</a>.</p>
-                        <p>{t('settings.credits.originalConceptBy') as string} <a href='https://github.com/moaminsharifi' target='_blank' rel='noopener noreferrer follow' className='underline hover:text-primary'>Amin Sharifi (moaminsharifi)</a>.</p>
-                        <p className="pt-2">{t('settings.credits.repository') as string} <a href='https://github.com/moaminsharifi/subtitle-flow' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>github.com/moaminsharifi/subtitle-flow</a></p>
-                        <p>{t('settings.credits.website') as string} <a href='https://subtitile-flow.moaminsharifi.com/' target='_blank' rel='noopener noreferrer' className='underline hover:text-primary'>subtitile-flow.moaminsharifi.com</a></p>
+                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                        <Label htmlFor="max-segment-duration" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.advancedOptions.maxSegmentDurationLabel')}</Label>
+                        <Input id="max-segment-duration" type="number" step="1" min={4} max={360} value={maxSegmentDuration} onChange={(e) => setMaxSegmentDuration(parseInt(e.target.value, 10))} className="col-span-1 md:col-span-3" dir={dir} aria-label={t('settings.apiConfig.advancedOptions.maxSegmentDurationAriaLabel') as string}/>
                     </div>
+                    <p className="text-xs text-muted-foreground col-span-1 md:col-start-2 md:col-span-3 px-1">
+                        {t('settings.apiConfig.advancedOptions.maxSegmentDurationDescription') as string}
+                    </p>
                 </div>
-              </div>
-            </ScrollArea>
-          </div>
+              </TabsContent>
+            </div>
+          </Tabs>
 
-          <DialogFooter className="mt-auto pt-4 border-t border-border">
+          <DialogFooter className="mt-auto pt-4 border-t border-border shrink-0">
             <DialogClose asChild><Button type="button" variant="outline" onClick={() => addLog("Settings changes cancelled.", "debug")}>{t('settings.buttons.cancel')}</Button></DialogClose>
             <Button type="button" onClick={handleSave}>{t('settings.buttons.save')}</Button>
           </DialogFooter>
@@ -463,3 +463,4 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     </>
   );
 }
+

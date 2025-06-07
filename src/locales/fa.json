@@ -56,6 +56,10 @@
   "footer.sponsoredBy": "با حمایت مالی",
   "settings.title": "تنظیمات برنامه",
   "settings.description": "توکن‌های API، پوسته، زبان و سایر تنظیمات خود را اینجا مدیریت کنید.",
+  "settings.tabs.general": "عمومی",
+  "settings.tabs.aiSettings": "تنظیمات هوش مصنوعی",
+  "settings.tabs.apiKeys": "کلیدهای API",
+  "settings.tabs.advanced": "پیشرفته",
   "settings.theme.label": "پوسته",
   "settings.theme.light": "روشن",
   "settings.theme.dark": "تیره",
@@ -84,8 +88,10 @@
   "settings.apiConfig.advancedOptions.toggleAriaLabel": "تغییر وضعیت گزینه‌های پیشرفته هوش مصنوعی",
   "settings.apiConfig.advancedOptions.temperatureLabel": "دما (Temperature)",
   "settings.apiConfig.advancedOptions.temperatureAriaLabel": "تنظیم دمای مدل هوش مصنوعی",
+  "settings.apiConfig.advancedOptions.temperatureDescription": "تصادفی بودن را کنترل می‌کند. کمتر برای قطعی‌تر، بیشتر برای خلاقانه‌تر. محدوده: ۰.۰ - ۲.۰.",
   "settings.apiConfig.advancedOptions.maxSegmentDurationLabel": "حداکثر مدت زمان بخش برای رونویسی کامل (ثانیه)",
   "settings.apiConfig.advancedOptions.maxSegmentDurationAriaLabel": "حداکثر مدت زمان بخش رونویسی به ثانیه برای رونویسی کامل رسانه",
+  "settings.apiConfig.advancedOptions.maxSegmentDurationDescription": "مدت زمان (۴-۳۶۰ ثانیه) برای هر قطعه صوتی ارسال شده برای رونویسی کامل. کوتاه‌تر ممکن است دقت را برای صدای پرنویز بهبود بخشد اما تماس‌های API را افزایش می‌دهد.",
   "settings.cheatsheet.button": "مشاهده راهنمای میانبرهای صفحه کلید",
   "settings.credits.title": "سازندگان و ابزارها",
   "settings.credits.builtWith": "این برنامه با افتخار با ابزارهای زیر ساخته شده است:",
@@ -261,3 +267,4 @@
   "debugLog.buttons.clear": "پاک کردن گزارش‌ها",
   "debugLog.buttons.close": "بستن"
 }
+

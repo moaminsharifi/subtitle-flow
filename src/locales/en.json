@@ -56,6 +56,10 @@
   "footer.sponsoredBy": "Sponsored by",
   "settings.title": "Application Settings",
   "settings.description": "Manage your API tokens, theme, language, and other preferences here.",
+  "settings.tabs.general": "General",
+  "settings.tabs.aiSettings": "AI Settings",
+  "settings.tabs.apiKeys": "API Keys",
+  "settings.tabs.advanced": "Advanced",
   "settings.theme.label": "Theme",
   "settings.theme.light": "Light",
   "settings.theme.dark": "Dark",
@@ -84,8 +88,10 @@
   "settings.apiConfig.advancedOptions.toggleAriaLabel": "Toggle advanced AI options",
   "settings.apiConfig.advancedOptions.temperatureLabel": "Temperature",
   "settings.apiConfig.advancedOptions.temperatureAriaLabel": "AI model temperature setting",
+  "settings.apiConfig.advancedOptions.temperatureDescription": "Controls randomness. Lower for more deterministic, higher for more creative. Range: 0.0 - 2.0.",
   "settings.apiConfig.advancedOptions.maxSegmentDurationLabel": "Max Segment Duration for Full Transcription (sec)",
   "settings.apiConfig.advancedOptions.maxSegmentDurationAriaLabel": "Maximum transcription segment duration in seconds for full media transcription",
+  "settings.apiConfig.advancedOptions.maxSegmentDurationDescription": "Duration (4-360s) for each audio chunk sent for full transcription. Shorter may improve accuracy for noisy audio but increases API calls.",
   "settings.cheatsheet.button": "View Keyboard Cheatsheet",
   "settings.credits.title": "Credits & Acknowledgements",
   "settings.credits.builtWith": "This application is proudly built with:",
@@ -261,3 +267,4 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
+
