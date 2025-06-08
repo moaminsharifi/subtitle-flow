@@ -2,7 +2,7 @@
 "use client";
 
 import type React from 'react';
-import type { SubtitleTrack, LogEntry } from '@/lib/types';
+import type { SubtitleTrack, LogEntry, LanguageCode } from '@/lib/types';
 import { SubtitleExporter } from '@/components/subtitle-exporter';
 import { Card, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ interface ExportStepControlsProps {
   addLog: (message: string, type?: LogEntry['type']) => void;
   t: (key: string, replacements?: Record<string, string | number | React.ReactNode>) => string | React.ReactNode;
   dir: 'ltr' | 'rtl';
+  onTranslateAndExport: (targetLanguageCode: LanguageCode) => Promise<void>;
+  isTranslating: boolean;
 }
 
 export function ExportStepControls({
@@ -24,7 +26,9 @@ export function ExportStepControls({
   handleGoToUpload,
   addLog,
   t,
-  dir
+  dir,
+  onTranslateAndExport,
+  isTranslating,
 }: ExportStepControlsProps) {
 
   const LeftArrowIcon = dir === 'rtl' ? ArrowRight : ArrowLeft;
@@ -33,15 +37,19 @@ export function ExportStepControls({
     <>
       <SubtitleExporter
         activeTrack={activeTrack}
-        disabled={!activeTrack || !activeTrack.entries.length}
+        disabled={!activeTrack || !activeTrack.entries.length || isTranslating}
         addLog={addLog}
+        onTranslateAndExport={onTranslateAndExport}
+        isTranslating={isTranslating}
+        t={t}
+        dir={dir}
       />
       <Card>
         <CardFooter className="p-4 flex flex-col sm:flex-row gap-2">
-          <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label={t('page.button.editMore') as string}>
+          <Button onClick={handleGoToEdit} variant="outline" className="w-full sm:w-auto" aria-label={t('page.button.editMore') as string} disabled={isTranslating}>
             <LeftArrowIcon className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('page.button.editMore') as string}
           </Button>
-          <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label={t('page.button.startOver') as string}>
+          <Button onClick={() => handleGoToUpload(true)} variant="destructive" className="w-full sm:flex-1" aria-label={t('page.button.startOver') as string} disabled={isTranslating}>
             <RotateCcw className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} /> {t('page.button.startOver') as string}
           </Button>
         </CardFooter>

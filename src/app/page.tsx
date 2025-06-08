@@ -14,7 +14,8 @@ import {
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { runTranscriptionTask } from '@/ai/tasks/run-transcription-task';
-import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
+import { translateSingleText, type TranslateTextInput } from '@/ai/flows/translate-text-flow';
+import { sliceAudioToDataURI, generateSrt } from '@/lib/subtitle-utils';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 import { PageHeader } from '@/components/page/PageHeader';
@@ -57,6 +58,8 @@ export default function SubtitleSyncPage() {
   
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [isReplacingMedia, setIsReplacingMedia] = useState<boolean>(false);
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+
 
   const playerRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -805,6 +808,68 @@ export default function SubtitleSyncPage() {
 
   }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, isGeneratingMultiProcessTranscription, mediaFile, fullTranscriptionLanguageOverride, getAppSettings, t, toast, addLog]);
 
+  const handleTranslateAndExportSubtitles = useCallback(async (targetLanguageCode: LanguageCode) => {
+    if (!activeTrack || activeTrack.entries.length === 0) {
+      toast({ title: t('exporter.toast.nothingToTranslateTitle') as string, description: t('exporter.toast.nothingToTranslateDescription') as string, variant: "destructive" });
+      addLog(t('exporter.toast.nothingToTranslateDescription') as string, 'warn');
+      return;
+    }
+    if (isTranslating) {
+      toast({ title: t('exporter.toast.translationInProgressTitle') as string, description: t('exporter.toast.translationInProgressDescription') as string, variant: "destructive" });
+      addLog(t('exporter.toast.translationInProgressDescription') as string, 'warn');
+      return;
+    }
+
+    const appSettings = getAppSettings();
+    if (!appSettings.googleApiKey && (!appSettings.openAIToken && !appSettings.avalaiToken && !appSettings.groqToken)) {
+         toast({ title: t('exporter.toast.apiKeyNeededForTranslationTitle') as string, description: t('exporter.toast.apiKeyNeededForTranslationDescription') as string, variant: "destructive" });
+         addLog(t('exporter.toast.apiKeyNeededForTranslationDescription') as string, 'error');
+         return;
+    }
+    
+    setIsTranslating(true);
+    const targetLanguageName = LANGUAGE_OPTIONS.find(l => l.value === targetLanguageCode)?.label || targetLanguageCode;
+    addLog(`Translation started for track: ${activeTrack.fileName} to ${targetLanguageName} (${targetLanguageCode})`, 'info');
+    toast({ title: t('exporter.toast.translationStartingTitle') as string, description: t('exporter.toast.translationStartingDescription', { language: targetLanguageName }) as string });
+
+    const translatedEntries: SubtitleEntry[] = [];
+    try {
+      for (const entry of activeTrack.entries) {
+        const translateInput: TranslateTextInput = {
+          textToTranslate: entry.text,
+          targetLanguageCode,
+        };
+        // The translateSingleText is a server action calling a Genkit flow which uses a specific model (e.g., Gemini Flash)
+        const { translatedText } = await translateSingleText(translateInput);
+        translatedEntries.push({ ...entry, text: translatedText });
+      }
+
+      const originalFileName = activeTrack.fileName.substring(0, activeTrack.fileName.lastIndexOf('.') || activeTrack.fileName.length);
+      const translatedFileName = `${originalFileName}.${targetLanguageCode}.srt`;
+      const srtContent = generateSrt(translatedEntries);
+
+      const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = translatedFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: t('exporter.toast.translationSuccessTitle') as string, description: t('exporter.toast.translationSuccessDescription', { fileName: translatedFileName }) as string });
+      addLog(`Successfully translated and exported ${translatedFileName}`, 'success');
+
+    } catch (error: any) {
+      console.error("Translation and export error:", error);
+      toast({ title: t('exporter.toast.translationErrorTitle') as string, description: t('exporter.toast.translationErrorDescription', { error: error.message }) as string, variant: "destructive" });
+      addLog(`Error during translation/export to ${targetLanguageName}: ${error.message}`, 'error');
+    } finally {
+      setIsTranslating(false);
+    }
+  }, [activeTrack, isTranslating, getAppSettings, t, toast, addLog]);
+
 
   const isEntryTranscribing = (entryId: string): boolean => {
     return !!entryTranscriptionLoading[entryId];
@@ -1000,6 +1065,8 @@ export default function SubtitleSyncPage() {
                 addLog={addLog}
                 t={t}
                 dir={dir}
+                onTranslateAndExport={handleTranslateAndExportSubtitles}
+                isTranslating={isTranslating}
               />
             )}
           </StepContentWrapper>

@@ -1,55 +1,63 @@
 
 "use client";
 
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronDown, DownloadCloud } from 'lucide-react';
+import { DownloadCloud, Languages, Loader2 } from 'lucide-react';
 import { generateSrt, generateVtt } from '@/lib/subtitle-utils';
-import type { SubtitleTrack, SubtitleFormat, LogEntry } from '@/lib/types';
+import type { SubtitleTrack, SubtitleFormat, LogEntry, LanguageCode } from '@/lib/types';
+import { LANGUAGE_OPTIONS } from '@/lib/types';
+import { useTranslation } from '@/contexts/LanguageContext';
+import { cn } from '@/lib/utils';
 
 interface SubtitleExporterProps {
   activeTrack: SubtitleTrack | null;
   disabled?: boolean;
   addLog: (message: string, type?: LogEntry['type']) => void;
+  onTranslateAndExport: (targetLanguageCode: LanguageCode) => Promise<void>;
+  isTranslating: boolean;
+  t: (key: string, replacements?: Record<string, string | number | React.ReactNode>) => string | React.ReactNode;
+  dir: 'ltr' | 'rtl';
 }
 
-export function SubtitleExporter({ activeTrack, disabled, addLog }: SubtitleExporterProps) {
+export function SubtitleExporter({ 
+    activeTrack, 
+    disabled, 
+    addLog, 
+    onTranslateAndExport, 
+    isTranslating,
+    t,
+    dir 
+}: SubtitleExporterProps) {
   const { toast } = useToast();
-  // Placeholder for available languages. In a real app, this might come from an API or config.
-  const availableLanguages = [
-    { code: 'es', name: 'Spanish' },
-    { code: 'fr', name: 'French' },
-    { code: 'de', name: 'German' },
-    { code: 'ja', name: 'Japanese' },
-  ];
+  const [targetTranslationLanguage, setTargetTranslationLanguage] = useState<LanguageCode | ''>('');
 
-  const handleExport = (format: SubtitleFormat) => {
+  const translationLanguageOptions = LANGUAGE_OPTIONS.filter(lang => lang.value !== "auto-detect");
+
+  const handleDirectExport = (format: SubtitleFormat) => {
     if (!activeTrack || activeTrack.entries.length === 0) {
-      const msg = "Nothing to export: Please select an active track with subtitles.";
-      toast({ title: "Nothing to export", description: msg, variant: "destructive" });
+      const msg = t('exporter.toast.nothingToExportDescription') as string;
+      toast({ title: t('exporter.toast.nothingToExportTitle') as string, description: msg, variant: "destructive" });
       addLog(msg, 'warn');
       return;
     }
 
-    addLog(`Export started for track: ${activeTrack.fileName}, Format: ${format.toUpperCase()}`, 'debug');
-    const baseName = activeTrack.fileName ? activeTrack.fileName.substring(0, activeTrack.fileName.lastIndexOf('.')) || activeTrack.fileName : 'subtitles';
+    addLog(`Direct export started for track: ${activeTrack.fileName}, Format: ${format.toUpperCase()}`, 'debug');
+    const baseName = activeTrack.fileName ? activeTrack.fileName.substring(0, activeTrack.fileName.lastIndexOf('.') || activeTrack.fileName.length) : 'subtitles';
     const outputFileName = `${baseName}.${format}`;
     
     let content: string;
     if (format === 'srt') {
       content = generateSrt(activeTrack.entries);
-    } else {
+    } else { // vtt
       content = generateVtt(activeTrack.entries);
     }
 
-    const blob = new Blob([content], { type: 'text/plain' });
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -59,83 +67,106 @@ export function SubtitleExporter({ activeTrack, disabled, addLog }: SubtitleExpo
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    const successMsg = `Export Successful: ${outputFileName} downloaded. Cues: ${activeTrack.entries.length}`;
-    toast({ title: "Export Successful", description: successMsg });
+    const successMsg = t('exporter.toast.directExportSuccessDescription', { fileName: outputFileName, count: activeTrack.entries.length }) as string;
+    toast({ title: t('exporter.toast.directExportSuccessTitle') as string, description: successMsg });
     addLog(successMsg, 'success');
   };
 
-  const handleTranslateAndExport = async (targetLanguageCode: string, targetLanguageName: string) => {
-    if (!activeTrack || activeTrack.entries.length === 0) {
-      const msg = "Nothing to translate: Please select an active track with subtitles.";
-      toast({ title: "Nothing to translate", description: msg, variant: "destructive" });
-      addLog(msg, 'warn');
-      return;
+  const handleTranslateAndExportClick = () => {
+    if (!targetTranslationLanguage) {
+        toast({ title: t('exporter.toast.selectLanguageTitle') as string, description: t('exporter.toast.selectLanguageDescription') as string, variant: "destructive" });
+        return;
     }
-
-    addLog(`Translation started for track: ${activeTrack.fileName} to ${targetLanguageName}`, 'debug');
-    // Placeholder for translation logic. This is where you would call your LLM.
-    // This is a mock implementation that just appends the language code.
-    const translatedEntries = activeTrack.entries.map(entry => ({
-      ...entry,
-      text: `${entry.text} [Translated to ${targetLanguageCode}]` // Replace with actual translation
-    }));
-
-    const baseName = activeTrack.fileName ? activeTrack.fileName.substring(0, activeTrack.fileName.lastIndexOf('.')) || activeTrack.fileName : 'subtitles';
-    const outputFileName = `${baseName}.${targetLanguageCode}.srt`;
-    const content = generateSrt(translatedEntries);
-
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = outputFileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    const successMsg = `Translated and Exported: ${outputFileName} downloaded. Cues: ${translatedEntries.length}`;
-    toast({ title: "Translation Successful", description: successMsg });
-    addLog(successMsg, 'success');
+    onTranslateAndExport(targetTranslationLanguage as LanguageCode);
   };
+
+  const activeTrackFileName = activeTrack?.fileName || t('exporter.noActiveTrackName') as string;
+  const activeTrackFormat = activeTrack?.format.toUpperCase() || 'N/A';
+  const activeTrackCues = activeTrack?.entries.length || 0;
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
-          <DownloadCloud className="h-6 w-6 text-primary" />
-          Export Active Subtitle Track
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Export your edited subtitles for the active track ({activeTrack?.fileName || 'N/A'}).
-          Original format was {activeTrack ? `.${activeTrack.format.toUpperCase()}` : 'N/A'}.
-          Contains {activeTrack?.entries.length || 0} cues.
-        </p>
-        <div className="flex gap-2">
-          <Button onClick={() => handleExport('srt')} className="flex-1" disabled={disabled}>
-            Export as .SRT
+    <>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <DownloadCloud className="h-6 w-6 text-primary" />
+            {t('exporter.directExport.title') as string}
+          </CardTitle>
+          <CardDescription>
+            {t('exporter.directExport.description', { 
+                fileName: activeTrackFileName, 
+                format: activeTrackFormat, 
+                count: activeTrackCues 
+            }) as string}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => handleDirectExport('srt')} className="flex-1" disabled={disabled || isTranslating}>
+              {t('exporter.button.exportSRT') as string}
+            </Button>
+            <Button onClick={() => handleDirectExport('vtt')} className="flex-1" disabled={disabled || isTranslating}>
+              {t('exporter.button.exportVTT') as string}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-lg mt-6 border-accent/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Languages className="h-6 w-6 text-accent" />
+            {t('exporter.translateExport.title') as string}
+          </CardTitle>
+           <CardDescription>
+             {t('exporter.translateExport.description', { 
+                fileName: activeTrackFileName, 
+                count: activeTrackCues 
+            }) as string}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+           <div>
+            <Label htmlFor="translate-language-select" className="mb-1 block">
+                {t('exporter.translateExport.selectLanguageLabel') as string}
+            </Label>
+            <Select
+              value={targetTranslationLanguage}
+              onValueChange={(value) => setTargetTranslationLanguage(value as LanguageCode | '')}
+              disabled={disabled || isTranslating || !activeTrack || activeTrack.entries.length === 0}
+              dir={dir}
+            >
+              <SelectTrigger id="translate-language-select" className="w-full" aria-label={t('exporter.translateExport.selectLanguageLabel') as string}>
+                <SelectValue placeholder={t('exporter.translateExport.selectLanguagePlaceholder') as string} />
+              </SelectTrigger>
+              <SelectContent>
+                {translationLanguageOptions.map((langOpt) => (
+                  <SelectItem key={langOpt.value} value={langOpt.value}>
+                    {langOpt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button 
+            onClick={handleTranslateAndExportClick} 
+            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" 
+            disabled={disabled || isTranslating || !activeTrack || activeTrack.entries.length === 0 || !targetTranslationLanguage}
+          >
+            {isTranslating ? (
+              <>
+                <Loader2 className={cn("h-4 w-4 animate-spin", dir === 'rtl' ? 'ms-2' : 'me-2')} />
+                {t('exporter.button.translating') as string}
+              </>
+            ) : (
+              <>
+                <Languages className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} />
+                {t('exporter.button.translateAndExportSRT') as string}
+              </>
+            )}
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="flex-1" disabled={disabled}>
-                Export Translated .SRT <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {availableLanguages.map(lang => (
-                <DropdownMenuItem key={lang.code} onClick={() => handleTranslateAndExport(lang.code, lang.name)}>
-                  {lang.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button onClick={() => handleExport('vtt')} className="flex-1" disabled={disabled}>
-            Export as .VTT
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </>
   );
 }

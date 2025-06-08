@@ -1,39 +1,25 @@
+
 'use server';
 /**
- * @fileOverview Initializes Genkit with specified plugins and provides model utility functions.
+ * @fileOverview Provides server actions for Genkit, utilizing the shared 'ai' instance.
  *
- * This file sets up a global `ai` object for internal use and exports async functions
- * to interact with Genkit features, suitable for use as Server Actions.
- * For OpenAI, AvalAI, and Groq, primary interaction from client-side tasks
- * will be through direct SDK instantiation, not these Genkit model getters,
- * as API keys are managed client-side. The Google AI interactions will go through
- * exported server actions from this file.
+ * This file sets up server-callable functions that interact with Genkit.
+ * The core 'ai' instance is imported from 'genkit-instance.ts'.
  */
 
-import {GenerateOptions, GenerateResult, genkit, type ModelReference} from 'genkit';
-import {googleAI, gemini15Pro, gemini15Flash} from '@genkit-ai/googleai';
-import {openAI as genkitOpenAI} from 'genkitx-openai';
-import {groq as genkitGroq} from 'genkitx-groq'; // Added Groq import
-import {type CandidateData} from 'genkit/generate';
+import { ai } from './genkit-instance'; // Import the shared ai instance
+import type {GenerateOptions, GenerateResult, ModelReference} from 'genkit';
+import { gemini15Pro, gemini15Flash} from '@genkit-ai/googleai';
+import { openAI as genkitOpenAI } from 'genkitx-openai';
+import { groq as genkitGroq } from 'genkitx-groq';
+import type { CandidateData } from 'genkit/generate';
 import type {
   OpenAIModelType, GroqModelType, GoogleAILLMModelType,
-  AvalAIOpenAIBasedWhisperModels, // Correct type for AvalAI OpenAI-based Whisper
-  AvalAIOpenAIBasedGPTModels, // Correct type for AvalAI OpenAI-based GPT
-  AvalAIGeminiBasedModels,   // Correct type for AvalAI Gemini-based
+  AvalAIOpenAIBasedWhisperModels,
+  AvalAIOpenAIBasedGPTModels,
+  AvalAIGeminiBasedModels,
 } from '@/lib/types';
 
-// Initialize Genkit with plugins
-// This 'ai' object is NOT exported directly to avoid "use server" issues with non-async exports.
-// It's used internally by the async functions exported from this module.
-const ai = genkit({
-  plugins: [
-    googleAI(), // GOOGLE_API_KEY from environment
-    genkitOpenAI(), // For direct OpenAI and AvalAI (OpenAI compatible)
-    genkitGroq(),   // For Groq
-  ],
-  logLevel: 'debug',
-  enableTracing: true,
-});
 
 // Exported async function to perform generation using Google AI models via Genkit
 export async function performGoogleAIGeneration(options: GenerateOptions): Promise<GenerateResult> {
