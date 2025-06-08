@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 const APP_NAME = 'Subtitle Flow';
-const APP_DESCRIPTION = 'Subtitle Flow: Edit & create subtitles effortlessly in your browser. Supports SRT/VTT, AI transcription (OpenAI Whisper, Groq), and full privacy. Perfect for video creators & professionals. Free, open-source, and offline-capable.';
+const APP_DESCRIPTION = 'Subtitle Flow: Your powerful, privacy-first subtitle editor. Create, edit & sync SRT/VTT files in-browser. Features AI transcription, multi-language support & offline capability. Free & open-source.';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://subtitile-flow.moaminsharifi.com/';
 const FAVICON_URL = "https://raw.githubusercontent.com/moaminsharifi/subtitle-flow/master/public/icons/icon-512x512.png";
 
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`, // For dynamic titles in child pages
   },
   description: APP_DESCRIPTION,
-  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle flow', 'free subtitle editor', 'online subtitle editor', 'local subtitle editor', 'open source subtitle editor', 'offline subtitle tool', 'openai whisper', 'groq transcription', 'pwa subtitle editor'],
+  keywords: ['subtitle editor', 'srt editor', 'vtt editor', 'caption editor', 'ai subtitle generation', 'browser subtitle tool', 'video subtitles', 'audio transcription', 'subtitle flow', 'free subtitle editor', 'online subtitle editor', 'local subtitle editor', 'open source subtitle editor', 'offline subtitle tool', 'openai whisper', 'groq transcription', 'pwa subtitle editor', 'multi-language subtitles'],
   manifest: '/manifest.json',
 
   openGraph: {
