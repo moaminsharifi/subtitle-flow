@@ -21,7 +21,8 @@ import { sliceAudioToDataURI, generateSrt } from '@/lib/subtitle-utils';
 import { useTranslation } from '@/contexts/LanguageContext';
 import OpenAI from 'openai';
 import Groq from 'groq-sdk';
-import { getGoogleAIModel, performGoogleAIGeneration } from '@/ai/genkit';
+// import { getGoogleAIModel, performGoogleAIGeneration } from '@/ai/genkit'; // performGoogleAIGeneration is commented out for static export
+import { getGoogleAIModel } from '@/ai/genkit';
 import type { GenerateOptions } from 'genkit';
 
 
@@ -855,7 +856,7 @@ export default function SubtitleSyncPage() {
     const translationModelForProvider = appSettings.translationLLMModel || (
         translationProvider === 'googleai' ? GoogleTranslationLLModels[0] :
         translationProvider === 'openai' ? OpenAITranslationLLModels[0] :
-        translationProvider === 'avalai_openai' ? AvalAIOpenAITranslationModels[0] : // Added AvalAI here
+        translationProvider === 'avalai_openai' ? AvalAIOpenAITranslationModels[0] :
         GroqTranslationLLModels[0] // Default for Groq
     );
 
@@ -916,14 +917,16 @@ ${textToTranslate}
 
         try {
             if (translationProvider === 'googleai') {
-                const genkitModel = await getGoogleAIModel(modelIdForClientCall as GoogleAILLMModelType);
-                const generateOptions: GenerateOptions = {
-                    model: genkitModel,
-                    prompt: translationPromptContent,
-                    config: { temperature: appSettings.temperature || 0.2 },
-                };
-                const result = await performGoogleAIGeneration(generateOptions);
-                translatedText = result.text?.trim() || textToTranslate;
+                // const genkitModel = await getGoogleAIModel(modelIdForClientCall as GoogleAILLMModelType);
+                // const generateOptions: GenerateOptions = {
+                //   model: genkitModel,
+                //   prompt: translationPromptContent,
+                //   config: { temperature: appSettings.temperature || 0.2 },
+                // };
+                // const result = await performGoogleAIGeneration(generateOptions); // performGoogleAIGeneration is commented out
+                // translatedText = result.text?.trim() || textToTranslate;
+                console.warn("Google AI translation via Server Action is disabled for static export.");
+                throw new Error("Google AI translation is currently unavailable in static export mode.");
             } else if (translationProvider === 'openai') {
                 const openaiClient = new OpenAI({ apiKey: appSettings.openAIToken!, dangerouslyAllowBrowser: true });
                 const completion = await openaiClient.chat.completions.create({
@@ -1225,3 +1228,4 @@ ${textToTranslate}
 }
 
     
+

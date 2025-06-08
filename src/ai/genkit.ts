@@ -1,9 +1,11 @@
 
-'use server';
+// REMOVED 'use server'; for static export compatibility.
+// Server Actions are not supported with output: 'export'.
+
 /**
- * @fileOverview Provides server actions for Genkit, utilizing the shared 'ai' instance.
+ * @fileOverview Provides server-side utilities for Genkit, utilizing the shared 'ai' instance.
  *
- * This file sets up server-callable functions that interact with Genkit.
+ * This file originally contained Server Actions. For static export, these have been refactored or disabled.
  * The core 'ai' instance is imported from 'genkit-instance.ts'.
  */
 
@@ -21,11 +23,21 @@ import type {
 } from '@/lib/types';
 
 
-// Exported async function to perform generation using Google AI models via Genkit
+// NOTE: performGoogleAIGeneration was a Server Action.
+// Server Actions are not compatible with Next.js static exports (`output: 'export'`).
+// This function is commented out to allow the build to succeed.
+// Features relying on this for Google AI (Gemini) API calls from the client
+// will need to be re-implemented using a direct client-side SDK if available and CORS-permissive,
+// or through a separate serverless function backend if a server is used post-export.
+/*
 export async function performGoogleAIGeneration(options: GenerateOptions): Promise<GenerateResult> {
-  // The 'ai.generate' call is now encapsulated within a server action.
-  return ai.generate(options);
+  // This function can no longer be a Server Action for static export.
+  // If Genkit is used at build time or in a serverful environment, this can be re-enabled.
+  console.warn("performGoogleAIGeneration is disabled in static export mode.");
+  throw new Error("Google AI generation via Server Action is not available in static export mode.");
+  // return ai.generate(options); // Original call
 }
+*/
 
 
 // Helper to get a specific Google AI model reference
@@ -62,3 +74,4 @@ export async function getGroqModel(modelName: GroqModelType): Promise<ModelRefer
   // @ts-ignore - Assuming 'groq' refers to the imported plugin function
   return genkitGroq(modelId as any) as ModelReference<any, any, any>;
 }
+

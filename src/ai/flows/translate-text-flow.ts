@@ -1,8 +1,14 @@
 
-'use server';
+// REMOVED 'use server'; for static export compatibility.
+// Genkit flows defined this way are typically for server-side execution.
+// For static export, they are not invokable as server actions.
+
 /**
  * @fileOverview A flow to translate a single text string to a target language
  * using a dynamically specified model.
+ * NOTE: This flow is not directly used by the client-side "Translate and Export" button
+ * after recent refactoring, which now uses client-side SDKs or proxied calls.
+ * It remains as an example of a Genkit translation flow.
  */
 
 import {ai} from '@/ai/genkit-instance';

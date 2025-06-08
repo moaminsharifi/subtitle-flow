@@ -19,5 +19,6 @@ export const ai = genkit({
     genkitGroq(),   // For Groq
   ],
   logLevel: 'debug',
-  enableTracing: true,
+  enableTracing: false, // Disabled for static export compatibility
 });
+

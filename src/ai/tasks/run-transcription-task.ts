@@ -35,7 +35,8 @@ import {
 import { dataUriToRequestFile } from '@/lib/subtitle-utils';
 import OpenAI from 'openai';
 import Groq from 'groq-sdk';
-import { getGoogleAIModel, performGoogleAIGeneration } from '@/ai/genkit';
+// import { getGoogleAIModel, performGoogleAIGeneration } from '@/ai/genkit'; // performGoogleAIGeneration is commented out for static export
+import { getGoogleAIModel } from '@/ai/genkit';
 
 
 // Input Schema
@@ -91,7 +92,13 @@ export async function runTranscriptionTask(
         throw new Error(errorMsg);
       }
 
+      // performGoogleAIGeneration was a Server Action and is not available in static export.
+      // Throw an error to indicate this limitation.
+      const staticExportErrorMsg = 'Google AI / AvalAI Gemini provider is not available in static export mode due to Server Action limitations.';
+      if (onProgress) onProgress(0, `Error: ${staticExportErrorMsg}`);
+      throw new Error(staticExportErrorMsg);
 
+      /* Code relying on performGoogleAIGeneration is commented out:
       if (task === 'cue_slice') {
         const genkitModel = await getGoogleAIModel(modelName as GenericLLMModelType); // Cast to generic LLM as it covers Gemini
         if (onProgress) onProgress(20, `Transcribing with ${provider} (${modelName})...`);
@@ -103,15 +110,13 @@ export async function runTranscriptionTask(
             temperature: appSettings.temperature || 0.2,
           },
         };
-        const result = await performGoogleAIGeneration(generateOptions);
-        fullText = result.text || "";
-        if (onProgress) onProgress(100, `${provider} transcription complete.`);
+        // const result = await performGoogleAIGeneration(generateOptions); // This was the Server Action call
+        // fullText = result.text || "";
+        // if (onProgress) onProgress(100, `${provider} transcription complete.`);
       } else { // timestamp task
-        // Google AI via Genkit's ai.generate doesn't directly support timestamped segments in the same way Whisper SDK does.
-        // For full media transcription ('timestamp' task), Google AI is not offered as a direct provider in settings.
-        // This path would only be hit if 'avalai_gemini' was somehow selected for a 'timestamp' task, which UI prevents.
         throw new Error(`${provider} provider currently only supports 'cue_slice' task with Gemini models for direct text output via ai.generate. Timestamped output is not supported via this path.`);
       }
+      */
 
     } else if (provider === 'openai' || provider === 'avalai_openai') {
       let apiKey: string | undefined;
