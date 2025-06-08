@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   SettingsIcon, ScrollText, HelpCircle, Github, Globe,
   FileText, WandSparkles, Edit3, ShieldCheck, WifiOff, Languages as LanguagesIcon,
-  Cpu, Zap, // Added Zap
+  Cpu, Zap,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,7 @@ const iconMap: { [key: string]: React.ElementType } = {
   Languages: LanguagesIcon,
   Translate: LanguagesIcon,
   Cpu,
-  Zap, // Added Zap to map
+  Zap,
 };
 
 
@@ -74,7 +74,7 @@ export function PageActions({
         {features.length > 0 && (
           <div className="mb-10">
             <h2 className="text-2xl font-semibold mb-6 text-foreground text-center">{t('footer.features.title') as string}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6 max-w-5xl mx-auto"> {/* Changed lg:grid-cols-3 to lg:grid-cols-2 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
               {features.map((feature, index) => {
                 const IconComponent = iconMap[feature.iconName];
                 return (
