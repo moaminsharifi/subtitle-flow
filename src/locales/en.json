@@ -12,8 +12,13 @@
     },
     {
       "iconName": "WandSparkles",
-      "title": "AI Transcription",
-      "description": "Auto-generate subtitles using Google AI, OpenAI, Groq, or AvalAI in 60+ languages."
+      "title": "AI Transcription (Full)",
+      "description": "Auto-generate timestamped subtitles using Google AI, OpenAI, Groq, or AvalAI in 60+ languages (Option 2)."
+    },
+    {
+      "iconName": "Zap",
+      "title": "Multi-Process AI Transcription",
+      "description": "Advanced 2-stage AI: Full timestamped transcription, then parallel segment-by-segment text refinement (Option 3)."
     },
     {
       "iconName": "Edit3",
@@ -310,3 +315,4 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
+

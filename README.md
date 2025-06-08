@@ -45,16 +45,17 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 - 🔄 **Undo/Redo** - Never lose your work with comprehensive history (planned feature)
 
 ### AI-Powered Tools
-- 🤖 **Automatic Transcription (Full Media)** - Generate timestamped subtitles for your entire media file using specialized models from OpenAI (Whisper), Groq (Whisper Large v3, v3-turbo), or AvalAI (Whisper-based).
-- 🚀 **Google AI (Gemini) for Cue/Slice Transcription** - Leverage Google's Gemini models (via your Google API key) for regenerating specific subtitle segments in the editor.
-- ⚡ **Groq API Support** - Utilize fast Whisper models (`whisper-large-v3`, `whisper-large-v3-turbo`) for both full media transcription and individual segment regeneration.
+- 🤖 **Automatic Transcription (Full Media - Option 2)** - Generate timestamped subtitles for your entire media file using specialized models from OpenAI (Whisper), Groq (Whisper Large v3, v3-turbo), or AvalAI (Whisper-based). Configured via "Timestamp Task" settings.
+- ⚡ **Multi-Process Transcription (Option 3)** - A two-stage process for enhanced accuracy. First, generates full timestamped subtitles (like Option 2). Then, refines the text of each segment in parallel using models optimized for text generation (configured via "Cue/Slice Task" settings).
+- 🚀 **Google AI (Gemini) for Cue/Slice Transcription** - Leverage Google's Gemini models (via your Google API key) for regenerating specific subtitle segments in the editor. Configured via "Cue/Slice Task" settings.
+- ⚡ **Groq API Support** - Utilize fast Whisper models (`whisper-large-v3`, `whisper-large-v3-turbo`) for both full media transcription (Timestamp Task) and individual segment regeneration (Cue/Slice Task).
 - 💠 **AvalAI Support** - Use AvalAI for:
-    - Full media transcription with Whisper-based models (requires AvalAI API key).
-    - Segment regeneration with specific OpenAI models like `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1` (requires AvalAI API key).
-    - Segment regeneration with Google Gemini models (requires Google API key, configured via AvalAI (Gemini Base) provider in settings).
-- 🎤 **OpenAI Models for Segment Regeneration** - Regenerate specific subtitle segments using models like `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1` (requires OpenAI API key).
-- 🌍 **60+ Languages** - Broad language support across various AI providers.
-- 🔧 **Segment Regeneration** - Fix or re-transcribe specific parts of your subtitles without redoing the entire file, using models optimized for text output.
+    - Full media transcription with Whisper-based models (requires AvalAI API key, via "Timestamp Task" settings).
+    - Segment regeneration with specific OpenAI models like `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1` (requires AvalAI API key, via "Cue/Slice Task" settings).
+    - Segment regeneration with Google Gemini models (requires Google API key, configured via "AvalAI (Gemini Base)" provider in "Cue/Slice Task" settings).
+- 🎤 **OpenAI Models for Segment Regeneration** - Regenerate specific subtitle segments using models like `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1` (requires OpenAI API key, via "Cue/Slice Task" settings).
+- 🌍 **60+ Languages** - Broad language support across various AI providers for transcription.
+- 🔧 **Segment Regeneration (In-Editor)** - Fix or re-transcribe specific parts of your subtitles without redoing the entire file, using models optimized for text output (configured via "Cue/Slice Task" settings).
 - 🇹 **One-Click Translation (Coming Soon)** - Translate subtitles from their original language to all supported languages with a single click.
 - ⚙️ **Expanded API Support (Coming Soon)** - Exploring further integrations, like OpenRouter, to expand your choices for AI-powered features.
 
@@ -114,7 +115,7 @@ No installation, no sign-up, no hassle!
 To use the AI-powered transcription features, you'll need API keys from the respective providers. Configure these in **Settings**:
 
 1.  **Google AI (for Gemini models)**:
-    *   Used for: Cue/Slice (segment) transcription, either directly or via "AvalAI (Gemini Base)" provider.
+    *   Used for: Cue/Slice (segment) transcription, either directly ("Google AI" provider) or via "AvalAI (Gemini Base)" provider.
     *   Visit [Google AI Studio](https://aistudio.google.com/app/apikey) or Google Cloud Console.
     *   Create an account or sign in.
     *   Generate a new API key.
@@ -235,3 +236,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - All our contributors and users
 
 ---
+
