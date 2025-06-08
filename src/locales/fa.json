@@ -72,10 +72,13 @@
   "settings.theme.system": "سیستم",
   "settings.timestampTaskConfig.label": "پیکربندی ایجاد زیرنویس زمان‌دار (مانند Whisper)",
   "settings.cueSliceTaskConfig.label": "پیکربندی ایجاد زیرنویس بخش/خط (مانند Gemini، GPT، Llama)",
+  "settings.translationTaskConfig.label": "پیکربندی LLM برای ترجمه",
   "settings.transcriptionConfig.providerLabel": "ارائه‌دهنده برای ایجاد زیرنویس زمان‌دار",
   "settings.transcriptionConfig.modelLabel": "مدل برای ایجاد زیرنویس زمان‌دار",
   "settings.llmConfig.providerLabel": "ارائه‌دهنده برای ایجاد زیرنویس بخش/خط",
   "settings.llmConfig.modelLabel": "مدل برای ایجاد زیرنویس بخش/خط",
+  "settings.translationConfig.providerLabel": "ارائه‌دهنده برای وظیفه ترجمه",
+  "settings.translationConfig.modelLabel": "مدل برای وظیفه ترجمه",
   "settings.apiKeyManagement.label": "مدیریت کلیدهای API",
   "settings.apiKeyManagement.googleApiKeyLabel": "کلید API هوش مصنوعی گوگل",
   "settings.apiKeyManagement.openAITokenLabel": "توکن OpenAI",
@@ -118,6 +121,7 @@
   "settings.buttons.save": "ذخیره تنظیمات",
   "settings.toast.saved": "تنظیمات ذخیره شد",
   "settings.toast.savedDescription.v3": "تنظیمات ذخیره شد. پوسته: {theme}، زبان برنامه: {appLanguage}. ایجاد زیرنویس زمان‌دار: {transcriptionProvider} ({transcriptionModel}). ایجاد زیرنویس بخش/خط: {llmProvider} ({llmModel}). زبان پیش‌فرض هوش مصنوعی: {defaultLanguage}.",
+  "settings.toast.savedDescription.v4": "تنظیمات ذخیره شد. پوسته: {theme}، زبان برنامه: {appLanguage}. زمان‌بندی: {transcriptionProvider} ({transcriptionModel}). بخش/خط: {llmProvider} ({llmModel}). ترجمه: {translationLLMProvider} ({translationLLMModel}). زبان پیش‌فرض هوش مصنوعی: {defaultLanguage}.",
   "settings.toast.validationError": "خطای اعتبارسنجی",
   "settings.toast.maxSegmentDurationValidation": "حداکثر مدت زمان بخش باید بین {min} و {max} ثانیه باشد.",
   "page.steps.upload": "مرحله ۱ از ۳: آماده‌سازی رسانه و زیرنویس‌ها",
@@ -231,8 +235,10 @@
   "exporter.toast.translationInProgressDescription": "لطفاً منتظر بمانید تا ترجمه فعلی کامل شود.",
   "exporter.toast.apiKeyNeededForTranslationTitle": "کلید API مورد نیاز است",
   "exporter.toast.apiKeyNeededForTranslationDescription": "برای ترجمه، کلید API (مثلاً Google AI) مورد نیاز است. لطفاً آن را در تنظیمات پیکربندی کنید.",
+  "exporter.toast.apiKeyNeededForTranslationDescriptionV2": "برای ترجمه، کلید API برای ارائه‌دهنده {provider} مورد نیاز است. لطفاً آن را در تنظیمات پیکربندی کنید.",
   "exporter.toast.translationStartingTitle": "ترجمه آغاز شد",
   "exporter.toast.translationStartingDescription": "در حال ترجمه زیرنویس‌ها به {language}. این ممکن است کمی طول بکشد...",
+  "exporter.toast.translationStartingDescriptionV2": "در حال ترجمه زیرنویس‌ها به {language} با استفاده از {model}. این ممکن است کمی طول بکشد...",
   "exporter.toast.translationSuccessTitle": "ترجمه موفقیت‌آمیز بود",
   "exporter.toast.translationSuccessDescription": "فایل ترجمه شده {fileName} دانلود شد.",
   "exporter.toast.translationErrorTitle": "خطای ترجمه",
@@ -335,3 +341,5 @@
   "debugLog.buttons.clear": "پاک کردن گزارش‌ها",
   "debugLog.buttons.close": "بستن"
 }
+
+    

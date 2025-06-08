@@ -72,10 +72,13 @@
   "settings.theme.system": "System",
   "settings.timestampTaskConfig.label": "Timestamp Transcription Configuration (e.g., Whisper)",
   "settings.cueSliceTaskConfig.label": "Cue/Slice Transcription Configuration (e.g., Gemini, GPT, Llama)",
+  "settings.translationTaskConfig.label": "Translation LLM Configuration",
   "settings.transcriptionConfig.providerLabel": "Provider for Timestamp Task",
   "settings.transcriptionConfig.modelLabel": "Model for Timestamp Task",
   "settings.llmConfig.providerLabel": "Provider for Cue/Slice Task",
   "settings.llmConfig.modelLabel": "Model for Cue/Slice Task",
+  "settings.translationConfig.providerLabel": "Provider for Translation Task",
+  "settings.translationConfig.modelLabel": "Model for Translation Task",
   "settings.apiKeyManagement.label": "API Key Management",
   "settings.apiKeyManagement.googleApiKeyLabel": "Google AI API Key",
   "settings.apiKeyManagement.openAITokenLabel": "OpenAI API Key",
@@ -118,6 +121,7 @@
   "settings.buttons.save": "Save Settings",
   "settings.toast.saved": "Settings Saved",
   "settings.toast.savedDescription.v3": "Preferences saved. Theme: {theme}, App Lang: {appLanguage}. Timestamp Task: {transcriptionProvider} ({transcriptionModel}). Cue/Slice Task: {llmProvider} ({llmModel}). Default AI Lang: {defaultLanguage}.",
+  "settings.toast.savedDescription.v4": "Preferences saved. Theme: {theme}, App Lang: {appLanguage}. Timestamp: {transcriptionProvider} ({transcriptionModel}). Cue/Slice: {llmProvider} ({llmModel}). Translation: {translationLLMProvider} ({translationLLMModel}). Default AI Lang: {defaultLanguage}.",
   "settings.toast.validationError": "Validation Error",
   "settings.toast.maxSegmentDurationValidation": "Max Segment Duration must be between {min} and {max} seconds.",
   "page.steps.upload": "Step 1 of 3: Prepare Your Media & Subtitles",
@@ -231,8 +235,10 @@
   "exporter.toast.translationInProgressDescription": "Please wait for the current translation to complete.",
   "exporter.toast.apiKeyNeededForTranslationTitle": "API Key Required",
   "exporter.toast.apiKeyNeededForTranslationDescription": "An API key (e.g., Google AI) is required for translation. Please configure it in Settings.",
+  "exporter.toast.apiKeyNeededForTranslationDescriptionV2": "An API key for {provider} is required for translation. Please configure it in Settings.",
   "exporter.toast.translationStartingTitle": "Translation Started",
   "exporter.toast.translationStartingDescription": "Translating subtitles to {language}. This may take a moment...",
+  "exporter.toast.translationStartingDescriptionV2": "Translating subtitles to {language} using {model}. This may take a moment...",
   "exporter.toast.translationSuccessTitle": "Translation Successful",
   "exporter.toast.translationSuccessDescription": "Translated file {fileName} downloaded.",
   "exporter.toast.translationErrorTitle": "Translation Error",
@@ -335,3 +341,5 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
+
+    

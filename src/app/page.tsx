@@ -2,15 +2,17 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, AppSettings, TranscriptionProvider, LLMProviderType, TranscriptionModelType, LLMModelType, FullTranscriptionProgress, MultiProcessTranscriptionProgress } from '@/lib/types';
+import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, AppSettings, TranscriptionProvider, LLMProviderType, TranscriptionModelType, LLMModelType, FullTranscriptionProgress, MultiProcessTranscriptionProgress, SimpleLLMProviderType, TranslationLLMModelType } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
   LLM_PROVIDER_KEY, LLM_MODEL_KEY,
+  TRANSLATION_LLM_PROVIDER_KEY, TRANSLATION_LLM_MODEL_KEY, // Added
   OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY, 
   MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY,
   OpenAIWhisperModels, AvalAIOpenAIBasedWhisperModels, GroqWhisperModels,
-  GoogleGeminiLLModels, OpenAIGPTModels, AvalAIOpenAIBasedGPTModels, GroqLLModels, AvalAIGeminiBasedModels
+  GoogleGeminiLLModels, OpenAIGPTModels, AvalAIOpenAIBasedGPTModels, GroqLLModels, AvalAIGeminiBasedModels,
+  GoogleTranslationLLModels, OpenAITranslationLLModels, GroqTranslationLLModels // Added
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { runTranscriptionTask } from '@/ai/tasks/run-transcription-task';
@@ -291,6 +293,7 @@ export default function SubtitleSyncPage() {
   }, [activeTrackId, activeTrack, mediaFile, t, toast, addLog]);
 
   const getAppSettings = useCallback((): AppSettings => {
+    // Cue/Slice LLM
     const savedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
     const finalLlmProvider = savedLlmProvider || 'openai';
     let validLlmModelsForProvider: readonly LLMModelType[];
@@ -305,6 +308,7 @@ export default function SubtitleSyncPage() {
     const savedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
     const finalLlmModel = savedLlmModel && (validLlmModelsForProvider as readonly string[]).includes(savedLlmModel) ? savedLlmModel : validLlmModelsForProvider[0];
 
+    // Timestamp Transcription
     const savedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
     const finalTranscriptionProvider = savedTranscriptionProvider || 'openai';
     let validTranscriptionModelsForProvider: readonly TranscriptionModelType[];
@@ -316,16 +320,36 @@ export default function SubtitleSyncPage() {
     }
     const savedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
     const finalTranscriptionModel = savedTranscriptionModel && (validTranscriptionModelsForProvider as readonly string[]).includes(savedTranscriptionModel) ? savedTranscriptionModel : validTranscriptionModelsForProvider[0];
+    
+    // Translation LLM
+    const savedTranslationLLMProvider = localStorage.getItem(TRANSLATION_LLM_PROVIDER_KEY) as SimpleLLMProviderType | null;
+    const finalTranslationLLMProvider = savedTranslationLLMProvider || 'googleai';
+    let validTranslationLLMModels: readonly TranslationLLMModelType[];
+    switch(finalTranslationLLMProvider) {
+      case 'googleai': validTranslationLLMModels = GoogleTranslationLLModels; break;
+      case 'openai': validTranslationLLMModels = OpenAITranslationLLModels; break;
+      case 'groq': validTranslationLLMModels = GroqTranslationLLModels; break;
+      default: validTranslationLLMModels = GoogleTranslationLLModels;
+    }
+    const savedTranslationLLMModel = localStorage.getItem(TRANSLATION_LLM_MODEL_KEY) as TranslationLLMModelType | null;
+    const finalTranslationLLMModel = savedTranslationLLMModel && (validTranslationLLMModels as readonly string[]).includes(savedTranslationLLMModel) ? savedTranslationLLMModel : validTranslationLLMModels[0];
+
 
     return {
       openAIToken: localStorage.getItem(OPENAI_TOKEN_KEY) || undefined,
       avalaiToken: localStorage.getItem(AVALAI_TOKEN_KEY) || undefined,
       googleApiKey: localStorage.getItem(GOOGLE_API_KEY_KEY) || undefined,
       groqToken: localStorage.getItem(GROQ_TOKEN_KEY) || undefined,
+      
       transcriptionProvider: finalTranscriptionProvider,
       transcriptionModel: finalTranscriptionModel,
-      llmProvider: finalLlmProvider,
-      llmModel: finalLlmModel,
+      
+      llmProvider: finalLlmProvider, // For Cue/Slice
+      llmModel: finalLlmModel,       // For Cue/Slice
+
+      translationLLMProvider: finalTranslationLLMProvider,
+      translationLLMModel: finalTranslationLLMModel,
+      
       defaultTranscriptionLanguage: (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect",
       temperature: parseFloat(localStorage.getItem(TEMPERATURE_KEY) || '0.7'),
       maxSegmentDuration: parseInt(localStorage.getItem(MAX_SEGMENT_DURATION_KEY) || '60', 10),
@@ -607,8 +631,8 @@ export default function SubtitleSyncPage() {
     const appSettings = getAppSettings();
     const initialProvider = appSettings.transcriptionProvider;
     const initialModel = appSettings.transcriptionModel;
-    const refinementProvider = appSettings.llmProvider;
-    const refinementModel = appSettings.llmModel;
+    const refinementProvider = appSettings.llmProvider; // For Cue/Slice
+    const refinementModel = appSettings.llmModel;       // For Cue/Slice
 
     // API Key Checks
     if ((initialProvider === 'openai' || refinementProvider === 'openai') && !appSettings.openAIToken) {
@@ -821,16 +845,25 @@ export default function SubtitleSyncPage() {
     }
 
     const appSettings = getAppSettings();
-    if (!appSettings.googleApiKey && (!appSettings.openAIToken && !appSettings.avalaiToken && !appSettings.groqToken)) {
-         toast({ title: t('exporter.toast.apiKeyNeededForTranslationTitle') as string, description: t('exporter.toast.apiKeyNeededForTranslationDescription') as string, variant: "destructive" });
-         addLog(t('exporter.toast.apiKeyNeededForTranslationDescription') as string, 'error');
+    const translationProvider = appSettings.translationLLMProvider;
+    const translationModel = appSettings.translationLLMModel;
+
+    let apiKeyMissing = false;
+    if (translationProvider === 'googleai' && !appSettings.googleApiKey) apiKeyMissing = true;
+    else if (translationProvider === 'openai' && !appSettings.openAIToken) apiKeyMissing = true;
+    else if (translationProvider === 'groq' && !appSettings.groqToken) apiKeyMissing = true;
+    
+    if (apiKeyMissing || !translationProvider || !translationModel) {
+         toast({ title: t('exporter.toast.apiKeyNeededForTranslationTitle') as string, description: t('exporter.toast.apiKeyNeededForTranslationDescriptionV2', { provider: translationProvider || "selected provider"}) as string, variant: "destructive" });
+         addLog(t('exporter.toast.apiKeyNeededForTranslationDescriptionV2', { provider: translationProvider || "selected provider"}) as string, 'error');
          return;
     }
     
     setIsTranslating(true);
     const targetLanguageName = LANGUAGE_OPTIONS.find(l => l.value === targetLanguageCode)?.label || targetLanguageCode;
-    addLog(`Translation started for track: ${activeTrack.fileName} to ${targetLanguageName} (${targetLanguageCode})`, 'info');
-    toast({ title: t('exporter.toast.translationStartingTitle') as string, description: t('exporter.toast.translationStartingDescription', { language: targetLanguageName }) as string });
+    const modelIdForFlow = `${translationProvider}/${translationModel}`;
+    addLog(`Translation started for track: ${activeTrack.fileName} to ${targetLanguageName} (${targetLanguageCode}) using ${modelIdForFlow}`, 'info');
+    toast({ title: t('exporter.toast.translationStartingTitle') as string, description: t('exporter.toast.translationStartingDescriptionV2', { language: targetLanguageName, model: modelIdForFlow }) as string });
 
     const translatedEntries: SubtitleEntry[] = [];
     try {
@@ -838,8 +871,8 @@ export default function SubtitleSyncPage() {
         const translateInput: TranslateTextInput = {
           textToTranslate: entry.text,
           targetLanguageCode,
+          modelId: modelIdForFlow,
         };
-        // The translateSingleText is a server action calling a Genkit flow which uses a specific model (e.g., Gemini Flash)
         const { translatedText } = await translateSingleText(translateInput);
         translatedEntries.push({ ...entry, text: translatedText });
       }
@@ -1089,3 +1122,5 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
+
+    

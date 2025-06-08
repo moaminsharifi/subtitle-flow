@@ -59,7 +59,7 @@ export const AvalAIGeminiBasedModels = [
 export const OpenAIGPTModels = [
     'gpt-4o-transcribe',
     'gpt-4o-mini-transcribe',
-    'whisper-1',
+    'whisper-1', // whisper-1 can also be used for cue/slice via OpenAI API
 ] as const;
 
 export const AvalAIOpenAIBasedGPTModels = [
@@ -68,7 +68,7 @@ export const AvalAIOpenAIBasedGPTModels = [
     'whisper-1',
 ] as const;
 
-export const GroqLLModels = [
+export const GroqLLModels = [ // For Cue/Slice Task, these are Whisper models via Groq
     'whisper-large-v3',
     'whisper-large-v3-turbo',
 ] as const;
@@ -76,16 +76,28 @@ export const GroqLLModels = [
 
 // Union types for overall model categories
 export type TranscriptionModelType = WhisperModelType; // For models used in 'timestamp' task (Whisper variants)
-export type LLMModelType =
+export type LLMModelType = // For models used in 'cue_slice' task
   | typeof GoogleGeminiLLModels[number]
   | typeof AvalAIGeminiBasedModels[number]
   | typeof OpenAIGPTModels[number]
   | typeof AvalAIOpenAIBasedGPTModels[number]
   | typeof GroqLLModels[number];
 
+// Translation LLM Models
+export const GoogleTranslationLLModels = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest'] as const;
+export const OpenAITranslationLLModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'] as const;
+export const GroqTranslationLLModels = ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'] as const;
+
+export type TranslationLLMModelType =
+  | typeof GoogleTranslationLLModels[number]
+  | typeof OpenAITranslationLLModels[number]
+  | typeof GroqTranslationLLModels[number];
+
+
 // --- Provider Types ---
 export type TranscriptionProvider = 'openai' | 'avalai_openai' | 'groq';
 export type LLMProviderType = 'googleai' | 'openai' | 'avalai_openai' | 'avalai_gemini' | 'groq';
+export type SimpleLLMProviderType = 'googleai' | 'openai' | 'groq'; // For translation where proxy providers are not directly used with Genkit
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa';
@@ -99,8 +111,11 @@ export interface AppSettings {
   transcriptionProvider?: TranscriptionProvider;
   transcriptionModel?: TranscriptionModelType;
 
-  llmProvider?: LLMProviderType;
-  llmModel?: LLMModelType;
+  llmProvider?: LLMProviderType; // For Cue/Slice
+  llmModel?: LLMModelType;    // For Cue/Slice
+
+  translationLLMProvider?: SimpleLLMProviderType; // For Translation
+  translationLLMModel?: TranslationLLMModelType;  // For Translation
 
   defaultTranscriptionLanguage?: LanguageCode | "auto-detect";
   temperature?: number;
@@ -187,8 +202,11 @@ export const DEFAULT_TRANSCRIPTION_LANGUAGE_KEY = 'app-settings-default-transcri
 export const TRANSCRIPTION_PROVIDER_KEY = 'app-settings-transcription-provider';
 export const TRANSCRIPTION_MODEL_KEY = 'app-settings-transcription-model';
 
-export const LLM_PROVIDER_KEY = 'app-settings-llm-provider';
-export const LLM_MODEL_KEY = 'app-settings-llm-model';
+export const LLM_PROVIDER_KEY = 'app-settings-llm-provider'; // For Cue/Slice task
+export const LLM_MODEL_KEY = 'app-settings-llm-model';       // For Cue/Slice task
+
+export const TRANSLATION_LLM_PROVIDER_KEY = 'app-settings-translation-llm-provider';
+export const TRANSLATION_LLM_MODEL_KEY = 'app-settings-translation-llm-model';
 
 export const OPENAI_TOKEN_KEY = 'app-settings-openai-token';
 export const AVALAI_TOKEN_KEY = 'app-settings-avalai-token';
@@ -229,9 +247,17 @@ export const isOpenAIGPTModel = (modelName: string): modelName is OpenAIModelTyp
 };
 
 export type GroqModelType = typeof GroqLLModels[number];
-export const isGroqLLModel = (modelName: string): modelName is GroqModelType => {
-    return (GroqLLModels as readonly string[]).includes(modelName) && isGroqWhisperModel(modelName);
+// export const isGroqLLModel = (modelName: string): modelName is GroqModelType => {
+// return (GroqLLModels as readonly string[]).includes(modelName) && isGroqWhisperModel(modelName);
+// };
+// GroqLLModels for Cue/Slice are Whisper models. For Translation, they are different (chat models).
+export const isGroqLLModelForCueSlice = (modelName: string): modelName is typeof GroqLLModels[number] => {
+    return (GroqLLModels as readonly string[]).includes(modelName);
 };
+export const isGroqTranslationModel = (modelName: string): modelName is typeof GroqTranslationLLModels[number] => {
+    return (GroqTranslationLLModels as readonly string[]).includes(modelName);
+};
+
 
 // Types for Full Transcription Progress (Option 2)
 export interface FullTranscriptionProgress {
@@ -266,3 +292,5 @@ export interface MultiProcessTranscriptionProgress {
     // segments: SegmentRefinementDetail[]; // Keep track of each segment's status and refined text if needed for detailed UI
   } | null;
 }
+
+    

@@ -26,19 +26,21 @@ import type {
   AvalAIOpenAIBasedWhisperModels,
   AvalAIOpenAIBasedGPTModels,
   AvalAIGeminiBasedModels,
-  GroqModelType
+  SimpleLLMProviderType, TranslationLLMModelType // Added
 } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
   LLM_PROVIDER_KEY, LLM_MODEL_KEY,
+  TRANSLATION_LLM_PROVIDER_KEY, TRANSLATION_LLM_MODEL_KEY, // Added
   OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY,
   MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY, DEFAULT_AVALAI_BASE_URL,
   OpenAIWhisperModels, GroqWhisperModels,
-  GoogleGeminiLLModels, OpenAIGPTModels, GroqLLModels
+  GoogleGeminiLLModels, OpenAIGPTModels, GroqLLModels,
+  GoogleTranslationLLModels, OpenAITranslationLLModels, GroqTranslationLLModels // Added
 } from '@/lib/types';
 
-import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot, Info, KeyRound, Cog, Palette } from 'lucide-react';
+import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot, Info, KeyRound, Cog, Palette, MessageSquareQuote } from 'lucide-react'; // Added MessageSquareQuote
 import { useTranslation } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
@@ -67,8 +69,11 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const [transcriptionProvider, setTranscriptionProvider] = useState<TranscriptionProvider>('openai');
   const [transcriptionModel, setTranscriptionModel] = useState<TranscriptionModelType>(OpenAIWhisperModels[0]);
   
-  const [llmProvider, setLlmProvider] = useState<LLMProviderType>('openai');
-  const [llmModel, setLlmModel] = useState<LLMModelType>(OpenAIGPTModels[0]);
+  const [llmProvider, setLlmProvider] = useState<LLMProviderType>('openai'); // For Cue/Slice
+  const [llmModel, setLlmModel] = useState<LLMModelType>(OpenAIGPTModels[0]); // For Cue/Slice
+  
+  const [translationLLMProvider, setTranslationLLMProvider] = useState<SimpleLLMProviderType>('googleai'); // For Translation
+  const [translationLLMModel, setTranslationLLMModel] = useState<TranslationLLMModelType>(GoogleTranslationLLModels[0]); // For Translation
   
   // General settings
   const [defaultTranscriptionLanguage, setDefaultTranscriptionLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
@@ -95,7 +100,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     return OpenAIWhisperModels; // Default
   }, [transcriptionProvider]);
 
-  const llmModelOptions = useMemo((): readonly LLMModelType[] => {
+  const llmModelOptions = useMemo((): readonly LLMModelType[] => { // For Cue/Slice
     if (llmProvider === 'googleai') return GoogleGeminiLLModels;
     if (llmProvider === 'openai') return OpenAIGPTModels;
     if (llmProvider === 'avalai_openai') return AvalAIOpenAIBasedGPTModels;
@@ -104,39 +109,43 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     return OpenAIGPTModels; // Default
   }, [llmProvider]);
 
+  const translationLlmModelOptions = useMemo((): readonly TranslationLLMModelType[] => { // For Translation
+    if (translationLLMProvider === 'googleai') return GoogleTranslationLLModels;
+    if (translationLLMProvider === 'openai') return OpenAITranslationLLModels;
+    if (translationLLMProvider === 'groq') return GroqTranslationLLModels;
+    return GoogleTranslationLLModels; // Default
+  }, [translationLLMProvider]);
+
+
   useEffect(() => {
     if (isOpen) {
       addLog("Settings dialog opened. Loading saved settings.", "debug");
       let logMessage = "Loaded settings: ";
       try {
+        // Transcription Task Settings
         const storedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
         const validTranscriptionProviders: TranscriptionProvider[] = ['openai', 'avalai_openai', 'groq'];
         const currentTProvider = storedTranscriptionProvider && validTranscriptionProviders.includes(storedTranscriptionProvider) ? storedTranscriptionProvider : 'openai';
         setTranscriptionProvider(currentTProvider);
         logMessage += `Trans. Provider - ${currentTProvider}, `;
 
-        const storedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
-        const validLlmProviders: LLMProviderType[] = ['googleai', 'openai', 'avalai_openai', 'avalai_gemini', 'groq'];
-        const currentLProvider = storedLlmProvider && validLlmProviders.includes(storedLlmProvider) ? storedLlmProvider : 'openai';
-        setLlmProvider(currentLProvider);
-        logMessage += `LLM Provider - ${currentLProvider}, `;
-
-        setOpenAIToken(localStorage.getItem(OPENAI_TOKEN_KEY) || '');
-        setAvalaiToken(localStorage.getItem(AVALAI_TOKEN_KEY) || '');
-        setGoogleApiKey(localStorage.getItem(GOOGLE_API_KEY_KEY) || '');
-        setGroqToken(localStorage.getItem(GROQ_TOKEN_KEY) || '');
-
         let currentActualTranscriptionModels: readonly TranscriptionModelType[];
         if (currentTProvider === 'openai') currentActualTranscriptionModels = OpenAIWhisperModels;
         else if (currentTProvider === 'avalai_openai') currentActualTranscriptionModels = AvalAIOpenAIBasedWhisperModels;
         else if (currentTProvider === 'groq') currentActualTranscriptionModels = GroqWhisperModels;
         else currentActualTranscriptionModels = OpenAIWhisperModels;
-        
         const storedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
         const tModel = storedTranscriptionModel && currentActualTranscriptionModels.includes(storedTranscriptionModel as WhisperModelType) ? storedTranscriptionModel : currentActualTranscriptionModels[0];
         setTranscriptionModel(tModel);
         logMessage += `Trans. Model - ${tModel}, `;
-        
+
+        // Cue/Slice Task Settings
+        const storedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
+        const validLlmProviders: LLMProviderType[] = ['googleai', 'openai', 'avalai_openai', 'avalai_gemini', 'groq'];
+        const currentLProvider = storedLlmProvider && validLlmProviders.includes(storedLlmProvider) ? storedLlmProvider : 'openai';
+        setLlmProvider(currentLProvider);
+        logMessage += `Cue/Slice LLM Provider - ${currentLProvider}, `;
+
         let currentActualLlmModels: readonly LLMModelType[];
         if (currentLProvider === 'googleai') currentActualLlmModels = GoogleGeminiLLModels;
         else if (currentLProvider === 'openai') currentActualLlmModels = OpenAIGPTModels;
@@ -144,12 +153,35 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         else if (currentLProvider === 'avalai_gemini') currentActualLlmModels = AvalAIGeminiBasedModels;
         else if (currentLProvider === 'groq') currentActualLlmModels = GroqLLModels;
         else currentActualLlmModels = OpenAIGPTModels;
-
         const storedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
         const lModel = storedLlmModel && currentActualLlmModels.includes(storedLlmModel) ? storedLlmModel : currentActualLlmModels[0];
         setLlmModel(lModel);
-        logMessage += `LLM Model - ${lModel}, `;
+        logMessage += `Cue/Slice LLM Model - ${lModel}, `;
 
+        // Translation Task Settings
+        const storedTranslationLLMProvider = localStorage.getItem(TRANSLATION_LLM_PROVIDER_KEY) as SimpleLLMProviderType | null;
+        const validTranslationLLMProviders: SimpleLLMProviderType[] = ['googleai', 'openai', 'groq'];
+        const currentTranslationProvider = storedTranslationLLMProvider && validTranslationLLMProviders.includes(storedTranslationLLMProvider) ? storedTranslationLLMProvider : 'googleai';
+        setTranslationLLMProvider(currentTranslationProvider);
+        logMessage += `Translation Provider - ${currentTranslationProvider}, `;
+
+        let currentActualTranslationModels: readonly TranslationLLMModelType[];
+        if (currentTranslationProvider === 'googleai') currentActualTranslationModels = GoogleTranslationLLModels;
+        else if (currentTranslationProvider === 'openai') currentActualTranslationModels = OpenAITranslationLLModels;
+        else if (currentTranslationProvider === 'groq') currentActualTranslationModels = GroqTranslationLLModels;
+        else currentActualTranslationModels = GoogleTranslationLLModels;
+        const storedTranslationModel = localStorage.getItem(TRANSLATION_LLM_MODEL_KEY) as TranslationLLMModelType | null;
+        const transModel = storedTranslationModel && currentActualTranslationModels.includes(storedTranslationModel) ? storedTranslationModel : currentActualTranslationModels[0];
+        setTranslationLLMModel(transModel);
+        logMessage += `Translation Model - ${transModel}, `;
+
+        // API Keys
+        setOpenAIToken(localStorage.getItem(OPENAI_TOKEN_KEY) || '');
+        setAvalaiToken(localStorage.getItem(AVALAI_TOKEN_KEY) || '');
+        setGoogleApiKey(localStorage.getItem(GOOGLE_API_KEY_KEY) || '');
+        setGroqToken(localStorage.getItem(GROQ_TOKEN_KEY) || '');
+        
+        // Other Settings
         setDefaultTranscriptionLanguage((localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect") || "auto-detect");
         setMaxSegmentDuration(parseInt(localStorage.getItem(MAX_SEGMENT_DURATION_KEY) || '60', 10));
         setTemperature(parseFloat(localStorage.getItem(TEMPERATURE_KEY) || '0.7'));
@@ -164,13 +196,17 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       } catch (error) {
         console.error("Error loading settings from localStorage:", error);
         addLog("Error loading settings from localStorage. Using defaults.", "error");
+        // Reset to defaults if loading fails
         setTranscriptionProvider('openai');
         setTranscriptionModel(OpenAIWhisperModels[0]);
         setLlmProvider('openai');
         setLlmModel(OpenAIGPTModels[0]);
+        setTranslationLLMProvider('googleai');
+        setTranslationLLMModel(GoogleTranslationLLModels[0]);
       }
     }
-  }, [isOpen, addLog, currentAppLanguage, defaultTranscriptionLanguage, maxSegmentDuration, temperature, groqToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, addLog, currentAppLanguage]);
 
 
   useEffect(() => {
@@ -182,14 +218,23 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
     }
   }, [transcriptionProvider, transcriptionModel, transcriptionModelOptions, addLog]);
 
-  useEffect(() => {
+  useEffect(() => { // For Cue/Slice
     const currentModels = llmModelOptions;
     if (currentModels && currentModels.length > 0 && !currentModels.includes(llmModel)) {
       const newModel = currentModels[0];
       setLlmModel(newModel);
-      addLog(`LLM model auto-adjusted to ${newModel} due to LLM provider change.`, "debug");
+      addLog(`Cue/Slice LLM model auto-adjusted to ${newModel} due to LLM provider change.`, "debug");
     }
   }, [llmProvider, llmModel, llmModelOptions, addLog]);
+
+  useEffect(() => { // For Translation
+    const currentModels = translationLlmModelOptions;
+    if (currentModels && currentModels.length > 0 && !currentModels.includes(translationLLMModel)) {
+      const newModel = currentModels[0];
+      setTranslationLLMModel(newModel);
+      addLog(`Translation LLM model auto-adjusted to ${newModel} due to Translation LLM provider change.`, "debug");
+    }
+  }, [translationLLMProvider, translationLLMModel, translationLlmModelOptions, addLog]);
 
   const handleThemeChange = (newTheme: Theme) => {
     setSelectedTheme(newTheme);
@@ -217,6 +262,8 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
       localStorage.setItem(TRANSCRIPTION_MODEL_KEY, transcriptionModel);
       localStorage.setItem(LLM_PROVIDER_KEY, llmProvider);
       localStorage.setItem(LLM_MODEL_KEY, llmModel);
+      localStorage.setItem(TRANSLATION_LLM_PROVIDER_KEY, translationLLMProvider);
+      localStorage.setItem(TRANSLATION_LLM_MODEL_KEY, translationLLMModel);
       localStorage.setItem(MAX_SEGMENT_DURATION_KEY, validatedMaxSegmentDuration.toString());
       localStorage.setItem(TEMPERATURE_KEY, temperature.toString());
       
@@ -234,13 +281,15 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         localStorage.setItem(LANGUAGE_KEY, selectedAppLanguage); 
       }
       
-      const toastDesc = t('settings.toast.savedDescription.v3', {
+      const toastDesc = t('settings.toast.savedDescription.v4', { // Ensure this key exists or adjust
         theme: selectedTheme,
         appLanguage: selectedAppLanguage,
         transcriptionProvider,
         transcriptionModel,
         llmProvider,
         llmModel,
+        translationLLMProvider,
+        translationLLMModel,
         defaultLanguage: defaultTranscriptionLanguage,
       });
 
@@ -249,7 +298,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         description: typeof toastDesc === 'string' ? toastDesc : "Preferences saved.", 
         duration: 5000,
       });
-      addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature, groqTokenPresent: !!groqToken }) }`, 'success');
+      addLog(`Settings saved. Details: ${typeof toastDesc === 'string' ? toastDesc : JSON.stringify({transcriptionProvider, transcriptionModel, llmProvider, llmModel, translationLLMProvider, translationLLMModel, defaultTranscriptionLanguage, selectedTheme, selectedAppLanguage, maxSegmentDuration: validatedMaxSegmentDuration, temperature, groqTokenPresent: !!groqToken }) }`, 'success');
       onClose();
     } catch (error) {
         console.error("Error saving settings to localStorage:", error);
@@ -314,7 +363,6 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                   </Select>
                 </div>
                  <Separator />
-                  {/* Cheatsheet & Credits moved to About tab for better organization */}
                   <div className="py-2">
                     <Button variant="outline" className="w-full" onClick={() => { onClose(); addLog("Cheatsheet button clicked from settings.", "debug"); /* Parent should handle opening cheatsheet */ }}>
                       <HelpCircle className={cn("h-4 w-4", dir === 'rtl' ? 'ms-2' : 'me-2')} />
@@ -340,7 +388,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
               <TabsContent value="aiConfig" className="mt-0 space-y-6 py-4 pr-2">
                 {/* Timestamp Transcription Configuration */}
-                <div className="space-y-4">
+                <div className="space-y-4 p-4 border rounded-md">
                     <Label className="text-base font-semibold flex items-center gap-1"><Bot className="h-5 w-5" />{t('settings.timestampTaskConfig.label')}</Label>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
                         <Label htmlFor="transcription-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.transcriptionConfig.providerLabel')}</Label>
@@ -363,10 +411,9 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                         </Select>
                     </div>
                 </div>
-                <Separator />
-
+                
                 {/* Cue/Slice Transcription Configuration */}
-                <div className="space-y-4">
+                <div className="space-y-4 p-4 border rounded-md">
                     <Label className="text-base font-semibold flex items-center gap-1"><Bot className="h-5 w-5" />{t('settings.cueSliceTaskConfig.label')}</Label>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
                         <Label htmlFor="llm-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.llmConfig.providerLabel')}</Label>
@@ -389,9 +436,32 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                         </Select>
                     </div>
                 </div>
-                <Separator />
+
+                {/* Translation LLM Configuration */}
+                <div className="space-y-4 p-4 border rounded-md">
+                    <Label className="text-base font-semibold flex items-center gap-1"><MessageSquareQuote className="h-5 w-5" />{t('settings.translationTaskConfig.label')}</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                        <Label htmlFor="translation-llm-provider-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.translationConfig.providerLabel')}</Label>
+                        <Select value={translationLLMProvider} onValueChange={(value: string) => setTranslationLLMProvider(value as SimpleLLMProviderType)} dir={dir}>
+                            <SelectTrigger id="translation-llm-provider-select" className="col-span-1 md:col-span-3" aria-label={t('settings.translationConfig.providerLabel') as string}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="googleai">{t('settings.apiConfig.provider.googleai')}</SelectItem>
+                                <SelectItem value="openai">{t('settings.apiConfig.provider.openai')}</SelectItem>
+                                <SelectItem value="groq">{t('settings.apiConfig.provider.groq')}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                        <Label htmlFor="translation-llm-model-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.translationConfig.modelLabel')}</Label>
+                        <Select value={translationLLMModel} onValueChange={(value: string) => setTranslationLLMModel(value as TranslationLLMModelType)} dir={dir}>
+                            <SelectTrigger id="translation-llm-model-select" className="col-span-1 md:col-span-3" aria-label={t('settings.translationConfig.modelLabel') as string}><SelectValue /></SelectTrigger>
+                            <SelectContent>{translationLlmModelOptions.map(model => (<SelectItem key={model} value={model}>{model}</SelectItem>))}</SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
                 {/* Default Language for AI Tasks */}
-                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-x-4 gap-y-2 mt-6">
                     <Label htmlFor="default-language-select" className={cn("md:text-end", dir === 'rtl' && "md:text-start")} dir={dir}>{t('settings.apiConfig.defaultLanguage')}</Label>
                     <Select value={defaultTranscriptionLanguage} onValueChange={(value) => setDefaultTranscriptionLanguage(value as LanguageCode | "auto-detect")} dir={dir}>
                         <SelectTrigger className="col-span-1 md:col-span-3" id="default-language-select" aria-label={t('settings.apiConfig.defaultLanguage') as string}><SelectValue /></SelectTrigger>
@@ -469,3 +539,4 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   );
 }
 
+    
