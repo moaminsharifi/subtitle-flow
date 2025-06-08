@@ -184,7 +184,32 @@ export function UploadStepControls({
             {t('aiGenerator.option2.apiKeyNeededMessage') as string}
           </p>
         )}
-        {/* Language selection for initial transcription is reused from Option 2's controls */}
+        <div>
+          <Label htmlFor="multi-process-language-select" className="flex items-center gap-1 mb-1 text-sm font-medium">
+            <Languages className="h-4 w-4" />
+            {t('aiGenerator.language.label') as string} 
+          </Label>
+          <Select
+            value={fullTranscriptionLanguageOverride}
+            onValueChange={handleFullTranscriptionLanguageChange}
+            disabled={!mediaFile || isReplacingMedia || isGeneratingMultiProcessTranscription || isAnyTranscriptionLoading || disableGenerateButtonDueToApiKeys}
+            dir={dir}
+          >
+            <SelectTrigger id="multi-process-language-select" className="w-full" aria-label={t('aiGenerator.language.label') as string}>
+              <SelectValue placeholder={t('aiGenerator.language.placeholder') as string} />
+            </SelectTrigger>
+            <SelectContent>
+              {LANGUAGE_OPTIONS.map((langOpt) => (
+                <SelectItem key={langOpt.value} value={langOpt.value}>
+                  {langOpt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t('aiGenerator.language.description') as string}
+          </p>
+        </div>
         {isGeneratingMultiProcessTranscription && multiProcessTranscriptionProgress ? (
            <div className="space-y-2">
             <p className="text-sm font-medium text-center">
@@ -276,3 +301,4 @@ export function UploadStepControls({
     </>
   );
 }
+
