@@ -26,21 +26,21 @@ import type {
   AvalAIOpenAIBasedWhisperModels,
   AvalAIOpenAIBasedGPTModels,
   AvalAIGeminiBasedModels,
-  SimpleLLMProviderType, TranslationLLMModelType // Added
+  SimpleLLMProviderType, TranslationLLMModelType
 } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, THEME_KEY, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
   LLM_PROVIDER_KEY, LLM_MODEL_KEY,
-  TRANSLATION_LLM_PROVIDER_KEY, TRANSLATION_LLM_MODEL_KEY, // Added
+  TRANSLATION_LLM_PROVIDER_KEY, TRANSLATION_LLM_MODEL_KEY,
   OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY,
   MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY, DEFAULT_AVALAI_BASE_URL,
   OpenAIWhisperModels, GroqWhisperModels,
   GoogleGeminiLLModels, OpenAIGPTModels, GroqLLModels,
-  GoogleTranslationLLModels, OpenAITranslationLLModels, GroqTranslationLLModels // Added
+  GoogleTranslationLLModels, OpenAITranslationLLModels, GroqTranslationLLModels, AvalAIOpenAITranslationModels
 } from '@/lib/types';
 
-import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot, Info, KeyRound, Cog, Palette, MessageSquareQuote } from 'lucide-react'; // Added MessageSquareQuote
+import { HelpCircle, Sun, Moon, Laptop, Languages, Eye, EyeOff, Bot, Info, KeyRound, Cog, Palette, MessageSquareQuote } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
@@ -112,6 +112,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
   const translationLlmModelOptions = useMemo((): readonly TranslationLLMModelType[] => { // For Translation
     if (translationLLMProvider === 'googleai') return GoogleTranslationLLModels;
     if (translationLLMProvider === 'openai') return OpenAITranslationLLModels;
+    if (translationLLMProvider === 'avalai_openai') return AvalAIOpenAITranslationModels;
     if (translationLLMProvider === 'groq') return GroqTranslationLLModels;
     return GoogleTranslationLLModels; // Default
   }, [translationLLMProvider]);
@@ -160,7 +161,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
 
         // Translation Task Settings
         const storedTranslationLLMProvider = localStorage.getItem(TRANSLATION_LLM_PROVIDER_KEY) as SimpleLLMProviderType | null;
-        const validTranslationLLMProviders: SimpleLLMProviderType[] = ['googleai', 'openai', 'groq'];
+        const validTranslationLLMProviders: SimpleLLMProviderType[] = ['googleai', 'openai', 'avalai_openai', 'groq'];
         const currentTranslationProvider = storedTranslationLLMProvider && validTranslationLLMProviders.includes(storedTranslationLLMProvider) ? storedTranslationLLMProvider : 'googleai';
         setTranslationLLMProvider(currentTranslationProvider);
         logMessage += `Translation Provider - ${currentTranslationProvider}, `;
@@ -168,6 +169,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         let currentActualTranslationModels: readonly TranslationLLMModelType[];
         if (currentTranslationProvider === 'googleai') currentActualTranslationModels = GoogleTranslationLLModels;
         else if (currentTranslationProvider === 'openai') currentActualTranslationModels = OpenAITranslationLLModels;
+        else if (currentTranslationProvider === 'avalai_openai') currentActualTranslationModels = AvalAIOpenAITranslationModels;
         else if (currentTranslationProvider === 'groq') currentActualTranslationModels = GroqTranslationLLModels;
         else currentActualTranslationModels = GoogleTranslationLLModels;
         const storedTranslationModel = localStorage.getItem(TRANSLATION_LLM_MODEL_KEY) as TranslationLLMModelType | null;
@@ -281,7 +283,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
         localStorage.setItem(LANGUAGE_KEY, selectedAppLanguage); 
       }
       
-      const toastDesc = t('settings.toast.savedDescription.v4', { // Ensure this key exists or adjust
+      const toastDesc = t('settings.toast.savedDescription.v4', { 
         theme: selectedTheme,
         appLanguage: selectedAppLanguage,
         transcriptionProvider,
@@ -447,6 +449,7 @@ export function SettingsDialog({ isOpen, onClose, addLog }: SettingsDialogProps)
                             <SelectContent>
                                 <SelectItem value="googleai">{t('settings.apiConfig.provider.googleai')}</SelectItem>
                                 <SelectItem value="openai">{t('settings.apiConfig.provider.openai')}</SelectItem>
+                                <SelectItem value="avalai_openai">{t('settings.apiConfig.provider.avalai_openai_compatible')}</SelectItem>
                                 <SelectItem value="groq">{t('settings.apiConfig.provider.groq')}</SelectItem>
                             </SelectContent>
                         </Select>

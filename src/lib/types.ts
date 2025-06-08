@@ -86,18 +86,20 @@ export type LLMModelType = // For models used in 'cue_slice' task
 // Translation LLM Models
 export const GoogleTranslationLLModels = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest'] as const;
 export const OpenAITranslationLLModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'] as const;
+export const AvalAIOpenAITranslationModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'] as const; // Assuming AvalAI proxies these OpenAI models
 export const GroqTranslationLLModels = ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'] as const;
 
 export type TranslationLLMModelType =
   | typeof GoogleTranslationLLModels[number]
   | typeof OpenAITranslationLLModels[number]
+  | typeof AvalAIOpenAITranslationModels[number]
   | typeof GroqTranslationLLModels[number];
 
 
 // --- Provider Types ---
 export type TranscriptionProvider = 'openai' | 'avalai_openai' | 'groq';
 export type LLMProviderType = 'googleai' | 'openai' | 'avalai_openai' | 'avalai_gemini' | 'groq';
-export type SimpleLLMProviderType = 'googleai' | 'openai' | 'groq'; // For translation where proxy providers are not directly used with Genkit
+export type SimpleLLMProviderType = 'googleai' | 'openai' | 'avalai_openai' | 'groq'; // For translation
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'fa';
@@ -292,5 +294,3 @@ export interface MultiProcessTranscriptionProgress {
     // segments: SegmentRefinementDetail[]; // Keep track of each segment's status and refined text if needed for detailed UI
   } | null;
 }
-
-    

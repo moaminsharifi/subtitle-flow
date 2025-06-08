@@ -2,23 +2,28 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, AppSettings, TranscriptionProvider, LLMProviderType, TranscriptionModelType, LLMModelType, FullTranscriptionProgress, MultiProcessTranscriptionProgress, SimpleLLMProviderType, TranslationLLMModelType } from '@/lib/types';
+import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, AppSettings, TranscriptionProvider, LLMProviderType, TranscriptionModelType, LLMModelType, FullTranscriptionProgress, MultiProcessTranscriptionProgress, SimpleLLMProviderType, TranslationLLMModelType, GoogleAILLMModelType } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
   LLM_PROVIDER_KEY, LLM_MODEL_KEY,
-  TRANSLATION_LLM_PROVIDER_KEY, TRANSLATION_LLM_MODEL_KEY, // Added
+  TRANSLATION_LLM_PROVIDER_KEY, TRANSLATION_LLM_MODEL_KEY, 
   OPENAI_TOKEN_KEY, AVALAI_TOKEN_KEY, GOOGLE_API_KEY_KEY, GROQ_TOKEN_KEY, 
   MAX_SEGMENT_DURATION_KEY, TEMPERATURE_KEY,
   OpenAIWhisperModels, AvalAIOpenAIBasedWhisperModels, GroqWhisperModels,
   GoogleGeminiLLModels, OpenAIGPTModels, AvalAIOpenAIBasedGPTModels, GroqLLModels, AvalAIGeminiBasedModels,
-  GoogleTranslationLLModels, OpenAITranslationLLModels, GroqTranslationLLModels // Added
+  GoogleTranslationLLModels, OpenAITranslationLLModels, GroqTranslationLLModels, AvalAIOpenAITranslationModels, DEFAULT_AVALAI_BASE_URL
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { runTranscriptionTask } from '@/ai/tasks/run-transcription-task';
-import { translateSingleText, type TranslateTextInput } from '@/ai/flows/translate-text-flow';
+// import { translateSingleText, type TranslateTextInput } from '@/ai/flows/translate-text-flow'; // No longer used by this button
 import { sliceAudioToDataURI, generateSrt } from '@/lib/subtitle-utils';
 import { useTranslation } from '@/contexts/LanguageContext';
+import OpenAI from 'openai';
+import Groq from 'groq-sdk';
+import { getGoogleAIModel, performGoogleAIGeneration } from '@/ai/genkit';
+import type { GenerateOptions } from 'genkit';
+
 
 import { PageHeader } from '@/components/page/PageHeader';
 import { MediaDisplay } from '@/components/page/MediaDisplay';
@@ -328,6 +333,7 @@ export default function SubtitleSyncPage() {
     switch(finalTranslationLLMProvider) {
       case 'googleai': validTranslationLLMModels = GoogleTranslationLLModels; break;
       case 'openai': validTranslationLLMModels = OpenAITranslationLLModels; break;
+      case 'avalai_openai': validTranslationLLMModels = AvalAIOpenAITranslationModels; break;
       case 'groq': validTranslationLLMModels = GroqTranslationLLModels; break;
       default: validTranslationLLMModels = GoogleTranslationLLModels;
     }
@@ -845,62 +851,157 @@ export default function SubtitleSyncPage() {
     }
 
     const appSettings = getAppSettings();
-    const translationProvider = appSettings.translationLLMProvider;
-    const translationModel = appSettings.translationLLMModel;
+    const translationProvider = appSettings.translationLLMProvider || 'googleai';
+    const translationModelForProvider = appSettings.translationLLMModel || (
+        translationProvider === 'googleai' ? GoogleTranslationLLModels[0] :
+        translationProvider === 'openai' ? OpenAITranslationLLModels[0] :
+        translationProvider === 'avalai_openai' ? AvalAIOpenAITranslationModels[0] : // Added AvalAI here
+        GroqTranslationLLModels[0] // Default for Groq
+    );
 
     let apiKeyMissing = false;
-    if (translationProvider === 'googleai' && !appSettings.googleApiKey) apiKeyMissing = true;
-    else if (translationProvider === 'openai' && !appSettings.openAIToken) apiKeyMissing = true;
-    else if (translationProvider === 'groq' && !appSettings.groqToken) apiKeyMissing = true;
+    let missingKeyMessage = '';
+
+    if (translationProvider === 'googleai' && !appSettings.googleApiKey) {
+        apiKeyMissing = true;
+        missingKeyMessage = t('toast.googleApiKeyMissingDescription') as string;
+    } else if (translationProvider === 'openai' && !appSettings.openAIToken) {
+        apiKeyMissing = true;
+        missingKeyMessage = t('toast.openAITokenMissingDescription') as string;
+    } else if (translationProvider === 'avalai_openai' && !appSettings.avalaiToken) {
+        apiKeyMissing = true;
+        missingKeyMessage = t('toast.avalaiTokenMissingDescription') as string;
+    } else if (translationProvider === 'groq' && !appSettings.groqToken) {
+        apiKeyMissing = true;
+        missingKeyMessage = t('toast.groqTokenMissingDescription') as string;
+    }
     
-    if (apiKeyMissing || !translationProvider || !translationModel) {
-         toast({ title: t('exporter.toast.apiKeyNeededForTranslationTitle') as string, description: t('exporter.toast.apiKeyNeededForTranslationDescriptionV2', { provider: translationProvider || "selected provider"}) as string, variant: "destructive" });
-         addLog(t('exporter.toast.apiKeyNeededForTranslationDescriptionV2', { provider: translationProvider || "selected provider"}) as string, 'error');
+    if (apiKeyMissing || !translationProvider || !translationModelForProvider) {
+         toast({ title: t('exporter.toast.apiKeyNeededForTranslationTitle') as string, description: missingKeyMessage || t('exporter.toast.apiKeyNeededForTranslationDescriptionV2', { provider: translationProvider || "selected provider"}) as string, variant: "destructive" });
+         addLog(missingKeyMessage || t('exporter.toast.apiKeyNeededForTranslationDescriptionV2', { provider: translationProvider || "selected provider"}) as string, 'error');
          return;
     }
     
     setIsTranslating(true);
-    const targetLanguageName = LANGUAGE_OPTIONS.find(l => l.value === targetLanguageCode)?.label || targetLanguageCode;
-    const modelIdForFlow = `${translationProvider}/${translationModel}`;
-    addLog(`Translation started for track: ${activeTrack.fileName} to ${targetLanguageName} (${targetLanguageCode}) using ${modelIdForFlow}`, 'info');
-    toast({ title: t('exporter.toast.translationStartingTitle') as string, description: t('exporter.toast.translationStartingDescriptionV2', { language: targetLanguageName, model: modelIdForFlow }) as string });
+    const targetLanguage = LANGUAGE_OPTIONS.find(l => l.value === targetLanguageCode);
+    const targetLanguageName = targetLanguage ? targetLanguage.label.split(" (")[0] : targetLanguageCode;
+    
+    const modelIdForClientCall = translationModelForProvider;
+
+    addLog(`Client-side translation started for track: ${activeTrack.fileName} to ${targetLanguageName} (${targetLanguageCode}) using ${translationProvider}/${modelIdForClientCall}`, 'info');
+    toast({ title: t('exporter.toast.translationStartingTitle') as string, description: t('exporter.toast.translationStartingDescriptionV2', { language: targetLanguageName, model: `${translationProvider}/${modelIdForClientCall}` }) as string });
 
     const translatedEntries: SubtitleEntry[] = [];
-    try {
-      for (const entry of activeTrack.entries) {
-        const translateInput: TranslateTextInput = {
-          textToTranslate: entry.text,
-          targetLanguageCode,
-          modelId: modelIdForFlow,
-        };
-        const { translatedText } = await translateSingleText(translateInput);
+    let translationErrors = 0;
+
+    for (const entry of activeTrack.entries) {
+        const textToTranslate = entry.text;
+        const textToTranslateTrimmed = textToTranslate.trim();
+
+        if (textToTranslateTrimmed.length < 2 || textToTranslateTrimmed === "..." || textToTranslateTrimmed.toLowerCase() === "new subtitle text..." || textToTranslateTrimmed.toLowerCase() === "null") {
+            translatedEntries.push({ ...entry, text: textToTranslate });
+            continue;
+        }
+
+        const translationPromptContent = `Translate the following text into ${targetLanguageName}.
+Respond *only* with the translated text. Do not add any extra explanations, apologies, or conversational filler.
+If the input text is a common placeholder like "New subtitle text...", "...", "null", or appears to be already in ${targetLanguageName}, please return the original text unchanged.
+Do not translate proper nouns or entities that should remain in their original language unless contextually appropriate for ${targetLanguageName}.
+
+Original text:
+'''
+${textToTranslate}
+'''`;
+        let translatedText = textToTranslate;
+
+        try {
+            if (translationProvider === 'googleai') {
+                const genkitModel = await getGoogleAIModel(modelIdForClientCall as GoogleAILLMModelType);
+                const generateOptions: GenerateOptions = {
+                    model: genkitModel,
+                    prompt: translationPromptContent,
+                    config: { temperature: appSettings.temperature || 0.2 },
+                };
+                const result = await performGoogleAIGeneration(generateOptions);
+                translatedText = result.text?.trim() || textToTranslate;
+            } else if (translationProvider === 'openai') {
+                const openaiClient = new OpenAI({ apiKey: appSettings.openAIToken!, dangerouslyAllowBrowser: true });
+                const completion = await openaiClient.chat.completions.create({
+                    model: modelIdForClientCall,
+                    messages: [{ role: "user", content: translationPromptContent }],
+                    temperature: appSettings.temperature || 0.2,
+                });
+                translatedText = completion.choices[0]?.message?.content?.trim() || textToTranslate;
+            } else if (translationProvider === 'avalai_openai') {
+                const avalaiClient = new OpenAI({ apiKey: appSettings.avalaiToken!, baseURL: DEFAULT_AVALAI_BASE_URL, dangerouslyAllowBrowser: true });
+                const completion = await avalaiClient.chat.completions.create({
+                    model: modelIdForClientCall,
+                    messages: [{ role: "user", content: translationPromptContent }],
+                    temperature: appSettings.temperature || 0.2,
+                });
+                translatedText = completion.choices[0]?.message?.content?.trim() || textToTranslate;
+            } else if (translationProvider === 'groq') {
+                const groqClient = new Groq({ apiKey: appSettings.groqToken!, dangerouslyAllowBrowser: true });
+                const completion = await groqClient.chat.completions.create({
+                    model: modelIdForClientCall,
+                    messages: [{ role: "user", content: translationPromptContent }],
+                    temperature: appSettings.temperature || 0.2,
+                });
+                translatedText = completion.choices[0]?.message?.content?.trim() || textToTranslate;
+            }
+
+            if (!translatedText.trim() || translatedText.trim().toLowerCase() === textToTranslate.trim().toLowerCase()) {
+                 if (!(textToTranslateTrimmed.length < 2 || textToTranslateTrimmed === "..." || textToTranslateTrimmed.toLowerCase() === "new subtitle text..." || textToTranslateTrimmed.toLowerCase() === "null")) {
+                    addLog(`Translation for "${textToTranslate.substring(0,20)}..." resulted in empty or identical text. Using original.`, 'debug');
+                 }
+                 translatedText = textToTranslate;
+            }
+
+        } catch (error: any) {
+            translationErrors++;
+            console.error(`Error translating entry ID ${entry.id} with ${translationProvider}:`, error);
+            addLog(`Error translating entry ${entry.id} ("${entry.text.substring(0,20)}...") with ${translationProvider}: ${error.message}`, 'error');
+            translatedText = textToTranslate;
+        }
         translatedEntries.push({ ...entry, text: translatedText });
+    }
+
+    const originalFileName = activeTrack.fileName.substring(0, activeTrack.fileName.lastIndexOf('.') || activeTrack.fileName.length);
+    const translatedFileName = `${originalFileName}.${targetLanguageCode}.srt`;
+    const srtContent = generateSrt(translatedEntries);
+
+    const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = translatedFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (translationErrors > 0) {
+      if (translationErrors === activeTrack.entries.length) {
+        toast({
+          title: t('exporter.toast.translationErrorTitle') as string,
+          description: t('exporter.toast.translationErrorDescription', { error: `All ${translationErrors} translations failed.` }) as string,
+          variant: "destructive"
+        });
+        addLog(`All ${translationErrors} translations failed for track ${activeTrack.fileName} to ${targetLanguageName}`, 'error');
+      } else {
+        toast({
+          title: t('exporter.toast.translationErrorTitle') as string,
+          description: t('exporter.toast.translationPartialErrorDescription', { count: translationErrors, total: activeTrack.entries.length }) as string,
+          variant: "destructive"
+        });
+        addLog(`${translationErrors} out of ${activeTrack.entries.length} translations failed for track ${activeTrack.fileName} to ${targetLanguageName}. The rest exported to ${translatedFileName}.`, 'warn');
       }
-
-      const originalFileName = activeTrack.fileName.substring(0, activeTrack.fileName.lastIndexOf('.') || activeTrack.fileName.length);
-      const translatedFileName = `${originalFileName}.${targetLanguageCode}.srt`;
-      const srtContent = generateSrt(translatedEntries);
-
-      const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = translatedFileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
+    } else {
       toast({ title: t('exporter.toast.translationSuccessTitle') as string, description: t('exporter.toast.translationSuccessDescription', { fileName: translatedFileName }) as string });
       addLog(`Successfully translated and exported ${translatedFileName}`, 'success');
-
-    } catch (error: any) {
-      console.error("Translation and export error:", error);
-      toast({ title: t('exporter.toast.translationErrorTitle') as string, description: t('exporter.toast.translationErrorDescription', { error: error.message }) as string, variant: "destructive" });
-      addLog(`Error during translation/export to ${targetLanguageName}: ${error.message}`, 'error');
-    } finally {
-      setIsTranslating(false);
     }
+
+    setIsTranslating(false);
   }, [activeTrack, isTranslating, getAppSettings, t, toast, addLog]);
 
 
