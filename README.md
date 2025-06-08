@@ -50,6 +50,7 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 - **⚡ Multi-Process Transcription (Option 3)** - A two-stage process for enhanced accuracy. First, generates full timestamped subtitles (like Option 2). Then, refines the text of each segment in parallel using models optimized for text generation (configured via "Cue/Slice Task" settings).
 - 🚀 **Google AI (Gemini) for Cue/Slice Transcription** - Leverage Google's Gemini models (via your Google API key) for regenerating specific subtitle segments in the editor. Configured via "Cue/Slice Task" settings.
 - ⚡ **Groq API Support** - Utilize fast Whisper models (`whisper-large-v3`, `whisper-large-v3-turbo`) for both full media transcription (Timestamp Task) and individual segment regeneration (Cue/Slice Task).
+<p align="center"><img src="docs/image/Generate-Subtitles-with-Multi-Processing.png" alt="Multi-Process Transcription Flow"></p>
 - 💠 **AvalAI Support** - Use AvalAI for:
     - Full media transcription with Whisper-based models (requires AvalAI API key, via "Timestamp Task" settings).
     - Segment regeneration with specific OpenAI models like `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1` (requires AvalAI API key, via "Cue/Slice Task" settings).
