@@ -168,7 +168,10 @@ export function UploadStepControls({
   ), [t, dir, mediaFile, isReplacingMedia, isGeneratingFullTranscription, isAnyTranscriptionLoading, fullTranscriptionLanguageOverride, handleFullTranscriptionLanguageChange, fullTranscriptionProgress, handleGenerateFullTranscription, showApiKeyWarning, disableGenerateButtonDueToApiKeys]);
 
   const memoizedMultiProcessGeneratorCard = useMemo(() => (
-    <Card className={cn("shadow-lg", (!mediaFile || isReplacingMedia) && "opacity-60 pointer-events-none")}>
+    <Card className={cn(
+        "shadow-lg bg-accent/5 dark:bg-accent/10 border-accent/20", 
+        (!mediaFile || isReplacingMedia) && "opacity-60 pointer-events-none"
+      )}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
           <Zap className="h-6 w-6 text-purple-500" />
