@@ -65,6 +65,19 @@ export function EditStepControls({
   const LeftArrowIcon = dir === 'rtl' ? ArrowRight : ArrowLeft;
   const RightArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
 
+  const MAX_FILENAME_LENGTH = 35;
+  const truncateFileName = (name: string): string => {
+    if (!name) return "";
+    if (name.length <= MAX_FILENAME_LENGTH) {
+      return name;
+    }
+    const ellipsis = "...";
+    const charsToShow = MAX_FILENAME_LENGTH - ellipsis.length;
+    const frontChars = Math.ceil(charsToShow / 2);
+    const backChars = Math.floor(charsToShow / 2);
+    return `${name.substring(0, frontChars)}${ellipsis}${name.substring(name.length - backChars)}`;
+  };
+
   return (
     <>
       <Card className="shadow-md">
@@ -89,8 +102,8 @@ export function EditStepControls({
               </SelectTrigger>
               <SelectContent>
                 {subtitleTracks.map((track) => (
-                  <SelectItem key={track.id} value={track.id}>
-                    {track.fileName} ({track.format.toUpperCase()}, {track.entries.length} {t('editor.trackLanguage.cuesLabel') as string})
+                  <SelectItem key={track.id} value={track.id} className="text-xs">
+                    {truncateFileName(track.fileName)} ({track.format.toUpperCase()}, {track.entries.length} {t('editor.trackLanguage.cuesLabel') as string})
                   </SelectItem>
                 ))}
               </SelectContent>
