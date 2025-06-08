@@ -42,12 +42,12 @@
     },
     {
       "iconName": "Languages",
-      "title": "One-Click Translation (Coming Soon)",
+      "title": "One-Click Translation",
       "description": "Translate subtitles from their original language to all supported languages with a single click."
     },
     {
       "iconName": "Cpu",
-      "title": "Expanded API Support (Coming Soon)",
+      "title": "Expanded API Support",
       "description": "Support for OpenRouter and Gemini API, expanding your choices for AI-powered features."
     },
     {
