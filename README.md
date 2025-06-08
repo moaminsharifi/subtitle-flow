@@ -1,3 +1,4 @@
+
 # Subtitle Flow
 
 <div align="center">
@@ -46,7 +47,7 @@ Subtitle Flow is a professional-grade subtitle editor that operates 100% in your
 
 ### AI-Powered Tools
 - 🤖 **Automatic Transcription (Full Media - Option 2)** - Generate timestamped subtitles for your entire media file using specialized models from OpenAI (Whisper), Groq (Whisper Large v3, v3-turbo), or AvalAI (Whisper-based). Configured via "Timestamp Task" settings.
-- ⚡ **Multi-Process Transcription (Option 3)** - A two-stage process for enhanced accuracy. First, generates full timestamped subtitles (like Option 2). Then, refines the text of each segment in parallel using models optimized for text generation (configured via "Cue/Slice Task" settings).
+- **⚡ Multi-Process Transcription (Option 3)** - A two-stage process for enhanced accuracy. First, generates full timestamped subtitles (like Option 2). Then, refines the text of each segment in parallel using models optimized for text generation (configured via "Cue/Slice Task" settings).
 - 🚀 **Google AI (Gemini) for Cue/Slice Transcription** - Leverage Google's Gemini models (via your Google API key) for regenerating specific subtitle segments in the editor. Configured via "Cue/Slice Task" settings.
 - ⚡ **Groq API Support** - Utilize fast Whisper models (`whisper-large-v3`, `whisper-large-v3-turbo`) for both full media transcription (Timestamp Task) and individual segment regeneration (Cue/Slice Task).
 - 💠 **AvalAI Support** - Use AvalAI for:
