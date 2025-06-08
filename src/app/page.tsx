@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, AppSettings, TranscriptionProvider, LLMProviderType, TranscriptionModelType, LLMModelType } from '@/lib/types';
+import type { MediaFile, SubtitleEntry, SubtitleFormat, SubtitleTrack, LanguageCode, LogEntry, AppSettings, TranscriptionProvider, LLMProviderType, TranscriptionModelType, LLMModelType, FullTranscriptionProgress, MultiProcessTranscriptionProgress } from '@/lib/types';
 import { 
   LANGUAGE_OPTIONS, LANGUAGE_KEY, DEFAULT_TRANSCRIPTION_LANGUAGE_KEY, 
   TRANSCRIPTION_PROVIDER_KEY, TRANSCRIPTION_MODEL_KEY, 
@@ -12,32 +12,23 @@ import {
   OpenAIWhisperModels, AvalAIOpenAIBasedWhisperModels, GroqWhisperModels,
   GoogleGeminiLLModels, OpenAIGPTModels, AvalAIOpenAIBasedGPTModels, GroqLLModels, AvalAIGeminiBasedModels
 } from '@/lib/types';
-// MediaUploader is no longer directly used here for initial upload
 import { useToast } from '@/hooks/use-toast';
 import { runTranscriptionTask } from '@/ai/tasks/run-transcription-task';
 import { sliceAudioToDataURI } from '@/lib/subtitle-utils';
 import { useTranslation } from '@/contexts/LanguageContext';
 
-// New Page Layout Components
 import { PageHeader } from '@/components/page/PageHeader';
 import { MediaDisplay } from '@/components/page/MediaDisplay';
 import { UploadStepControls } from '@/components/page/UploadStepControls';
 import { EditStepControls } from '@/components/page/EditStepControls';
 import { ExportStepControls } from '@/components/page/ExportStepControls';
 import { PageActions } from '@/components/page/PageActions';
-import { StepContentWrapper } from '@/components/page/StepContentWrapper'; // Import new component
+import { StepContentWrapper } from '@/components/page/StepContentWrapper';
 
 
 type AppStep = 'upload' | 'edit' | 'export';
 
-interface FullTranscriptionProgress {
-  currentChunk: number;
-  totalChunks: number;
-  percentage: number;
-  currentStage: string | null;
-  chunkProgress?: number; // Progress within the current chunk
-  chunkMessage?: string; // Message for current chunk progress
-}
+const CONCURRENT_REFINEMENT_LIMIT = 3; // Number of segments to refine in parallel for Option 3
 
 export default function SubtitleSyncPage() {
   const { t, dir, language } = useTranslation();
@@ -52,9 +43,15 @@ export default function SubtitleSyncPage() {
   const [isCheatsheetDialogOpen, setIsCheatsheetDialogOpen] = useState(false);
   const [entryTranscriptionLoading, setEntryTranscriptionLoading] = useState<Record<string, boolean>>({});
   const [isAnyTranscriptionLoading, setIsAnyTranscriptionLoading] = useState<boolean>(false);
+  
+  // State for Option 2: Full Transcription
   const [isGeneratingFullTranscription, setIsGeneratingFullTranscription] = useState<boolean>(false);
   const [fullTranscriptionProgress, setFullTranscriptionProgress] = useState<FullTranscriptionProgress | null>(null);
   
+  // State for Option 3: Multi-Process Transcription
+  const [isGeneratingMultiProcessTranscription, setIsGeneratingMultiProcessTranscription] = useState<boolean>(false);
+  const [multiProcessTranscriptionProgress, setMultiProcessTranscriptionProgress] = useState<MultiProcessTranscriptionProgress | null>(null);
+
   const [editorLLMLanguage, setEditorLLMLanguage] = useState<LanguageCode | "auto-detect">("auto-detect");
   const [fullTranscriptionLanguageOverride, setFullTranscriptionLanguageOverride] = useState<LanguageCode | "auto-detect">("auto-detect");
   
@@ -113,7 +110,7 @@ export default function SubtitleSyncPage() {
     const message = t('toast.mediaLoadedDescription', { fileName: file.name, type, duration: duration.toFixed(2) });
     toast({ title: t('toast.mediaLoaded') as string, description: message as string, duration: 5000 });
     addLog(message as string, 'success');
-    setIsReplacingMedia(false); // Ensure this is reset after upload
+    setIsReplacingMedia(false);
   }, [addLog, t, toast]);
 
   const handleSubtitleUpload = useCallback((entries: SubtitleEntry[], fileName: string, format: SubtitleFormat) => {
@@ -291,62 +288,41 @@ export default function SubtitleSyncPage() {
   }, [activeTrackId, activeTrack, mediaFile, t, toast, addLog]);
 
   const getAppSettings = useCallback((): AppSettings => {
-    // LLM Provider and Model validation
     const savedLlmProvider = localStorage.getItem(LLM_PROVIDER_KEY) as LLMProviderType | null;
-    const finalLlmProvider = savedLlmProvider || 'openai'; // Default LLM provider
-
-    let finalLlmModel: LLMModelType;
-    const savedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
+    const finalLlmProvider = savedLlmProvider || 'openai';
     let validLlmModelsForProvider: readonly LLMModelType[];
-
     switch (finalLlmProvider) {
       case 'googleai': validLlmModelsForProvider = GoogleGeminiLLModels; break;
       case 'openai': validLlmModelsForProvider = OpenAIGPTModels; break;
       case 'avalai_openai': validLlmModelsForProvider = AvalAIOpenAIBasedGPTModels; break;
       case 'avalai_gemini': validLlmModelsForProvider = AvalAIGeminiBasedModels; break;
       case 'groq': validLlmModelsForProvider = GroqLLModels; break;
-      default: validLlmModelsForProvider = OpenAIGPTModels; // Fallback
+      default: validLlmModelsForProvider = OpenAIGPTModels;
     }
+    const savedLlmModel = localStorage.getItem(LLM_MODEL_KEY) as LLMModelType | null;
+    const finalLlmModel = savedLlmModel && (validLlmModelsForProvider as readonly string[]).includes(savedLlmModel) ? savedLlmModel : validLlmModelsForProvider[0];
 
-    if (savedLlmModel && (validLlmModelsForProvider as readonly string[]).includes(savedLlmModel)) {
-      finalLlmModel = savedLlmModel;
-    } else {
-      finalLlmModel = validLlmModelsForProvider[0];
-    }
-
-    // Transcription Provider and Model validation
     const savedTranscriptionProvider = localStorage.getItem(TRANSCRIPTION_PROVIDER_KEY) as TranscriptionProvider | null;
-    const finalTranscriptionProvider = savedTranscriptionProvider || 'openai'; // Default Transcription provider
-
-    let finalTranscriptionModel: TranscriptionModelType;
-    const savedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
+    const finalTranscriptionProvider = savedTranscriptionProvider || 'openai';
     let validTranscriptionModelsForProvider: readonly TranscriptionModelType[];
-
     switch (finalTranscriptionProvider) {
       case 'openai': validTranscriptionModelsForProvider = OpenAIWhisperModels; break;
       case 'avalai_openai': validTranscriptionModelsForProvider = AvalAIOpenAIBasedWhisperModels; break;
       case 'groq': validTranscriptionModelsForProvider = GroqWhisperModels; break;
-      default: validTranscriptionModelsForProvider = OpenAIWhisperModels; // Fallback
+      default: validTranscriptionModelsForProvider = OpenAIWhisperModels;
     }
-
-    if (savedTranscriptionModel && (validTranscriptionModelsForProvider as readonly string[]).includes(savedTranscriptionModel)) {
-      finalTranscriptionModel = savedTranscriptionModel;
-    } else {
-      finalTranscriptionModel = validTranscriptionModelsForProvider[0];
-    }
+    const savedTranscriptionModel = localStorage.getItem(TRANSCRIPTION_MODEL_KEY) as TranscriptionModelType | null;
+    const finalTranscriptionModel = savedTranscriptionModel && (validTranscriptionModelsForProvider as readonly string[]).includes(savedTranscriptionModel) ? savedTranscriptionModel : validTranscriptionModelsForProvider[0];
 
     return {
       openAIToken: localStorage.getItem(OPENAI_TOKEN_KEY) || undefined,
       avalaiToken: localStorage.getItem(AVALAI_TOKEN_KEY) || undefined,
       googleApiKey: localStorage.getItem(GOOGLE_API_KEY_KEY) || undefined,
       groqToken: localStorage.getItem(GROQ_TOKEN_KEY) || undefined,
-      
       transcriptionProvider: finalTranscriptionProvider,
       transcriptionModel: finalTranscriptionModel,
-      
       llmProvider: finalLlmProvider,
       llmModel: finalLlmModel,
-      
       defaultTranscriptionLanguage: (localStorage.getItem(DEFAULT_TRANSCRIPTION_LANGUAGE_KEY) as LanguageCode | "auto-detect" | null) || "auto-detect",
       temperature: parseFloat(localStorage.getItem(TEMPERATURE_KEY) || '0.7'),
       maxSegmentDuration: parseInt(localStorage.getItem(MAX_SEGMENT_DURATION_KEY) || '60', 10),
@@ -355,7 +331,7 @@ export default function SubtitleSyncPage() {
 
 
   const handleRegenerateTranscription = useCallback(async (entryId: string) => {
-    if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
+    if (isAnyTranscriptionLoading || isGeneratingFullTranscription || isGeneratingMultiProcessTranscription) {
       const msg = t('toast.transcriptionBusyDescription');
       toast({ title: t('toast.transcriptionBusy') as string, description: msg as string, variant: "destructive", duration: 5000 });
       addLog(msg as string, 'warn');
@@ -446,10 +422,10 @@ export default function SubtitleSyncPage() {
       setIsAnyTranscriptionLoading(false);
       addLog(`Cue/slice transcription finished for entry ID: ${entryId}.`, 'debug');
     }
-  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, mediaFile, activeTrack, editorLLMLanguage, getAppSettings, t, toast, addLog, handleSubtitleChange]);
+  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, isGeneratingMultiProcessTranscription, mediaFile, activeTrack, editorLLMLanguage, getAppSettings, t, toast, addLog, handleSubtitleChange]);
 
   const handleGenerateFullTranscription = useCallback(async () => {
-    if (isAnyTranscriptionLoading || isGeneratingFullTranscription) {
+    if (isAnyTranscriptionLoading || isGeneratingFullTranscription || isGeneratingMultiProcessTranscription) {
       toast({ title: t('toast.transcriptionBusy') as string, description: t('toast.transcriptionBusyDescription') as string, variant: "destructive" });
       addLog(t('toast.transcriptionBusyDescription') as string, 'warn'); return;
     }
@@ -478,6 +454,8 @@ export default function SubtitleSyncPage() {
     const langForFull = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
     addLog(`Starting full media timestamp transcription with provider: ${providerForFull}, model: ${modelForFull}, Language: ${langForFull || 'auto-detect'}. Media: ${mediaFile.name}`, 'info');
     setIsGeneratingFullTranscription(true);
+    setIsAnyTranscriptionLoading(true);
+
 
     const allSubtitleEntries: SubtitleEntry[] = [];
     const maxSegmentDuration = appSettings.maxSegmentDuration || 60;
@@ -608,16 +586,231 @@ export default function SubtitleSyncPage() {
     } finally {
       setIsGeneratingFullTranscription(false);
       setFullTranscriptionProgress(null);
+      setIsAnyTranscriptionLoading(false);
       addLog("Full media transcription process finished.", 'debug');
     }
-  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, mediaFile, fullTranscriptionLanguageOverride, getAppSettings, t, toast, addLog]);
+  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, isGeneratingMultiProcessTranscription, mediaFile, fullTranscriptionLanguageOverride, getAppSettings, t, toast, addLog]);
+
+  const handleGenerateMultiProcessTranscription = useCallback(async () => {
+    if (isAnyTranscriptionLoading || isGeneratingFullTranscription || isGeneratingMultiProcessTranscription) {
+      toast({ title: t('toast.transcriptionBusy') as string, description: t('toast.transcriptionBusyDescription') as string, variant: "destructive" });
+      addLog(t('toast.transcriptionBusyDescription') as string, 'warn'); return;
+    }
+    if (!mediaFile) {
+      toast({ title: t('toast.fullTranscriptionError.generic') as string, description: t('toast.fullTranscriptionError.noMedia') as string, variant: "destructive" });
+      addLog(t('toast.fullTranscriptionError.noMedia') as string, 'error'); return;
+    }
+
+    const appSettings = getAppSettings();
+    const initialProvider = appSettings.transcriptionProvider;
+    const initialModel = appSettings.transcriptionModel;
+    const refinementProvider = appSettings.llmProvider;
+    const refinementModel = appSettings.llmModel;
+
+    // API Key Checks
+    if ((initialProvider === 'openai' || refinementProvider === 'openai') && !appSettings.openAIToken) {
+        toast({ title: t('toast.openAITokenMissing') as string, description: t('toast.openAITokenMissingDescription') as string, variant: "destructive" }); return;
+    }
+    if ((initialProvider === 'avalai_openai' || refinementProvider === 'avalai_openai') && !appSettings.avalaiToken) {
+        toast({ title: t('toast.avalaiTokenMissing') as string, description: t('toast.avalaiTokenMissingDescription') as string, variant: "destructive" }); return;
+    }
+    if (refinementProvider === 'googleai' && !appSettings.googleApiKey) {
+        toast({ title: t('toast.googleApiKeyMissing') as string, description: t('toast.googleApiKeyMissingDescription') as string, variant: "destructive" }); return;
+    }
+    if (refinementProvider === 'avalai_gemini' && !appSettings.googleApiKey) {
+        toast({ title: t('toast.googleApiKeyMissingForAvalAI') as string, description: t('toast.googleApiKeyMissingForAvalAIDescription') as string, variant: "destructive" }); return;
+    }
+    if ((initialProvider === 'groq' || refinementProvider === 'groq') && !appSettings.groqToken) {
+        toast({ title: t('toast.groqTokenMissing') as string, description: t('toast.groqTokenMissingDescription') as string, variant: "destructive" }); return;
+    }
+
+    setIsGeneratingMultiProcessTranscription(true);
+    setIsAnyTranscriptionLoading(true);
+    setMultiProcessTranscriptionProgress({
+        stage: 'initial_transcription',
+        statusMessage: t('multiProcess.status.stage1Init') as string,
+        initialTranscriptionProgress: { currentChunk: 0, totalChunks: 0, percentage: 0, currentStage: null },
+        segmentRefinementProgress: null,
+    });
+
+    let initialSegments: SubtitleEntry[] = [];
+    const langForTranscription = fullTranscriptionLanguageOverride === "auto-detect" ? undefined : fullTranscriptionLanguageOverride;
+
+    try {
+        // Stage 1: Initial Timestamped Transcription
+        addLog(`Multi-Process Stage 1: Initial timestamp transcription. Provider: ${initialProvider}, Model: ${initialModel}, Lang: ${langForTranscription || 'auto'}`, 'info');
+        const maxSegmentDuration = appSettings.maxSegmentDuration || 60;
+        const numChunks = Math.ceil(mediaFile.duration / maxSegmentDuration);
+        
+        setMultiProcessTranscriptionProgress(prev => ({
+            ...prev!,
+            statusMessage: t('multiProcess.status.stage1Progress', { model: initialModel }) as string,
+            initialTranscriptionProgress: { currentChunk: 0, totalChunks: numChunks, percentage: 0, currentStage: t('aiGenerator.progress.stage.slicing') as string },
+        }));
+
+        for (let i = 0; i < numChunks; i++) {
+            const chunkStartTime = i * maxSegmentDuration;
+            const chunkEndTime = Math.min((i + 1) * maxSegmentDuration, mediaFile.duration);
+            if (chunkStartTime >= chunkEndTime) continue;
+
+            const currentChunkNum = i + 1;
+            setMultiProcessTranscriptionProgress(prev => ({
+                ...prev!,
+                initialTranscriptionProgress: {
+                    ...prev!.initialTranscriptionProgress!,
+                    currentChunk: currentChunkNum,
+                    percentage: Math.round((i / numChunks) * 100),
+                    currentStage: t('aiGenerator.progress.stage.slicing') as string,
+                },
+            }));
+            
+            const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, chunkStartTime, chunkEndTime);
+            setMultiProcessTranscriptionProgress(prev => ({ ...prev!, initialTranscriptionProgress: { ...prev!.initialTranscriptionProgress!, currentStage: t('aiGenerator.progress.stage.transcribing') as string } }));
+
+            const result = await runTranscriptionTask({
+                audioDataUri, provider: initialProvider!, modelName: initialModel!, language: langForTranscription, task: 'timestamp', appSettings
+            }, (chunkProgress, chunkMessage) => {
+                 setMultiProcessTranscriptionProgress(prev => ({
+                    ...prev!,
+                    initialTranscriptionProgress: {
+                        ...prev!.initialTranscriptionProgress!,
+                        percentage: Math.round(((i + chunkProgress / 100) / numChunks) * 100),
+                        chunkProgress, chunkMessage
+                    }
+                }));
+            });
+            
+            setMultiProcessTranscriptionProgress(prev => ({ ...prev!, initialTranscriptionProgress: { ...prev!.initialTranscriptionProgress!, currentStage: t('aiGenerator.progress.stage.processing') as string } }));
+            if (result.segments && result.segments.length > 0) {
+                result.segments.forEach(seg => initialSegments.push({
+                    id: `init-${chunkStartTime + seg.start}-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
+                    startTime: parseFloat((chunkStartTime + seg.start).toFixed(3)),
+                    endTime: parseFloat((chunkStartTime + seg.end).toFixed(3)),
+                    text: seg.text,
+                }));
+            } else if (result.fullText) {
+                initialSegments.push({
+                    id: `init-chunk-${chunkStartTime}-${Date.now()}`,
+                    startTime: parseFloat(chunkStartTime.toFixed(3)),
+                    endTime: parseFloat(chunkEndTime.toFixed(3)),
+                    text: result.fullText,
+                });
+            }
+        }
+        initialSegments.sort((a, b) => a.startTime - b.startTime);
+        addLog(`Multi-Process Stage 1 Complete. Generated ${initialSegments.length} initial segments.`, 'success');
+        
+        if (initialSegments.length === 0) {
+          throw new Error(t('multiProcess.error.noInitialSegments') as string);
+        }
+
+        // Stage 2: Parallel Segment Refinement
+        setMultiProcessTranscriptionProgress(prev => ({
+            ...prev!,
+            stage: 'segment_refinement',
+            statusMessage: t('multiProcess.status.stage2Init', { count: initialSegments.length, model: refinementModel}) as string,
+            segmentRefinementProgress: {
+                totalSegments: initialSegments.length,
+                processedSegments: 0,
+                completedSegments: 0,
+                refinedSuccessfully: 0,
+                failedToRefine: 0,
+            },
+        }));
+        addLog(`Multi-Process Stage 2: Refining ${initialSegments.length} segments. Provider: ${refinementProvider}, Model: ${refinementModel}`, 'info');
+
+        const finalSubtitleEntries: SubtitleEntry[] = [];
+        const segmentTasks = initialSegments.map((segment, index) => async () => {
+            try {
+                setMultiProcessTranscriptionProgress(prev => {
+                    const currentSRP = prev!.segmentRefinementProgress!;
+                    return {
+                        ...prev!,
+                        statusMessage: t('multiProcess.status.stage2Progress', { current: currentSRP.processedSegments + 1, total: currentSRP.totalSegments, model: refinementModel }) as string,
+                        segmentRefinementProgress: { ...currentSRP, processedSegments: currentSRP.processedSegments + 1 }
+                    };
+                });
+
+                const audioDataUri = await sliceAudioToDataURI(mediaFile.rawFile, segment.startTime, segment.endTime);
+                const refinedResult = await runTranscriptionTask({
+                    audioDataUri, provider: refinementProvider!, modelName: refinementModel!, language: langForTranscription, task: 'cue_slice', appSettings
+                });
+                
+                const refinedText = refinedResult.fullText.trim();
+                finalSubtitleEntries.push({ ...segment, text: refinedText || segment.text }); // Use original if refinement is empty
+                
+                setMultiProcessTranscriptionProgress(prev => {
+                    const currentSRP = prev!.segmentRefinementProgress!;
+                    return {
+                        ...prev!,
+                        segmentRefinementProgress: {
+                             ...currentSRP,
+                             completedSegments: currentSRP.completedSegments + 1,
+                             refinedSuccessfully: currentSRP.refinedSuccessfully + (refinedText ? 1 : 0),
+                             failedToRefine: currentSRP.failedToRefine + (refinedText ? 0 : 1)
+                        }
+                    };
+                });
+                if (!refinedText) addLog(`Segment ${index+1} (${segment.id}) refinement resulted in empty text. Using original.`, 'warn');
+            } catch (err: any) {
+                addLog(`Error refining segment ${index+1} (${segment.id}): ${err.message}`, 'error');
+                finalSubtitleEntries.push(segment); // Use original on error
+                 setMultiProcessTranscriptionProgress(prev => {
+                    const currentSRP = prev!.segmentRefinementProgress!;
+                    return {
+                        ...prev!,
+                        segmentRefinementProgress: {
+                             ...currentSRP,
+                             completedSegments: currentSRP.completedSegments + 1,
+                             failedToRefine: currentSRP.failedToRefine + 1
+                        }
+                    };
+                });
+            }
+        });
+        
+        for (let i = 0; i < segmentTasks.length; i += CONCURRENT_REFINEMENT_LIMIT) {
+            const batch = segmentTasks.slice(i, i + CONCURRENT_REFINEMENT_LIMIT);
+            await Promise.allSettled(batch.map(task => task()));
+        }
+
+        finalSubtitleEntries.sort((a,b) => a.startTime - b.startTime);
+        const newTrackId = `track-multi-${Date.now()}`;
+        const trackLangSuffix = langForTranscription || (fullTranscriptionLanguageOverride === "auto-detect" ? "auto" : fullTranscriptionLanguageOverride);
+        const newTrackFileName = `${mediaFile.name.substring(0, mediaFile.name.lastIndexOf('.') || mediaFile.name.length)} - MultiProcess-${initialModel}-${refinementModel}-${trackLangSuffix}.srt`;
+        
+        const newTrack: SubtitleTrack = { id: newTrackId, fileName: newTrackFileName, format: 'srt', entries: finalSubtitleEntries };
+        setSubtitleTracks(prevTracks => [...prevTracks, newTrack]);
+        setActiveTrackId(newTrackId);
+        
+        const successMessage = t('multiProcess.status.complete', { trackName: newTrackFileName, count: finalSubtitleEntries.length }) as string;
+        toast({ title: t('multiProcess.toast.completeTitle') as string, description: successMessage });
+        addLog(successMessage, 'success');
+        
+        setMultiProcessTranscriptionProgress(prev => ({ ...prev!, stage: 'complete', statusMessage: successMessage }));
+        setCurrentStep('edit');
+
+    } catch (error: any) {
+      console.error("Multi-Process transcription error:", error);
+      const errorMsg = t('multiProcess.error.generic', { errorMessage: error.message });
+      toast({ title: t('multiProcess.toast.errorTitle') as string, description: errorMsg as string, variant: "destructive" });
+      addLog(errorMsg as string, 'error');
+      setMultiProcessTranscriptionProgress(prev => ({ ...prev!, stage: 'error', statusMessage: errorMsg as string }));
+    } finally {
+      setIsGeneratingMultiProcessTranscription(false);
+      setIsAnyTranscriptionLoading(false);
+      // Don't nullify multiProcessTranscriptionProgress here, so user can see final status/error
+      addLog("Multi-Process transcription attempt finished.", 'debug');
+    }
+
+  }, [isAnyTranscriptionLoading, isGeneratingFullTranscription, isGeneratingMultiProcessTranscription, mediaFile, fullTranscriptionLanguageOverride, getAppSettings, t, toast, addLog]);
 
 
   const isEntryTranscribing = (entryId: string): boolean => {
     return !!entryTranscriptionLoading[entryId];
   };
 
-  const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription;
+  const editorDisabled = !mediaFile || !activeTrack || isGeneratingFullTranscription || isGeneratingMultiProcessTranscription;
 
 
   const handleProceedToEdit = useCallback(() => {
@@ -674,6 +867,11 @@ export default function SubtitleSyncPage() {
     }
     setCurrentStep('upload');
     setIsReplacingMedia(false);
+    // Reset progress states if navigating back to upload
+    setIsGeneratingFullTranscription(false);
+    setFullTranscriptionProgress(null);
+    setIsGeneratingMultiProcessTranscription(false);
+    setMultiProcessTranscriptionProgress(null);
     addLog(`Navigated to Upload step. Reset: ${reset}`, 'debug');
   }, [t, toast, addLog]);
 
@@ -727,7 +925,6 @@ export default function SubtitleSyncPage() {
 
       <main className="flex-grow flex flex-col gap-6">
         <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Column 1: Media Display */}
           <div className="space-y-6 flex flex-col h-full">
             <MediaDisplay
               mediaFile={mediaFile}
@@ -739,26 +936,28 @@ export default function SubtitleSyncPage() {
               isReplacingMedia={isReplacingMedia}
               setIsReplacingMedia={setIsReplacingMedia}
               onMediaUpload={handleMediaUpload}
-              isGeneratingFullTranscription={isGeneratingFullTranscription}
+              isGeneratingFullTranscription={isGeneratingFullTranscription || isGeneratingMultiProcessTranscription}
               addLog={addLog}
               t={t}
               dir={dir}
             />
           </div>
 
-          {/* Column 2: Step Controls */}
           <StepContentWrapper key={currentStep}>
             {currentStep === 'upload' && (
               <UploadStepControls
                 handleSubtitleUpload={handleSubtitleUpload}
                 mediaFile={mediaFile}
                 isGeneratingFullTranscription={isGeneratingFullTranscription}
+                isGeneratingMultiProcessTranscription={isGeneratingMultiProcessTranscription}
                 isAnyTranscriptionLoading={isAnyTranscriptionLoading}
                 isReplacingMedia={isReplacingMedia}
                 fullTranscriptionLanguageOverride={fullTranscriptionLanguageOverride}
                 handleFullTranscriptionLanguageChange={handleFullTranscriptionLanguageChange}
                 fullTranscriptionProgress={fullTranscriptionProgress}
+                multiProcessTranscriptionProgress={multiProcessTranscriptionProgress}
                 handleGenerateFullTranscription={handleGenerateFullTranscription}
+                handleGenerateMultiProcessTranscription={handleGenerateMultiProcessTranscription}
                 handleProceedToEdit={handleProceedToEdit}
                 t={t}
                 dir={dir}
@@ -774,7 +973,7 @@ export default function SubtitleSyncPage() {
                 editorLLMLanguage={editorLLMLanguage} 
                 setEditorLLMLanguage={setEditorLLMLanguage} 
                 mediaFile={mediaFile}
-                isGeneratingFullTranscription={isGeneratingFullTranscription}
+                isGeneratingFullTranscription={isGeneratingFullTranscription || isGeneratingMultiProcessTranscription}
                 isAnyTranscriptionLoading={isAnyTranscriptionLoading} 
                 activeTrack={activeTrack}
                 handleSubtitleChange={handleSubtitleChange}
@@ -823,6 +1022,3 @@ export default function SubtitleSyncPage() {
     </div>
   );
 }
-
-
-    

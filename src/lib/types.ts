@@ -35,7 +35,7 @@ export type ToastFn = (message: string, type: 'info' | 'error' | 'warn' | 'succe
 // --- Model Types ---
 // Timestamp Transcription Models (typically Whisper-like)
 export const OpenAIWhisperModels = ['whisper-1'] as const;
-export const AvalAIOpenAIBasedWhisperModels = ['whisper-1'] as const; // Used with AvalAI's OpenAI-compatible endpoint
+export const AvalAIOpenAIBasedWhisperModels = ['whisper-1'] as const;
 export const GroqWhisperModels = ['whisper-large-v3', 'whisper-large-v3-turbo'] as const;
 
 export type WhisperModelType =
@@ -51,24 +51,24 @@ export const GoogleGeminiLLModels = [
   'gemini-2.5-flash-preview-05-20',
 ] as const;
 
-export const AvalAIGeminiBasedModels = [ // Used with AvalAI's Gemini-compatible endpoint (if it uses Google API directly)
+export const AvalAIGeminiBasedModels = [
   'gemini-2.5-pro-preview-06-05',
   'gemini-2.5-flash-preview-05-20',
 ] as const;
 
-export const OpenAIGPTModels = [ // Models for Cue/Slice when OpenAI provider is selected
-  'gpt-4o-transcribe',
-  'gpt-4o-mini-transcribe',
-  'whisper-1',
+export const OpenAIGPTModels = [
+    'gpt-4o-transcribe',
+    'gpt-4o-mini-transcribe',
+    'whisper-1',
 ] as const;
 
-export const AvalAIOpenAIBasedGPTModels = [ // Models for Cue/Slice when AvalAI (OpenAI compatible) provider is selected
-  'gpt-4o-transcribe',
-  'gpt-4o-mini-transcribe',
-  'whisper-1',
+export const AvalAIOpenAIBasedGPTModels = [
+    'gpt-4o-transcribe',
+    'gpt-4o-mini-transcribe',
+    'whisper-1',
 ] as const;
 
-export const GroqLLModels = [ // Models for Cue/Slice when Groq provider is selected
+export const GroqLLModels = [
     'whisper-large-v3',
     'whisper-large-v3-turbo',
 ] as const;
@@ -94,7 +94,7 @@ export interface AppSettings {
   openAIToken?: string;
   avalaiToken?: string;
   groqToken?: string;
-  googleApiKey?: string; // For direct Google AI or AvalAI Gemini-based via Google API
+  googleApiKey?: string;
 
   transcriptionProvider?: TranscriptionProvider;
   transcriptionModel?: TranscriptionModelType;
@@ -204,40 +204,65 @@ export interface AudioSegment {
   duration: number;
 }
 
-// This interface was defined in page.tsx, better to have it generally available or remove if not used outside.
-// For now, keeping it as it might be related to editor props.
 export interface SubtitleEditorProps {
   handleSeekPlayer: (timeInSeconds: number) => void;
 }
 
-// For clarity in SettingsDialog
 export const DEFAULT_AVALAI_BASE_URL = 'https://api.avalai.ir/v1';
 
-// Helper type to check if a model is a Whisper model from Groq
 export const isGroqWhisperModel = (modelName: string): modelName is typeof GroqWhisperModels[number] => {
   return (GroqWhisperModels as readonly string[]).includes(modelName);
 };
 
-// Helper to identify OpenAI models that should use the audio.transcriptions endpoint even for cue/slice
 export const isOpenAISpecificTranscriptionModel = (modelName: string): boolean => {
   return ['whisper-1', 'gpt-4o-transcribe', 'gpt-4o-mini-transcribe'].includes(modelName);
 };
 
-// Type guard for GoogleAILLMModelType
 export type GoogleAILLMModelType = typeof GoogleGeminiLLModels[number];
 export const isGoogleAILLMModel = (modelName: string): modelName is GoogleAILLMModelType => {
     return (GoogleGeminiLLModels as readonly string[]).includes(modelName);
 };
 
-// Type guard for OpenAIModelType (GPT)
 export type OpenAIModelType = typeof OpenAIGPTModels[number];
 export const isOpenAIGPTModel = (modelName: string): modelName is OpenAIModelType => {
     return (OpenAIGPTModels as readonly string[]).includes(modelName);
 };
 
-// Type guard for GroqModelType (LLMs not Whisper)
 export type GroqModelType = typeof GroqLLModels[number];
 export const isGroqLLModel = (modelName: string): modelName is GroqModelType => {
-    // For GroqLLModels, it's now restricted to Whisper variants for cue/slice as well
     return (GroqLLModels as readonly string[]).includes(modelName) && isGroqWhisperModel(modelName);
 };
+
+// Types for Full Transcription Progress (Option 2)
+export interface FullTranscriptionProgress {
+  currentChunk: number;
+  totalChunks: number;
+  percentage: number;
+  currentStage: string | null; // e.g., 'slicing', 'transcribing', 'processing'
+  chunkProgress?: number; // Progress within the current chunk (0-100)
+  chunkMessage?: string; // Message for current chunk progress
+}
+
+// Types for Multi-Process Transcription (Option 3)
+export interface SegmentRefinementDetail {
+  id: string; // Original segment ID from initial transcription
+  startTime: number;
+  endTime: number;
+  originalText: string;
+  refinedText: string | null; // Null if refinement failed or not yet done
+  status: 'pending' | 'processing' | 'done' | 'error';
+}
+
+export interface MultiProcessTranscriptionProgress {
+  stage: 'idle' | 'initial_transcription' | 'segment_refinement' | 'complete' | 'error';
+  statusMessage: string; // User-facing status message
+  initialTranscriptionProgress: FullTranscriptionProgress | null; // Reuse for Stage 1
+  segmentRefinementProgress: {
+    totalSegments: number;
+    processedSegments: number; // Number of segments for which refinement task has been initiated
+    completedSegments: number; // Number of segments successfully refined or failed (processing finished)
+    refinedSuccessfully: number;
+    failedToRefine: number;
+    // segments: SegmentRefinementDetail[]; // Keep track of each segment's status and refined text if needed for detailed UI
+  } | null;
+}

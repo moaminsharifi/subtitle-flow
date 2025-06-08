@@ -146,6 +146,22 @@
   "aiGenerator.button.generate": "Generate Full Subtitles with AI",
   "aiGenerator.button.generating": "Generating ({percentage}%)",
   "aiGenerator.button.generatingSimple": "Generating...",
+  "multiProcess.option3.title": "Option 3: Generate Subtitles with Multi-Processing",
+  "multiProcess.option3.descriptionDisabled": " (Upload or finalize media file first)",
+  "multiProcess.option3.descriptionEnabled": " Two-stage process: Full timestamped transcription, then per-segment refinement. Uses settings for both Timestamp and Cue/Slice tasks.",
+  "multiProcess.button.generate": "Generate with Multi-Processing",
+  "multiProcess.button.generatingSimple": "Processing...",
+  "multiProcess.status.initializing": "Initializing multi-process transcription...",
+  "multiProcess.status.stage1Init": "Stage 1/2: Starting initial timestamp transcription...",
+  "multiProcess.status.stage1Progress": "Stage 1/2: Generating initial timestamps with {model}...",
+  "multiProcess.status.stage2Init": "Stage 2/2: Starting refinement of {count} segments with {model}...",
+  "multiProcess.status.stage2Progress": "Stage 2/2: Refining segment {current}/{total} with {model}...",
+  "multiProcess.status.stage2ProgressDetailed": "Stage 2/2: Refined {completed}/{total} segments (Success: {successful}, Failed: {failed})",
+  "multiProcess.status.complete": "Multi-process transcription complete! New track \"{trackName}\" added with {count} cues.",
+  "multiProcess.toast.completeTitle": "Multi-Process Complete",
+  "multiProcess.toast.errorTitle": "Multi-Process Error",
+  "multiProcess.error.noInitialSegments": "Multi-Process Error: Stage 1 did not produce any initial segments.",
+  "multiProcess.error.generic": "Multi-Process Error: {errorMessage}",
   "page.nextStep.title": "Next Step",
   "page.nextStep.description": "Once your media is loaded and you've either uploaded or generated subtitles, proceed to the editor.",
   "page.button.proceedToEdit": "Proceed to Edit",
@@ -164,9 +180,9 @@
   "subtitleEditor.titleWithFile": "Subtitle Editor ({fileName})",
   "subtitleEditor.button.addNew": "Add New",
   "subtitleEditor.button.translateAll": "Translate All",
-  "subtitleEditor.placeholder.noTrack": "Upload media and select a subtitle track to begin editing.",
-  "subtitleEditor.placeholder.selectActiveTrack": "Select an active subtitle track to begin editing.",
-  "subtitleEditor.placeholder.emptyTrack": "No subtitles in active track. Click 'Add New' to create one.",
+  "subtitleEditor.placeholder.noTrack": "Upload media and select or generate a subtitle track to begin editing.",
+  "subtitleEditor.placeholder.selectActiveTrack": "Select an active subtitle track to view or edit its content.",
+  "subtitleEditor.placeholder.emptyTrack": "The active subtitle track is empty. Click 'Add New' to create the first subtitle entry.",
   "subtitleEditor.placeholder.noSubsInWindow": "No subtitles in the current time window. \nTry adding a new subtitle or adjust media playback time.",
   "subtitleEditor.entry.startTimeLabel": "Start (s)",
   "subtitleEditor.entry.endTimeLabel": "End (s)",
@@ -294,6 +310,3 @@
   "debugLog.buttons.clear": "Clear Logs",
   "debugLog.buttons.close": "Close"
 }
-
-    
-    
