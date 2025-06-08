@@ -2,7 +2,7 @@
 {
   "app.title": "Subtitle Flow",
   "app.description": "Synchronize and edit subtitles for your media files.",
-  "footer.copyright": "<p>© 2025 <0>Subtitle Flow project</0>. Subtitle Flow is an innovative, browser-based subtitle editor designed for creators and professionals, offering a seamless experience for creating, editing, and synchronizing subtitles with unparalleled ease and efficiency, directly within your web browser.</p><p>The original concept for this powerful subtitle tool was conceived by <1>Amin Sharifi (moaminsharifi)</1>. The application's development was significantly accelerated and enhanced with the assistance of Firebase Studio, an AI-powered collaborative coding partner, enabling rapid prototyping and feature implementation.</p><p>Built on a robust, modern tech stack, Subtitle Flow leverages Next.js for its frontend architecture. Its advanced AI transcription and translation capabilities are powered by leading models from Google AI, OpenAI, AvalAI, and Groq, providing users with cutting-edge tools for subtitle generation and refinement.</p><p>This privacy-focused application ensures that all your data and API keys remain local to your browser. Subtitle Flow is a testament to collaborative innovation, powered by Next.js, Google AI, OpenAI, AvalAI, and Groq, to deliver a comprehensive and free subtitle editing solution.</p>",
+  "footer.copyright": "<p>© 2025 <0>Subtitle Flow project</0>. Subtitle Flow is an innovative, browser-based subtitle editor designed for creators and professionals, offering a seamless experience for creating, editing, and synchronizing subtitles with unparalleled ease and efficiency, directly within your web browser.</p><p>The original concept for this powerful subtitle tool was conceived by <1>Amin Sharifi (moaminsharifi)</1>. The application's development was significantly accelerated and enhanced with the assistance of Firebase Studio, an AI-powered collaborative coding partner, enabling rapid prototyping and feature implementation.</p><p>Built with Next.js for a modern frontend experience, Subtitle Flow integrates advanced AI capabilities for transcription and (soon) translation, utilizing a range of powerful models to provide users with cutting-edge tools.</p><p>This privacy-focused application ensures all your data and API keys remain local to your browser. Subtitle Flow is a testament to collaborative innovation, aiming to deliver a comprehensive and free subtitle editing solution for everyone.</p>",
   "footer.features.title": "Key Features",
   "footer.features.list": [
     {
@@ -316,3 +316,5 @@
   "debugLog.buttons.close": "Close"
 }
 
+
+    
